@@ -16,7 +16,7 @@ and publication tracking.
 
 - Hierarchical records: Research Groups → Researchers → Projects → Workflow Runs
 - Attach Snakemake config files (YAML) — settings are parsed and displayed inline
-- Select workflow and release tag directly from GitHub (tags fetched live)
+- User-configurable workflow list with per-workflow GitHub URLs (any account or organisation)
 - Track backup status per run (Local / RCS / RFS) with storage paths
 - Attach processed data files to workflow runs (peak calls, data, etc.)
 - Upload custom analysis scripts per project with output file attachments
@@ -93,9 +93,22 @@ Research Group
 
 ### Workflow Runs
 
-- Select from 15 built-in Snakemake workflows; release tags are fetched live from GitHub
+- Select a workflow from the configurable list; release tags are fetched live from GitHub
 - Upload a Snakemake YAML config — all settings (excluding `resources`) are displayed in the run view
 - Record backup locations (Local, RCS, RFS) with storage paths
+
+### Workflow management
+
+Workflows are stored in `~/.ngs-tracker/workflows.yaml` and created from a built-in default list on first run. Each entry has a **name** and the full **GitHub URL** of the repository:
+
+```yaml
+- name: rna-seq-star-deseq2
+  url: https://github.com/niekwit/rna-seq-star-deseq2
+- name: my-custom-workflow
+  url: https://github.com/some-other-org/my-custom-workflow
+```
+
+Manage workflows via the **Workflows** page in the sidebar (add / remove) or by editing the YAML file directly. Any GitHub account or organisation is supported.
 
 ### Custom Analysis Scripts
 
