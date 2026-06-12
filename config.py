@@ -89,6 +89,45 @@ def get_storage_path() -> Path:
     return SETTINGS_DIR / "uploads"
 
 
+# ── Users ────────────────────────────────────────────────────────────────────
+
+
+def get_users() -> list[str]:
+    return load_settings().get("users", [])
+
+
+def get_current_user() -> str:
+    return load_settings().get("current_user", "")
+
+
+def add_user(name: str) -> None:
+    s = load_settings()
+    users = s.get("users", [])
+    if name and name not in users:
+        users.append(name)
+        users.sort(key=str.lower)
+        s["users"] = users
+        if not s.get("current_user"):
+            s["current_user"] = name
+        save_settings(s)
+
+
+def remove_user(name: str) -> None:
+    s = load_settings()
+    users = [u for u in s.get("users", []) if u != name]
+    s["users"] = users
+    if s.get("current_user") == name:
+        s["current_user"] = users[0] if users else ""
+    save_settings(s)
+
+
+def set_current_user(name: str) -> None:
+    s = load_settings()
+    if name in s.get("users", []):
+        s["current_user"] = name
+        save_settings(s)
+
+
 # ── Workflows ─────────────────────────────────────────────────────────────────
 
 

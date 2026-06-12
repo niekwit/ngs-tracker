@@ -103,7 +103,12 @@
       </li>
       <li class="nav-item">
         <a class="nav-link text-secondary" href="{{ url_for('setup') }}" title="Settings">
-          <i class="bi bi-gear"></i> Settings
+          {% if current_user %}
+          <i class="bi bi-person-circle me-1"></i>{{ current_user }}
+          {% else %}
+          <i class="bi bi-person-circle me-1 text-warning"></i><span class="text-warning">No user</span>
+          {% endif %}
+          &nbsp;·&nbsp;<i class="bi bi-gear"></i> Settings
         </a>
       </li>
     </ul>

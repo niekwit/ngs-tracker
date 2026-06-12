@@ -134,6 +134,7 @@ class ProjectScript(db.Model):
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
     trashed = db.Column(db.Boolean, default=False, nullable=False)
+    created_by = db.Column(db.String(100), default="")
     output_files = db.relationship(
         "ScriptOutputFile",
         backref="script",
@@ -186,6 +187,7 @@ class WorkflowRun(db.Model):
     workflow_tag = db.Column(db.String(50), default="")
     description = db.Column(db.Text, default="")
     trashed = db.Column(db.Boolean, default=False, nullable=False)
+    created_by = db.Column(db.String(100), default="")
     status = db.Column(db.String(20), default="completed", nullable=False)
     run_date = db.Column(db.DateTime, default=_now)
     notes = db.Column(db.Text, default="")

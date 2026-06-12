@@ -6,11 +6,16 @@ from flask import flash, redirect, render_template, request, url_for
 from config import (
     DEFAULT_DB,
     SETTINGS_FILE,
+    add_user,
     db_log,
+    get_current_user,
     get_storage_path,
+    get_users,
     is_configured,
     load_settings,
+    remove_user,
     save_settings,
+    set_current_user,
 )
 from helpers import _format_file_size, _total_file_size
 from models import (
@@ -68,20 +73,44 @@ def register(app):
     @app.route("/setup", methods=["GET", "POST"])
     def setup():
         if request.method == "POST":
+            action = request.form.get("action", "")
+
+            if action == "add_user":
+                name = request.form.get("username", "").strip()
+                if not name:
+                    flash("User name is required.", "danger")
+                elif name in get_users():
+                    flash(f'User "{name}" already exists.', "warning")
+                else:
+                    add_user(name)
+                    set_current_user(name)
+                    flash(f'User "{name}" added and selected.', "success")
+                return redirect(url_for("setup"))
+
+            if action == "remove_user":
+                name = request.form.get("username", "")
+                remove_user(name)
+                flash(f'User "{name}" removed.', "success")
+                return redirect(url_for("setup"))
+
+            if action == "set_user":
+                name = request.form.get("username", "")
+                set_current_user(name)
+                flash(f'Switched to "{name}".', "success")
+                return redirect(url_for("setup"))
+
+            # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
-
             if not storage_path or not db_path:
                 flash("Both paths are required.", "danger")
                 return redirect(url_for("setup"))
-
             try:
                 Path(storage_path).mkdir(parents=True, exist_ok=True)
                 Path(db_path).parent.mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 flash(f"Could not create directories: {e}", "danger")
                 return redirect(url_for("setup"))
-
             save_settings({"storage_path": storage_path, "db_path": db_path})
             flash(
                 "Settings saved. Restart the server for the database path to take effect.",
@@ -95,5 +124,9 @@ def register(app):
             "db_path": settings.get("db_path", str(DEFAULT_DB)),
         }
         return render_template(
-            "setup.html", settings=defaults, settings_file=str(SETTINGS_FILE)
+            "setup.html",
+            settings=defaults,
+            settings_file=str(SETTINGS_FILE),
+            users=get_users(),
+            current_user=get_current_user(),
         )

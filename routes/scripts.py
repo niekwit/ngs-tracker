@@ -4,7 +4,7 @@ from pathlib import Path
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
 
-from config import db_log, get_storage_path
+from config import db_log, get_current_user, get_storage_path
 from helpers import _delete_file
 from models import SCRIPT_LANGUAGES, Project, ProjectScript, ScriptOutputFile, db
 
@@ -42,6 +42,7 @@ def register(app):
             stored_path=str(stored_path),
             language=language,
             description=description,
+            created_by=get_current_user(),
         )
         db.session.add(script)
         db.session.commit()

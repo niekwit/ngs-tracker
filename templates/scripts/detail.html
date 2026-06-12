@@ -29,6 +29,9 @@
     {% endif %}
     <span class="text-muted small">
       <i class="bi bi-calendar3 me-1"></i>{{ script.uploaded_at.strftime('%Y-%m-%d %H:%M') }}
+      {% if script.created_by %}
+      &nbsp;·&nbsp;<i class="bi bi-person me-1"></i>{{ script.created_by }}
+      {% endif %}
     </span>
   </div>
   <div class="d-flex gap-2">

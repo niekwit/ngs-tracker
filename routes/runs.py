@@ -1,6 +1,6 @@
 from flask import flash, redirect, render_template, request, url_for
 
-from config import db_log, load_workflows
+from config import db_log, get_current_user, load_workflows
 from helpers import _parse_datetime
 from models import (
     FILE_TYPES,
@@ -101,6 +101,7 @@ def register(app):
                 backup_rcs_path=backup_rcs_path,
                 backup_rfs=backup_rfs,
                 backup_rfs_path=backup_rfs_path,
+                created_by=get_current_user(),
             )
             db.session.add(run)
             db.session.commit()

@@ -4,7 +4,7 @@ import os
 from flask import Flask, redirect, url_for
 from flask import request as flask_request
 
-from config import DEFAULT_DB, is_configured, load_settings
+from config import DEFAULT_DB, get_current_user, is_configured, load_settings
 from models import db
 
 import routes.dashboard
@@ -49,6 +49,8 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN trashed BOOLEAN DEFAULT 0",
             "ALTER TABLE project_script ADD COLUMN trashed BOOLEAN DEFAULT 0",
             "ALTER TABLE workflow_run ADD COLUMN status VARCHAR(20) DEFAULT 'completed'",
+            "ALTER TABLE workflow_run ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
+            "ALTER TABLE project_script ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
         ]:
             try:
                 db.session.execute(db.text(stmt))
@@ -61,6 +63,11 @@ def create_app() -> Flask:
 
 app = create_app()
 app.jinja_env.filters["from_json"] = json.loads
+
+
+@app.context_processor
+def inject_current_user():
+    return {"current_user": get_current_user()}
 
 
 @app.before_request
