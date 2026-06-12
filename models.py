@@ -160,8 +160,8 @@ class ScriptOutputFile(db.Model):
 
 FILE_TYPES = {
     "config": ("Snakemake Config", "primary"),
-    "peak_calls": ("Peak Calls", "purple"),
-    "data": ("Processed Data", "warning"),
+    "qc": ("QC", "info"),
+    "results": ("Results", "purple"),
     "other": ("Other", "secondary"),
 }
 
