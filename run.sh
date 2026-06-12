@@ -9,4 +9,11 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-conda run -n ngs-tracker python "$SCRIPT_DIR/app.py"
+while true; do
+    conda run -n ngs-tracker python "$SCRIPT_DIR/app.py"
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" -ne 42 ]; then
+        break
+    fi
+    echo "Restarting NGS Tracker..."
+done

@@ -200,6 +200,23 @@ def require_setup():
         return redirect(url_for("setup"))
 
 
+# ── Server restart ────────────────────────────────────────────────────────────
+
+
+@app.route("/restart", methods=["POST"])
+def restart():
+    import threading
+
+    def _exit():
+        import time
+
+        time.sleep(0.3)
+        os._exit(42)  # run.sh restart loop catches exit code 42
+
+    threading.Thread(target=_exit, daemon=True).start()
+    return "", 204
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 
