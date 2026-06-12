@@ -135,7 +135,8 @@ def index():
         "researchers": Researcher.query.filter_by(trashed=False).count(),
         "projects": Project.query.filter_by(trashed=False).count(),
         "runs": WorkflowRun.query.filter_by(trashed=False).count(),
-        "files": _format_file_size(_total_file_size()),
+        "files": AttachedFile.query.count() + ProjectScript.query.count() + ScriptOutputFile.query.count(),
+        "file_size": _format_file_size(_total_file_size()),
     }
     return render_template("index.html", groups=groups, recent_runs=recent_runs, stats=stats)
 

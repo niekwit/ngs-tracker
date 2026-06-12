@@ -7,13 +7,13 @@
 <!-- Stats row -->
 <div class="row g-3 mb-4">
   {% set cards = [
-    ('Groups',      stats.groups,      'bi-people-fill',       'blue',   url_for('groups_list')),
-    ('Researchers', stats.researchers,  'bi-person-fill',       'green',  url_for('researchers_list')),
-    ('Projects',    stats.projects,     'bi-folder-fill',       'purple', url_for('projects_list')),
-    ('Runs',        stats.runs,         'bi-play-circle-fill',  'orange', url_for('runs_list')),
-    ('Files',       stats.files,        'bi-paperclip',         'teal',   '#'),
+    ('Groups',      stats.groups,      'bi-people-fill',       'blue',   url_for('groups_list'), ''),
+    ('Researchers', stats.researchers,  'bi-person-fill',       'green',  url_for('researchers_list'), ''),
+    ('Projects',    stats.projects,     'bi-folder-fill',       'purple', url_for('projects_list'), ''),
+    ('Runs',        stats.runs,         'bi-play-circle-fill',  'orange', url_for('runs_list'), ''),
+    ('Files',       stats.files,        'bi-paperclip',         'teal',   '#', stats.file_size),
   ] %}
-  {% for label, count, icon, color, link in cards %}
+  {% for label, count, icon, color, link, subtitle in cards %}
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ link }}" class="text-decoration-none">
       <div class="card stat-card {{ color }} h-100">
@@ -22,6 +22,9 @@
             <div>
               <div class="text-muted" style="font-size:.75rem">{{ label }}</div>
               <div class="fw-bold fs-4">{{ count }}</div>
+              {% if subtitle %}
+              <div class="text-muted" style="font-size:.75rem">{{ subtitle }}</div>
+              {% endif %}
             </div>
             <i class="bi {{ icon }} fs-4 text-secondary opacity-50"></i>
           </div>
