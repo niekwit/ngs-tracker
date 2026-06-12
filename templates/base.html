@@ -98,6 +98,9 @@
     <a class="nav-link {% if request.endpoint == 'groups_list' %}active{% endif %}" href="{{ url_for('groups_list') }}">
       <i class="bi bi-people-fill"></i> Research Groups
     </a>
+    <a class="nav-link {% if request.endpoint == 'researchers_list' %}active{% endif %}" href="{{ url_for('researchers_list') }}">
+      <i class="bi bi-person-fill"></i> Researchers
+    </a>
 
     <div class="nav-label mt-1">Add New</div>
     <a class="nav-link" href="{{ url_for('group_new') }}">
