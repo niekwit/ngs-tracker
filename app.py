@@ -217,6 +217,20 @@ def restart():
     return "", 204
 
 
+@app.route("/stop", methods=["POST"])
+def stop():
+    import threading
+
+    def _exit():
+        import time
+
+        time.sleep(0.3)
+        os._exit(0)  # clean exit — run.sh loop does not restart
+
+    threading.Thread(target=_exit, daemon=True).start()
+    return "", 204
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 

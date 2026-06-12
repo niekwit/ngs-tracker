@@ -97,6 +97,11 @@
         </button>
       </li>
       <li class="nav-item">
+        <button class="btn btn-sm btn-outline-danger" title="Stop server" onclick="stopServer()">
+          <i class="bi bi-stop-circle"></i> Stop
+        </button>
+      </li>
+      <li class="nav-item">
         <a class="nav-link text-secondary" href="{{ url_for('setup') }}" title="Settings">
           <i class="bi bi-gear"></i> Settings
         </a>
@@ -165,6 +170,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+function stopServer() {
+  if (!confirm('Stop NGS Tracker?\n\nThe server will shut down and the page will become unavailable.')) return;
+  fetch('/stop', { method: 'POST' }).catch(function() {});
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280;">'
+    + '<div style="text-align:center;"><p style="font-size:1.5rem;font-weight:600;">NGS Tracker stopped.</p>'
+    + '<p>Close this tab or restart the server with <code>./run.sh</code>.</p></div></div>';
+}
+
 function restartServer() {
   var btn = document.getElementById('restartBtn');
   btn.disabled = true;
