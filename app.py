@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 from flask import (
     Flask,
     abort,
@@ -65,14 +67,16 @@ def create_app() -> Flask:
     db.init_app(app)
     with app.app_context():
         db.create_all()
-        # Inline migration: add workflow_tag column if the DB predates this feature
-        try:
-            db.session.execute(db.text(
-                "ALTER TABLE workflow_run ADD COLUMN workflow_tag VARCHAR(50) DEFAULT ''"
-            ))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        # Inline migrations for columns added after initial release
+        for stmt in [
+            "ALTER TABLE workflow_run ADD COLUMN workflow_tag VARCHAR(50) DEFAULT ''",
+            "ALTER TABLE attached_file ADD COLUMN parsed_config TEXT",
+        ]:
+            try:
+                db.session.execute(db.text(stmt))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     return app
 
@@ -447,12 +451,15 @@ def run_upload(id):
     stored_path = run_dir / stored_name
     file.save(str(stored_path))
 
+    parsed_config = _parse_snakemake_config(stored_path) if file_type == "config" else None
+
     attached = AttachedFile(
         workflow_run_id=id,
         original_filename=original_name,
         stored_path=str(stored_path),
         file_type=file_type,
         description=description,
+        parsed_config=parsed_config,
     )
     db.session.add(attached)
     db.session.commit()
@@ -484,6 +491,19 @@ def file_delete(id):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _parse_snakemake_config(path: Path) -> str | None:
+    """Parse a Snakemake YAML config, drop the 'resources' section, return as JSON."""
+    try:
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            return None
+        data.pop("resources", None)
+        return json.dumps(data)
+    except Exception:
+        return None
+
 
 def _parse_datetime(value: str) -> datetime:
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d"):

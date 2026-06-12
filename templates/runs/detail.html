@@ -87,6 +87,54 @@
   </div>
 </div>
 
+<!-- Workflow configuration (parsed from uploaded config files) -->
+{% set config_files = run.attached_files | selectattr('file_type', 'eq', 'config') | selectattr('config_dict') | list %}
+{% if config_files %}
+{% macro render_value(v) %}
+  {%- if v is mapping -%}
+    <table class="table table-sm table-bordered mb-0 config-nested">
+      {%- for ck, cv in v.items() -%}
+      <tr>
+        <td class="config-key text-nowrap">{{ ck }}</td>
+        <td>{{ render_value(cv) }}</td>
+      </tr>
+      {%- endfor -%}
+    </table>
+  {%- elif v is iterable and v is not string -%}
+    {%- for item in v -%}<div>{{ render_value(item) }}</div>{%- endfor -%}
+  {%- elif v is none -%}
+    <span class="text-muted fst-italic">null</span>
+  {%- elif v == "" -%}
+    <span class="text-muted fst-italic">""</span>
+  {%- else -%}
+    <code>{{ v }}</code>
+  {%- endif -%}
+{% endmacro %}
+
+{% for cf in config_files %}
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-sliders text-primary"></i>
+    <span>Workflow Configuration</span>
+    <span class="text-muted small ms-1">— {{ cf.original_filename }}</span>
+    <a href="{{ url_for('file_download', id=cf.id) }}" class="btn btn-xs btn-outline-secondary ms-auto">
+      <i class="bi bi-download me-1"></i>Download
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-bordered mb-0 config-root">
+      {% for key, value in cf.config_dict.items() %}
+      <tr>
+        <td class="config-key fw-semibold text-nowrap">{{ key }}</td>
+        <td>{{ render_value(value) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
 <!-- Attached files -->
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">

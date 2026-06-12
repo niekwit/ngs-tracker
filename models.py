@@ -138,6 +138,7 @@ class AttachedFile(db.Model):
     file_type = db.Column(db.String(50), default="other")
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
+    parsed_config = db.Column(db.Text, nullable=True)  # JSON; only set for config files
 
     @property
     def type_label(self):
@@ -146,3 +147,10 @@ class AttachedFile(db.Model):
     @property
     def type_color(self):
         return FILE_TYPES.get(self.file_type, ("Other", "secondary"))[1]
+
+    @property
+    def config_dict(self):
+        if self.parsed_config:
+            import json
+            return json.loads(self.parsed_config)
+        return None
