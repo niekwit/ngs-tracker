@@ -112,6 +112,11 @@
     <a class="nav-link" href="{{ url_for('run_new') }}">
       <i class="bi bi-plus-circle"></i> Workflow Run
     </a>
+
+    <div class="nav-label mt-1">System</div>
+    <a class="nav-link {% if request.endpoint == 'trash' %}active{% endif %}" href="{{ url_for('trash') }}">
+      <i class="bi bi-trash3"></i> Trash
+    </a>
   </div>
 
   <!-- Main content -->

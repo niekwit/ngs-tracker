@@ -14,6 +14,7 @@ class ResearchGroup(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=_now)
+    trashed = db.Column(db.Boolean, default=False, nullable=False)
     researchers = db.relationship(
         "Researcher",
         backref="group",
@@ -24,12 +25,17 @@ class ResearchGroup(db.Model):
 
     @property
     def project_count(self):
-        return sum(len(r.projects) for r in self.researchers)
+        return sum(
+            1 for r in self.researchers if not r.trashed
+            for p in r.projects if not p.trashed
+        )
 
     @property
     def run_count(self):
         return sum(
-            len(p.workflow_runs) for r in self.researchers for p in r.projects
+            1 for r in self.researchers if not r.trashed
+            for p in r.projects if not p.trashed
+            for run in p.workflow_runs if not run.trashed
         )
 
 
@@ -40,6 +46,7 @@ class Researcher(db.Model):
     email = db.Column(db.String(150), default="")
     group_id = db.Column(db.Integer, db.ForeignKey("research_group.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=_now)
+    trashed = db.Column(db.Boolean, default=False, nullable=False)
     projects = db.relationship(
         "Project",
         backref="researcher",
@@ -58,6 +65,7 @@ class Project(db.Model):
     created_at = db.Column(db.DateTime, default=_now)
     published = db.Column(db.Boolean, default=False)
     publication_url = db.Column(db.String(500), default="")
+    trashed = db.Column(db.Boolean, default=False, nullable=False)
     workflow_runs = db.relationship(
         "WorkflowRun",
         backref="project",
@@ -74,7 +82,10 @@ class Project(db.Model):
 
     @property
     def sorted_runs(self):
-        return sorted(self.workflow_runs, key=lambda r: r.run_date, reverse=True)
+        return sorted(
+            (r for r in self.workflow_runs if not r.trashed),
+            key=lambda r: r.run_date, reverse=True,
+        )
 
 
 SCRIPT_LANGUAGES = {
@@ -111,6 +122,7 @@ class ProjectScript(db.Model):
     language = db.Column(db.String(50), default="")
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
+    trashed = db.Column(db.Boolean, default=False, nullable=False)
     output_files = db.relationship(
         "ScriptOutputFile",
         backref="script",
@@ -170,6 +182,7 @@ class WorkflowRun(db.Model):
     workflow_name = db.Column(db.String(150), nullable=False)
     workflow_tag = db.Column(db.String(50), default="")
     description = db.Column(db.Text, default="")
+    trashed = db.Column(db.Boolean, default=False, nullable=False)
     run_date = db.Column(db.DateTime, default=_now)
     notes = db.Column(db.Text, default="")
     backup_local = db.Column(db.Boolean, default=False)

@@ -92,6 +92,11 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN backup_rfs_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE project ADD COLUMN published BOOLEAN DEFAULT 0",
             "ALTER TABLE project ADD COLUMN publication_url VARCHAR(500) DEFAULT ''",
+            "ALTER TABLE research_group ADD COLUMN trashed BOOLEAN DEFAULT 0",
+            "ALTER TABLE researcher ADD COLUMN trashed BOOLEAN DEFAULT 0",
+            "ALTER TABLE project ADD COLUMN trashed BOOLEAN DEFAULT 0",
+            "ALTER TABLE workflow_run ADD COLUMN trashed BOOLEAN DEFAULT 0",
+            "ALTER TABLE project_script ADD COLUMN trashed BOOLEAN DEFAULT 0",
             # project_script / script_output_file tables created by db.create_all()
         ]:
             try:
@@ -120,13 +125,16 @@ def require_setup():
 
 @app.route("/")
 def index():
-    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
-    recent_runs = WorkflowRun.query.order_by(WorkflowRun.run_date.desc()).limit(8).all()
+    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    recent_runs = (
+        WorkflowRun.query.filter_by(trashed=False)
+        .order_by(WorkflowRun.run_date.desc()).limit(8).all()
+    )
     stats = {
-        "groups": ResearchGroup.query.count(),
-        "researchers": Researcher.query.count(),
-        "projects": Project.query.count(),
-        "runs": WorkflowRun.query.count(),
+        "groups": ResearchGroup.query.filter_by(trashed=False).count(),
+        "researchers": Researcher.query.filter_by(trashed=False).count(),
+        "projects": Project.query.filter_by(trashed=False).count(),
+        "runs": WorkflowRun.query.filter_by(trashed=False).count(),
         "files": AttachedFile.query.count(),
     }
     return render_template("index.html", groups=groups, recent_runs=recent_runs, stats=stats)
@@ -167,14 +175,16 @@ def setup():
 
 @app.route("/groups")
 def groups_list():
-    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
     return render_template("groups/list.html", groups=groups)
 
 
 @app.route("/researchers")
 def researchers_list():
     researchers = (
-        Researcher.query.join(ResearchGroup)
+        Researcher.query.filter_by(trashed=False)
+        .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name)
         .all()
     )
@@ -184,8 +194,11 @@ def researchers_list():
 @app.route("/projects")
 def projects_list():
     projects = (
-        Project.query.join(Researcher)
+        Project.query.filter_by(trashed=False)
+        .join(Researcher)
+        .filter(Researcher.trashed == False)
         .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name, Project.name)
         .all()
     )
@@ -194,7 +207,7 @@ def projects_list():
 
 @app.route("/runs")
 def runs_list():
-    runs = WorkflowRun.query.order_by(WorkflowRun.run_date.desc()).all()
+    runs = WorkflowRun.query.filter_by(trashed=False).order_by(WorkflowRun.run_date.desc()).all()
     return render_template("runs/list.html", runs=runs)
 
 
@@ -242,11 +255,9 @@ def group_edit(id):
 @app.route("/groups/<int:id>/delete", methods=["POST"])
 def group_delete(id):
     group = db.get_or_404(ResearchGroup, id)
-    name = group.name
-    _delete_group_files(group)
-    db.session.delete(group)
+    group.trashed = True
     db.session.commit()
-    flash(f'Group "{name}" deleted.', "success")
+    flash(f'Group "{group.name}" moved to trash.', "success")
     return redirect(url_for("groups_list"))
 
 
@@ -261,7 +272,7 @@ def _delete_group_files(group: ResearchGroup) -> None:
 
 @app.route("/researchers/new", methods=["GET", "POST"])
 def researcher_new():
-    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
     if not groups:
         flash("Create a research group first.", "warning")
         return redirect(url_for("group_new"))
@@ -293,7 +304,7 @@ def researcher_detail(id):
 @app.route("/researchers/<int:id>/edit", methods=["GET", "POST"])
 def researcher_edit(id):
     researcher = db.get_or_404(Researcher, id)
-    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
     if request.method == "POST":
         researcher.name = request.form.get("name", "").strip()
         researcher.email = request.form.get("email", "").strip()
@@ -307,15 +318,10 @@ def researcher_edit(id):
 @app.route("/researchers/<int:id>/delete", methods=["POST"])
 def researcher_delete(id):
     researcher = db.get_or_404(Researcher, id)
-    name = researcher.name
-    group_id = researcher.group_id
-    for p in researcher.projects:
-        for run in p.workflow_runs:
-            _delete_run_files(run)
-    db.session.delete(researcher)
+    researcher.trashed = True
     db.session.commit()
-    flash(f'Researcher "{name}" deleted.', "success")
-    return redirect(url_for("group_detail", id=group_id))
+    flash(f'Researcher "{researcher.name}" moved to trash.', "success")
+    return redirect(url_for("group_detail", id=researcher.group_id))
 
 
 # ── Projects ──────────────────────────────────────────────────────────────────
@@ -323,7 +329,8 @@ def researcher_delete(id):
 @app.route("/projects/new", methods=["GET", "POST"])
 def project_new():
     researchers = (
-        Researcher.query.join(ResearchGroup)
+        Researcher.query.filter_by(trashed=False)
+        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name)
         .all()
     )
@@ -362,7 +369,8 @@ def project_detail(id):
 def project_edit(id):
     project = db.get_or_404(Project, id)
     researchers = (
-        Researcher.query.join(ResearchGroup)
+        Researcher.query.filter_by(trashed=False)
+        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name)
         .all()
     )
@@ -381,18 +389,10 @@ def project_edit(id):
 @app.route("/projects/<int:id>/delete", methods=["POST"])
 def project_delete(id):
     project = db.get_or_404(Project, id)
-    name = project.name
-    researcher_id = project.researcher_id
-    for run in project.workflow_runs:
-        _delete_run_files(run)
-    for script in project.scripts:
-        _delete_file(script.stored_path)
-        for out in script.output_files:
-            _delete_file(out.stored_path)
-    db.session.delete(project)
+    project.trashed = True
     db.session.commit()
-    flash(f'Project "{name}" deleted.', "success")
-    return redirect(url_for("researcher_detail", id=researcher_id))
+    flash(f'Project "{project.name}" moved to trash.', "success")
+    return redirect(url_for("researcher_detail", id=project.researcher_id))
 
 
 # ── Workflow Runs ─────────────────────────────────────────────────────────────
@@ -400,8 +400,9 @@ def project_delete(id):
 @app.route("/runs/new", methods=["GET", "POST"])
 def run_new():
     projects = (
-        Project.query.join(Researcher)
-        .join(ResearchGroup)
+        Project.query.filter_by(trashed=False)
+        .join(Researcher).filter(Researcher.trashed == False)
+        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name, Project.name)
         .all()
     )
@@ -461,8 +462,9 @@ def run_detail(id):
 def run_edit(id):
     run = db.get_or_404(WorkflowRun, id)
     projects = (
-        Project.query.join(Researcher)
-        .join(ResearchGroup)
+        Project.query.filter_by(trashed=False)
+        .join(Researcher).filter(Researcher.trashed == False)
+        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name, Project.name)
         .all()
     )
@@ -487,13 +489,10 @@ def run_edit(id):
 @app.route("/runs/<int:id>/delete", methods=["POST"])
 def run_delete(id):
     run = db.get_or_404(WorkflowRun, id)
-    name = run.workflow_name
-    project_id = run.project_id
-    _delete_run_files(run)
-    db.session.delete(run)
+    run.trashed = True
     db.session.commit()
-    flash(f'Workflow run "{name}" deleted.', "success")
-    return redirect(url_for("project_detail", id=project_id))
+    flash(f'Workflow run "{run.workflow_name}" moved to trash.', "success")
+    return redirect(url_for("project_detail", id=run.project_id))
 
 
 # ── File Attachments ──────────────────────────────────────────────────────────
@@ -609,14 +608,10 @@ def script_detail(id):
 @app.route("/scripts/<int:id>/delete", methods=["POST"])
 def script_delete(id):
     script = db.get_or_404(ProjectScript, id)
-    project_id = script.project_id
-    for out in script.output_files:
-        _delete_file(out.stored_path)
-    _delete_file(script.stored_path)
-    db.session.delete(script)
+    script.trashed = True
     db.session.commit()
-    flash(f'Script "{script.original_filename}" deleted.', "success")
-    return redirect(url_for("project_detail", id=project_id))
+    flash(f'Script "{script.original_filename}" moved to trash.', "success")
+    return redirect(url_for("project_detail", id=script.project_id))
 
 
 @app.route("/scripts/<int:id>/outputs/upload", methods=["POST"])
@@ -668,6 +663,90 @@ def script_output_delete(id):
     db.session.commit()
     flash(f'Output file "{out.original_filename}" deleted.', "success")
     return redirect(url_for("script_detail", id=script_id))
+
+
+# ── Trash ─────────────────────────────────────────────────────────────────────
+
+_TRASH_MODELS = {
+    "group":      ResearchGroup,
+    "researcher": Researcher,
+    "project":    Project,
+    "run":        WorkflowRun,
+    "script":     ProjectScript,
+}
+
+
+@app.route("/trash")
+def trash():
+    items = {
+        "groups":      ResearchGroup.query.filter_by(trashed=True).order_by(ResearchGroup.name).all(),
+        "researchers": Researcher.query.filter_by(trashed=True).order_by(Researcher.name).all(),
+        "projects":    Project.query.filter_by(trashed=True).order_by(Project.name).all(),
+        "runs":        WorkflowRun.query.filter_by(trashed=True).order_by(WorkflowRun.run_date.desc()).all(),
+        "scripts":     ProjectScript.query.filter_by(trashed=True).order_by(ProjectScript.original_filename).all(),
+    }
+    total = sum(len(v) for v in items.values())
+    return render_template("trash.html", items=items, total=total)
+
+
+@app.route("/trash/<type>/<int:id>/restore", methods=["POST"])
+def trash_restore(type, id):
+    model = _TRASH_MODELS.get(type)
+    if not model:
+        abort(404)
+    record = db.get_or_404(model, id)
+    record.trashed = False
+    db.session.commit()
+    flash("Record restored.", "success")
+    return redirect(url_for("trash"))
+
+
+@app.route("/trash/<type>/<int:id>/delete", methods=["POST"])
+def trash_delete(type, id):
+    model = _TRASH_MODELS.get(type)
+    if not model:
+        abort(404)
+    record = db.get_or_404(model, id)
+    _trash_hard_delete(type, record)
+    flash("Record permanently deleted.", "success")
+    return redirect(url_for("trash"))
+
+
+@app.route("/trash/empty", methods=["POST"])
+def trash_empty():
+    for type_key, model in _TRASH_MODELS.items():
+        for record in model.query.filter_by(trashed=True).all():
+            _trash_hard_delete(type_key, record)
+    flash("Trash emptied.", "success")
+    return redirect(url_for("trash"))
+
+
+def _trash_hard_delete(type_key: str, record) -> None:
+    if type_key == "group":
+        _delete_group_files(record)
+    elif type_key == "researcher":
+        for p in record.projects:
+            for run in p.workflow_runs:
+                _delete_run_files(run)
+            for script in p.scripts:
+                _delete_file(script.stored_path)
+                for out in script.output_files:
+                    _delete_file(out.stored_path)
+    elif type_key == "project":
+        for run in record.workflow_runs:
+            _delete_run_files(run)
+        for script in record.scripts:
+            _delete_file(script.stored_path)
+            for out in script.output_files:
+                _delete_file(out.stored_path)
+    elif type_key == "run":
+        _delete_run_files(record)
+    elif type_key == "script":
+        for out in record.output_files:
+            _delete_file(out.stored_path)
+        _delete_file(record.stored_path)
+    db.session.delete(record)
+    db.session.commit()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

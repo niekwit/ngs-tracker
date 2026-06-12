@@ -36,9 +36,9 @@
   </div>
 </div>
 
-{% if researcher.projects %}
+{% if researcher.projects | selectattr('trashed', 'equalto', False) | list %}
 <div class="row g-3">
-  {% for project in researcher.projects %}
+  {% for project in researcher.projects if not project.trashed %}
   <div class="col-md-6 col-lg-4">
     <div class="card h-100">
       <div class="card-body">
@@ -51,8 +51,9 @@
         <p class="text-muted small mb-2">{{ project.description }}</p>
         {% endif %}
         <div class="d-flex align-items-center gap-2 mt-1">
+          {% set active_runs = project.workflow_runs | selectattr('trashed', 'equalto', False) | list %}
           <span class="text-muted small">
-            <i class="bi bi-play-circle me-1"></i>{{ project.workflow_runs|length }} run{{ 's' if project.workflow_runs|length != 1 }}
+            <i class="bi bi-play-circle me-1"></i>{{ active_runs|length }} run{{ 's' if active_runs|length != 1 }}
           </span>
           {% if project.published %}
           <span class="badge bg-success" style="font-size:.65rem;">Published</span>

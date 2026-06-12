@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Trash — NGS Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="fw-bold mb-0"><i class="bi bi-trash3-fill me-1 text-danger"></i> Trash</h4>
+  {% if total > 0 %}
+  <form method="post" action="{{ url_for('trash_empty') }}"
+        onsubmit="return confirm('Permanently delete ALL {{ total }} item{{ 's' if total != 1 }}? This cannot be undone.');">
+    <button class="btn btn-danger btn-sm">
+      <i class="bi bi-trash3 me-1"></i> Empty Trash ({{ total }})
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% if total == 0 %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-trash3 fs-1 opacity-25"></i>
+    <p class="mt-2">Trash is empty.</p>
+  </div>
+</div>
+{% else %}
+
+{% macro trash_section(title, icon, color, records, type_key) %}
+{% if records %}
+<div class="card mb-3">
+  <div class="card-header">
+    <i class="bi {{ icon }} me-1 text-{{ color }}"></i> {{ title }}
+    <span class="badge bg-secondary ms-1">{{ records|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td class="align-middle">
+            {% if type_key == 'group' %}
+              <span class="fw-semibold">{{ record.name }}</span>
+            {% elif type_key == 'researcher' %}
+              <span class="fw-semibold">{{ record.name }}</span>
+              <span class="text-muted ms-2 small">{{ record.group.name }}</span>
+            {% elif type_key == 'project' %}
+              <span class="fw-semibold">{{ record.name }}</span>
+              <span class="text-muted ms-2 small">{{ record.researcher.name }} · {{ record.researcher.group.name }}</span>
+            {% elif type_key == 'run' %}
+              <span class="fw-semibold">{{ record.workflow_name }}</span>
+              {% if record.workflow_tag %}
+              <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ record.workflow_tag }}</span>
+              {% endif %}
+              <span class="text-muted ms-2 small">{{ record.project.name }} · {{ record.run_date.strftime('%Y-%m-%d') }}</span>
+            {% elif type_key == 'script' %}
+              <span class="fw-semibold">{{ record.original_filename }}</span>
+              <span class="badge bg-{{ record.language_color }} ms-1" style="font-size:.7rem;">{{ record.language }}</span>
+              <span class="text-muted ms-2 small">{{ record.project.name }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end align-middle" style="white-space:nowrap;">
+            <form method="post"
+                  action="{{ url_for('trash_restore', type=type_key, id=record.id) }}"
+                  class="d-inline">
+              <button class="btn btn-xs btn-outline-success" title="Restore">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+              </button>
+            </form>
+            <form method="post"
+                  action="{{ url_for('trash_delete', type=type_key, id=record.id) }}"
+                  class="d-inline ms-1"
+                  onsubmit="return confirm('Permanently delete this record and all its data? This cannot be undone.');">
+              <button class="btn btn-xs btn-outline-danger" title="Delete permanently">
+                <i class="bi bi-trash3 me-1"></i>Delete
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{{ trash_section('Research Groups',  'bi-people-fill',       'primary', items.groups,      'group') }}
+{{ trash_section('Researchers',      'bi-person-fill',       'success', items.researchers, 'researcher') }}
+{{ trash_section('Projects',         'bi-folder-fill',       'warning', items.projects,    'project') }}
+{{ trash_section('Workflow Runs',    'bi-play-circle-fill',  'danger',  items.runs,        'run') }}
+{{ trash_section('Scripts',         'bi-file-code-fill',    'info',    items.scripts,     'script') }}
+
+{% endif %}
+{% endblock %}

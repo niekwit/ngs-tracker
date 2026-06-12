@@ -48,8 +48,9 @@
             <a href="{{ url_for('group_detail', id=group.id) }}" class="fw-semibold text-decoration-none text-dark">
               <i class="bi bi-people text-primary me-1"></i>{{ group.name }}
             </a>
+            {% set active_res = group.researchers | selectattr('trashed', 'equalto', False) | list %}
             <span class="text-muted ms-1" style="font-size:.75rem">
-              {{ group.researchers|length }} researcher{{ 's' if group.researchers|length != 1 }}
+              {{ active_res|length }} researcher{{ 's' if active_res|length != 1 }}
               · {{ group.project_count }} project{{ 's' if group.project_count != 1 }}
             </span>
           </li>

@@ -40,7 +40,7 @@
             </a>
           </td>
           <td class="text-muted">{{ p.researcher.group.name }}</td>
-          <td class="text-muted">{{ p.workflow_runs|length }}</td>
+          <td class="text-muted">{{ p.workflow_runs | selectattr('trashed', 'equalto', False) | list | length }}</td>
           <td>
             {% if p.published %}
               {% if p.publication_url %}

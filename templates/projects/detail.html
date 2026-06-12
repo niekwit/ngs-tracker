@@ -129,7 +129,8 @@
 <!-- Custom analysis scripts -->
 <div class="card mt-3">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <span><i class="bi bi-code-slash me-1"></i> Custom Analysis Scripts ({{ project.scripts|length }})</span>
+    {% set active_scripts = project.scripts | selectattr('trashed', 'equalto', False) | list %}
+  <span><i class="bi bi-code-slash me-1"></i> Custom Analysis Scripts ({{ active_scripts|length }})</span>
     <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#scriptUpload">
       <i class="bi bi-upload me-1"></i> Upload Script
     </button>
@@ -161,7 +162,7 @@
     </div>
   </div>
 
-  {% if project.scripts %}
+  {% if active_scripts %}
   <div class="table-responsive">
     <table class="table table-hover table-sm mb-0">
       <thead class="table-light">
@@ -175,7 +176,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for s in project.scripts %}
+        {% for s in active_scripts %}
         <tr>
           <td>
             <i class="bi bi-file-earmark-code me-1 text-secondary"></i>

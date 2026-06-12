@@ -32,9 +32,9 @@
   </div>
 </div>
 
-{% if group.researchers %}
+{% if group.researchers | selectattr('trashed', 'equalto', False) | list %}
 <div class="row g-3">
-  {% for researcher in group.researchers %}
+  {% for researcher in group.researchers if not researcher.trashed %}
   <div class="col-md-6 col-lg-4">
     <div class="card h-100">
       <div class="card-body">
@@ -48,8 +48,9 @@
           <i class="bi bi-envelope me-1"></i>{{ researcher.email }}
         </p>
         {% endif %}
+        {% set active_projects = researcher.projects | selectattr('trashed', 'equalto', False) | list %}
         <span class="text-muted small">
-          <i class="bi bi-folder me-1"></i>{{ researcher.projects|length }} project{{ 's' if researcher.projects|length != 1 }}
+          <i class="bi bi-folder me-1"></i>{{ active_projects|length }} project{{ 's' if active_projects|length != 1 }}
         </span>
       </div>
       <div class="card-footer d-flex gap-2 py-2">
