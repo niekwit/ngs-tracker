@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ researcher.name }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('groups_list') }}">Groups</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('group_detail', id=researcher.group_id) }}">{{ researcher.group.name }}</a></li>
+    <li class="breadcrumb-item active">{{ researcher.name }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">
+      <i class="bi bi-person-fill text-success me-1"></i> {{ researcher.name }}
+    </h4>
+    <span class="text-muted small">
+      <i class="bi bi-people me-1"></i>{{ researcher.group.name }}
+      {% if researcher.email %}
+      &nbsp;·&nbsp;<i class="bi bi-envelope me-1"></i>{{ researcher.email }}
+      {% endif %}
+    </span>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('project_new') }}?researcher_id={{ researcher.id }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> New Project
+    </a>
+    <a href="{{ url_for('researcher_edit', id=researcher.id) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+    <form method="POST" action="{{ url_for('researcher_delete', id=researcher.id) }}"
+          onsubmit="return confirm('Delete this researcher and ALL their projects?')">
+      <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Delete</button>
+    </form>
+  </div>
+</div>
+
+{% if researcher.projects %}
+<div class="row g-3">
+  {% for project in researcher.projects %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title mb-1">
+          <a href="{{ url_for('project_detail', id=project.id) }}" class="text-decoration-none text-dark">
+            <i class="bi bi-folder-fill text-warning me-1"></i>{{ project.name }}
+          </a>
+        </h6>
+        {% if project.description %}
+        <p class="text-muted small mb-2">{{ project.description }}</p>
+        {% endif %}
+        <span class="text-muted small">
+          <i class="bi bi-play-circle me-1"></i>{{ project.workflow_runs|length }} run{{ 's' if project.workflow_runs|length != 1 }}
+        </span>
+      </div>
+      <div class="card-footer d-flex gap-2 py-2">
+        <a href="{{ url_for('project_detail', id=project.id) }}" class="btn btn-sm btn-outline-primary btn-xs">View</a>
+        <a href="{{ url_for('run_new') }}?project_id={{ project.id }}" class="btn btn-sm btn-outline-success btn-xs">+ Run</a>
+        <a href="{{ url_for('project_edit', id=project.id) }}" class="btn btn-sm btn-outline-secondary btn-xs ms-auto">Edit</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-folder fs-1 opacity-25"></i>
+    <p class="mt-2">No projects yet for this researcher.</p>
+    <a href="{{ url_for('project_new') }}?researcher_id={{ researcher.id }}" class="btn btn-primary btn-sm">
+      Create first project
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

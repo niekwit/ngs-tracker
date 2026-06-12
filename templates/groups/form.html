@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Group' if group else 'New Group' }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('groups_list') }}">Groups</a></li>
+    <li class="breadcrumb-item active">{{ 'Edit' if group else 'New' }}</li>
+  </ol>
+</nav>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-people me-1"></i>
+        {{ 'Edit Research Group' if group else 'New Research Group' }}
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Group name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="name"
+                   value="{{ group.name if group else '' }}" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea class="form-control" name="description" rows="3">{{ group.description if group else '' }}</textarea>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> {{ 'Save Changes' if group else 'Create Group' }}
+            </button>
+            <a href="{{ url_for('group_detail', id=group.id) if group else url_for('groups_list') }}"
+               class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Settings — NGS Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-6">
+    <h4 class="mb-1 fw-bold"><i class="bi bi-gear me-1"></i> Storage Settings</h4>
+    <p class="text-muted mb-4">Configure where the database and uploaded files are stored. Restart the server after changing paths.</p>
+
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Database path <span class="text-danger">*</span></label>
+            <input type="text" class="form-control font-monospace" name="db_path"
+                   value="{{ settings.db_path }}" required
+                   placeholder="/path/to/ngs_tracker.db">
+            <div class="form-text">Full path to the SQLite database file.</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">File storage directory <span class="text-danger">*</span></label>
+            <input type="text" class="form-control font-monospace" name="storage_path"
+                   value="{{ settings.storage_path }}" required
+                   placeholder="/path/to/ngs_tracker_files">
+            <div class="form-text">Directory where uploaded config files and data files will be stored.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> Save Settings
+            </button>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="alert alert-info mt-3 py-2">
+      <i class="bi bi-info-circle me-1"></i>
+      After changing the <strong>database path</strong>, restart the server so the new path takes effect.
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Run' if run else 'New Workflow Run' }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    {% if run %}
+    <li class="breadcrumb-item"><a href="{{ url_for('project_detail', id=run.project_id) }}">{{ run.project.name }}</a></li>
+    <li class="breadcrumb-item active">Edit Run</li>
+    {% else %}
+    <li class="breadcrumb-item active">New Workflow Run</li>
+    {% endif %}
+  </ol>
+</nav>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-play-circle me-1"></i>
+        {{ 'Edit Workflow Run' if run else 'New Workflow Run' }}
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
+              <select class="form-select" name="project_id" required {% if run %}disabled{% endif %}>
+                {% set current_group = namespace(name='') %}
+                {% for p in projects %}
+                  {% set label = p.researcher.group.name + ' › ' + p.researcher.name %}
+                  {% if label != current_group.name %}
+                    {% if not loop.first %}</optgroup>{% endif %}
+                    <optgroup label="{{ label }}">
+                    {% set current_group.name = label %}
+                  {% endif %}
+                  <option value="{{ p.id }}"
+                    {% if (run and run.project_id == p.id) or (not run and preselected == p.id) %}selected{% endif %}>
+                    {{ p.name }}
+                  </option>
+                  {% if loop.last %}</optgroup>{% endif %}
+                {% endfor %}
+              </select>
+              {% if run %}
+              <input type="hidden" name="project_id" value="{{ run.project_id }}">
+              {% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Run date <span class="text-danger">*</span></label>
+              <input type="datetime-local" class="form-control" name="run_date"
+                     value="{{ run.run_date.strftime('%Y-%m-%dT%H:%M') if run else '' }}">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Workflow name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="workflow_name"
+                   value="{{ run.workflow_name if run else '' }}" required autofocus
+                   placeholder="e.g. ChIP-seq_pipeline, RNA-seq_alignment">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Short description</label>
+            <input type="text" class="form-control" name="description"
+                   value="{{ run.description if run else '' }}"
+                   placeholder="Brief summary of what this run does">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea class="form-control" name="notes" rows="4"
+                      placeholder="Any notes about parameters, issues, or results…">{{ run.notes if run else '' }}</textarea>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold d-block">Backup status</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="backup_local" id="backup_local"
+                       {% if run and run.backup_local %}checked{% endif %}>
+                <label class="form-check-label" for="backup_local">
+                  <i class="bi bi-hdd me-1 text-success"></i> Local
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="backup_rcs" id="backup_rcs"
+                       {% if run and run.backup_rcs %}checked{% endif %}>
+                <label class="form-check-label" for="backup_rcs">
+                  <i class="bi bi-cloud me-1 text-primary"></i> RCS
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="backup_rfs" id="backup_rfs"
+                       {% if run and run.backup_rfs %}checked{% endif %}>
+                <label class="form-check-label" for="backup_rfs">
+                  <i class="bi bi-cloud me-1 text-info"></i> RFS
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> {{ 'Save Changes' if run else 'Create Run' }}
+            </button>
+            {% if run %}
+            <a href="{{ url_for('run_detail', id=run.id) }}" class="btn btn-outline-secondary">Cancel</a>
+            {% else %}
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

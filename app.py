@@ -1,0 +1,497 @@
+import json
+import os
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
+from werkzeug.utils import secure_filename
+
+from models import FILE_TYPES, AttachedFile, Project, Researcher, ResearchGroup, WorkflowRun, db
+
+SETTINGS_FILE = Path(__file__).parent / "settings.json"
+DEFAULT_DB = Path(__file__).parent / "ngs_tracker.db"
+
+
+# ── Settings helpers ──────────────────────────────────────────────────────────
+
+def load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        with open(SETTINGS_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def save_settings(settings: dict) -> None:
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump(settings, f, indent=2)
+
+
+def is_configured() -> bool:
+    s = load_settings()
+    return bool(s.get("storage_path") and s.get("db_path"))
+
+
+def get_storage_path() -> Path:
+    s = load_settings()
+    if s.get("storage_path"):
+        return Path(s["storage_path"])
+    return Path(__file__).parent / "uploads"
+
+
+# ── App factory ───────────────────────────────────────────────────────────────
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+    app.secret_key = os.environ.get("NGS_SECRET_KEY", "ngs-tracker-dev-secret")
+
+    settings = load_settings()
+    db_path = settings.get("db_path") or str(DEFAULT_DB)
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB
+
+    db.init_app(app)
+    with app.app_context():
+        db.create_all()
+
+    return app
+
+
+app = create_app()
+
+
+# ── Guards ────────────────────────────────────────────────────────────────────
+
+@app.before_request
+def require_setup():
+    if request.endpoint in ("setup", "static"):
+        return
+    if not is_configured():
+        return redirect(url_for("setup"))
+
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+
+@app.route("/")
+def index():
+    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    recent_runs = WorkflowRun.query.order_by(WorkflowRun.run_date.desc()).limit(8).all()
+    stats = {
+        "groups": ResearchGroup.query.count(),
+        "researchers": Researcher.query.count(),
+        "projects": Project.query.count(),
+        "runs": WorkflowRun.query.count(),
+        "files": AttachedFile.query.count(),
+    }
+    return render_template("index.html", groups=groups, recent_runs=recent_runs, stats=stats)
+
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+@app.route("/setup", methods=["GET", "POST"])
+def setup():
+    if request.method == "POST":
+        storage_path = request.form.get("storage_path", "").strip()
+        db_path = request.form.get("db_path", "").strip()
+
+        if not storage_path or not db_path:
+            flash("Both paths are required.", "danger")
+            return redirect(url_for("setup"))
+
+        try:
+            Path(storage_path).mkdir(parents=True, exist_ok=True)
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            flash(f"Could not create directories: {e}", "danger")
+            return redirect(url_for("setup"))
+
+        save_settings({"storage_path": storage_path, "db_path": db_path})
+        flash("Settings saved. Restart the server for the database path to take effect.", "success")
+        return redirect(url_for("index"))
+
+    settings = load_settings()
+    defaults = {
+        "storage_path": settings.get("storage_path", str(Path(__file__).parent / "uploads")),
+        "db_path": settings.get("db_path", str(DEFAULT_DB)),
+    }
+    return render_template("setup.html", settings=defaults)
+
+
+# ── Research Groups ───────────────────────────────────────────────────────────
+
+@app.route("/groups")
+def groups_list():
+    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    return render_template("groups/list.html", groups=groups)
+
+
+@app.route("/groups/new", methods=["GET", "POST"])
+def group_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        if not name:
+            flash("Group name is required.", "danger")
+            return render_template("groups/form.html", group=None)
+        if ResearchGroup.query.filter_by(name=name).first():
+            flash("A group with that name already exists.", "danger")
+            return render_template("groups/form.html", group=None)
+        group = ResearchGroup(name=name, description=description)
+        db.session.add(group)
+        db.session.commit()
+        flash(f'Research group "{name}" created.', "success")
+        return redirect(url_for("group_detail", id=group.id))
+    return render_template("groups/form.html", group=None)
+
+
+@app.route("/groups/<int:id>")
+def group_detail(id):
+    group = db.get_or_404(ResearchGroup, id)
+    return render_template("groups/detail.html", group=group)
+
+
+@app.route("/groups/<int:id>/edit", methods=["GET", "POST"])
+def group_edit(id):
+    group = db.get_or_404(ResearchGroup, id)
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("Group name is required.", "danger")
+            return render_template("groups/form.html", group=group)
+        group.name = name
+        group.description = request.form.get("description", "").strip()
+        db.session.commit()
+        flash("Group updated.", "success")
+        return redirect(url_for("group_detail", id=id))
+    return render_template("groups/form.html", group=group)
+
+
+@app.route("/groups/<int:id>/delete", methods=["POST"])
+def group_delete(id):
+    group = db.get_or_404(ResearchGroup, id)
+    name = group.name
+    _delete_group_files(group)
+    db.session.delete(group)
+    db.session.commit()
+    flash(f'Group "{name}" deleted.', "success")
+    return redirect(url_for("groups_list"))
+
+
+def _delete_group_files(group: ResearchGroup) -> None:
+    for r in group.researchers:
+        for p in r.projects:
+            for run in p.workflow_runs:
+                _delete_run_files(run)
+
+
+# ── Researchers ───────────────────────────────────────────────────────────────
+
+@app.route("/researchers/new", methods=["GET", "POST"])
+def researcher_new():
+    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    if not groups:
+        flash("Create a research group first.", "warning")
+        return redirect(url_for("group_new"))
+
+    preselected = request.args.get("group_id", type=int)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        group_id = request.form.get("group_id", type=int)
+        if not name or not group_id:
+            flash("Name and group are required.", "danger")
+            return render_template("researchers/form.html", researcher=None, groups=groups, preselected=preselected)
+        researcher = Researcher(name=name, email=email, group_id=group_id)
+        db.session.add(researcher)
+        db.session.commit()
+        flash(f'Researcher "{name}" created.', "success")
+        return redirect(url_for("researcher_detail", id=researcher.id))
+
+    return render_template("researchers/form.html", researcher=None, groups=groups, preselected=preselected)
+
+
+@app.route("/researchers/<int:id>")
+def researcher_detail(id):
+    researcher = db.get_or_404(Researcher, id)
+    return render_template("researchers/detail.html", researcher=researcher)
+
+
+@app.route("/researchers/<int:id>/edit", methods=["GET", "POST"])
+def researcher_edit(id):
+    researcher = db.get_or_404(Researcher, id)
+    groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
+    if request.method == "POST":
+        researcher.name = request.form.get("name", "").strip()
+        researcher.email = request.form.get("email", "").strip()
+        researcher.group_id = request.form.get("group_id", type=int)
+        db.session.commit()
+        flash("Researcher updated.", "success")
+        return redirect(url_for("researcher_detail", id=id))
+    return render_template("researchers/form.html", researcher=researcher, groups=groups, preselected=researcher.group_id)
+
+
+@app.route("/researchers/<int:id>/delete", methods=["POST"])
+def researcher_delete(id):
+    researcher = db.get_or_404(Researcher, id)
+    name = researcher.name
+    group_id = researcher.group_id
+    for p in researcher.projects:
+        for run in p.workflow_runs:
+            _delete_run_files(run)
+    db.session.delete(researcher)
+    db.session.commit()
+    flash(f'Researcher "{name}" deleted.', "success")
+    return redirect(url_for("group_detail", id=group_id))
+
+
+# ── Projects ──────────────────────────────────────────────────────────────────
+
+@app.route("/projects/new", methods=["GET", "POST"])
+def project_new():
+    researchers = (
+        Researcher.query.join(ResearchGroup)
+        .order_by(ResearchGroup.name, Researcher.name)
+        .all()
+    )
+    if not researchers:
+        flash("Create a researcher first.", "warning")
+        return redirect(url_for("researcher_new"))
+
+    preselected = request.args.get("researcher_id", type=int)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        researcher_id = request.form.get("researcher_id", type=int)
+        if not name or not researcher_id:
+            flash("Name and researcher are required.", "danger")
+            return render_template("projects/form.html", project=None, researchers=researchers, preselected=preselected)
+        project = Project(name=name, description=description, researcher_id=researcher_id)
+        db.session.add(project)
+        db.session.commit()
+        flash(f'Project "{name}" created.', "success")
+        return redirect(url_for("project_detail", id=project.id))
+
+    return render_template("projects/form.html", project=None, researchers=researchers, preselected=preselected)
+
+
+@app.route("/projects/<int:id>")
+def project_detail(id):
+    project = db.get_or_404(Project, id)
+    return render_template("projects/detail.html", project=project)
+
+
+@app.route("/projects/<int:id>/edit", methods=["GET", "POST"])
+def project_edit(id):
+    project = db.get_or_404(Project, id)
+    researchers = (
+        Researcher.query.join(ResearchGroup)
+        .order_by(ResearchGroup.name, Researcher.name)
+        .all()
+    )
+    if request.method == "POST":
+        project.name = request.form.get("name", "").strip()
+        project.description = request.form.get("description", "").strip()
+        project.researcher_id = request.form.get("researcher_id", type=int)
+        db.session.commit()
+        flash("Project updated.", "success")
+        return redirect(url_for("project_detail", id=id))
+    return render_template("projects/form.html", project=project, researchers=researchers, preselected=project.researcher_id)
+
+
+@app.route("/projects/<int:id>/delete", methods=["POST"])
+def project_delete(id):
+    project = db.get_or_404(Project, id)
+    name = project.name
+    researcher_id = project.researcher_id
+    for run in project.workflow_runs:
+        _delete_run_files(run)
+    db.session.delete(project)
+    db.session.commit()
+    flash(f'Project "{name}" deleted.', "success")
+    return redirect(url_for("researcher_detail", id=researcher_id))
+
+
+# ── Workflow Runs ─────────────────────────────────────────────────────────────
+
+@app.route("/runs/new", methods=["GET", "POST"])
+def run_new():
+    projects = (
+        Project.query.join(Researcher)
+        .join(ResearchGroup)
+        .order_by(ResearchGroup.name, Researcher.name, Project.name)
+        .all()
+    )
+    if not projects:
+        flash("Create a project first.", "warning")
+        return redirect(url_for("project_new"))
+
+    preselected = request.args.get("project_id", type=int)
+
+    if request.method == "POST":
+        project_id = request.form.get("project_id", type=int)
+        workflow_name = request.form.get("workflow_name", "").strip()
+        description = request.form.get("description", "").strip()
+        notes = request.form.get("notes", "").strip()
+        run_date = _parse_datetime(request.form.get("run_date", ""))
+        backup_local = "backup_local" in request.form
+        backup_rcs = "backup_rcs" in request.form
+        backup_rfs = "backup_rfs" in request.form
+
+        if not workflow_name or not project_id:
+            flash("Workflow name and project are required.", "danger")
+            return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES)
+
+        run = WorkflowRun(
+            project_id=project_id,
+            workflow_name=workflow_name,
+            description=description,
+            run_date=run_date,
+            notes=notes,
+            backup_local=backup_local,
+            backup_rcs=backup_rcs,
+            backup_rfs=backup_rfs,
+        )
+        db.session.add(run)
+        db.session.commit()
+        flash(f'Workflow run "{workflow_name}" created.', "success")
+        return redirect(url_for("run_detail", id=run.id))
+
+    return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES)
+
+
+@app.route("/runs/<int:id>")
+def run_detail(id):
+    run = db.get_or_404(WorkflowRun, id)
+    return render_template("runs/detail.html", run=run, file_types=FILE_TYPES)
+
+
+@app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
+def run_edit(id):
+    run = db.get_or_404(WorkflowRun, id)
+    projects = (
+        Project.query.join(Researcher)
+        .join(ResearchGroup)
+        .order_by(ResearchGroup.name, Researcher.name, Project.name)
+        .all()
+    )
+    if request.method == "POST":
+        run.workflow_name = request.form.get("workflow_name", "").strip()
+        run.description = request.form.get("description", "").strip()
+        run.notes = request.form.get("notes", "").strip()
+        run.run_date = _parse_datetime(request.form.get("run_date", ""))
+        run.backup_local = "backup_local" in request.form
+        run.backup_rcs = "backup_rcs" in request.form
+        run.backup_rfs = "backup_rfs" in request.form
+        db.session.commit()
+        flash("Workflow run updated.", "success")
+        return redirect(url_for("run_detail", id=id))
+    return render_template("runs/form.html", run=run, projects=projects, preselected=run.project_id, file_types=FILE_TYPES)
+
+
+@app.route("/runs/<int:id>/delete", methods=["POST"])
+def run_delete(id):
+    run = db.get_or_404(WorkflowRun, id)
+    name = run.workflow_name
+    project_id = run.project_id
+    _delete_run_files(run)
+    db.session.delete(run)
+    db.session.commit()
+    flash(f'Workflow run "{name}" deleted.', "success")
+    return redirect(url_for("project_detail", id=project_id))
+
+
+# ── File Attachments ──────────────────────────────────────────────────────────
+
+@app.route("/runs/<int:id>/upload", methods=["POST"])
+def run_upload(id):
+    run = db.get_or_404(WorkflowRun, id)
+
+    if "file" not in request.files or request.files["file"].filename == "":
+        flash("No file selected.", "danger")
+        return redirect(url_for("run_detail", id=id))
+
+    file = request.files["file"]
+    file_type = request.form.get("file_type", "other")
+    description = request.form.get("description", "").strip()
+
+    original_name = secure_filename(file.filename)
+    run_dir = get_storage_path() / "runs" / str(id)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_name = f"{uuid.uuid4().hex}_{original_name}"
+    stored_path = run_dir / stored_name
+    file.save(str(stored_path))
+
+    attached = AttachedFile(
+        workflow_run_id=id,
+        original_filename=original_name,
+        stored_path=str(stored_path),
+        file_type=file_type,
+        description=description,
+    )
+    db.session.add(attached)
+    db.session.commit()
+    flash(f'File "{original_name}" uploaded.', "success")
+    return redirect(url_for("run_detail", id=id))
+
+
+@app.route("/files/<int:id>/download")
+def file_download(id):
+    f = db.get_or_404(AttachedFile, id)
+    stored = Path(f.stored_path)
+    if not stored.exists():
+        abort(404)
+    return send_file(str(stored), as_attachment=True, download_name=f.original_filename)
+
+
+@app.route("/files/<int:id>/delete", methods=["POST"])
+def file_delete(id):
+    f = db.get_or_404(AttachedFile, id)
+    run_id = f.workflow_run_id
+    try:
+        Path(f.stored_path).unlink(missing_ok=True)
+    except Exception:
+        pass
+    db.session.delete(f)
+    db.session.commit()
+    flash(f'File "{f.original_filename}" deleted.', "success")
+    return redirect(url_for("run_detail", id=run_id))
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _parse_datetime(value: str) -> datetime:
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt)
+        except (ValueError, TypeError):
+            pass
+    return datetime.utcnow()
+
+
+def _delete_run_files(run: WorkflowRun) -> None:
+    for f in run.attached_files:
+        try:
+            Path(f.stored_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("NGS_PORT", 5000))
+    host = os.environ.get("NGS_HOST", "127.0.0.1")
+    app.run(debug=False, host=host, port=port)

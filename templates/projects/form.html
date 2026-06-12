@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Project' if project else 'New Project' }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    {% if project %}
+    <li class="breadcrumb-item"><a href="{{ url_for('group_detail', id=project.researcher.group_id) }}">{{ project.researcher.group.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('researcher_detail', id=project.researcher_id) }}">{{ project.researcher.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('project_detail', id=project.id) }}">{{ project.name }}</a></li>
+    {% endif %}
+    <li class="breadcrumb-item active">{{ 'Edit' if project else 'New Project' }}</li>
+  </ol>
+</nav>
+
+<div class="row">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-folder me-1"></i>
+        {{ 'Edit Project' if project else 'New Project' }}
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Researcher <span class="text-danger">*</span></label>
+            <select class="form-select" name="researcher_id" required>
+              {% set current_group = namespace(name='') %}
+              {% for r in researchers %}
+                {% if r.group.name != current_group.name %}
+                  {% if not loop.first %}</optgroup>{% endif %}
+                  <optgroup label="{{ r.group.name }}">
+                  {% set current_group.name = r.group.name %}
+                {% endif %}
+                <option value="{{ r.id }}"
+                  {% if (project and project.researcher_id == r.id) or (not project and preselected == r.id) %}selected{% endif %}>
+                  {{ r.name }}{% if r.email %} ({{ r.email }}){% endif %}
+                </option>
+                {% if loop.last %}</optgroup>{% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Project name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="name"
+                   value="{{ project.name if project else '' }}" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea class="form-control" name="description" rows="4">{{ project.description if project else '' }}</textarea>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> {{ 'Save Changes' if project else 'Create Project' }}
+            </button>
+            {% if project %}
+            <a href="{{ url_for('project_detail', id=project.id) }}" class="btn btn-outline-secondary">Cancel</a>
+            {% else %}
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

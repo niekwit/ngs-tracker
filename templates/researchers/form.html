@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Researcher' if researcher else 'New Researcher' }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('groups_list') }}">Groups</a></li>
+    {% if researcher %}
+    <li class="breadcrumb-item"><a href="{{ url_for('group_detail', id=researcher.group_id) }}">{{ researcher.group.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('researcher_detail', id=researcher.id) }}">{{ researcher.name }}</a></li>
+    {% endif %}
+    <li class="breadcrumb-item active">{{ 'Edit' if researcher else 'New Researcher' }}</li>
+  </ol>
+</nav>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-person me-1"></i>
+        {{ 'Edit Researcher' if researcher else 'New Researcher' }}
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Research group <span class="text-danger">*</span></label>
+            <select class="form-select" name="group_id" required>
+              {% for group in groups %}
+              <option value="{{ group.id }}"
+                {% if (researcher and researcher.group_id == group.id) or (not researcher and preselected == group.id) %}selected{% endif %}>
+                {{ group.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="name"
+                   value="{{ researcher.name if researcher else '' }}" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Email</label>
+            <input type="email" class="form-control" name="email"
+                   value="{{ researcher.email if researcher else '' }}">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> {{ 'Save Changes' if researcher else 'Create Researcher' }}
+            </button>
+            {% if researcher %}
+            <a href="{{ url_for('researcher_detail', id=researcher.id) }}" class="btn btn-outline-secondary">Cancel</a>
+            {% else %}
+            <a href="{{ url_for('groups_list') }}" class="btn btn-outline-secondary">Cancel</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
