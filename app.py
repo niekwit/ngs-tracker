@@ -828,6 +828,17 @@ def file_download(id):
     return send_file(str(stored), as_attachment=True, download_name=f.original_filename)
 
 
+@app.route("/files/<int:id>/view")
+def file_view(id):
+    f = db.get_or_404(AttachedFile, id)
+    stored = Path(f.stored_path)
+    if not stored.exists():
+        abort(404)
+    return send_file(
+        str(stored), as_attachment=False, download_name=f.original_filename
+    )
+
+
 @app.route("/files/<int:id>/delete", methods=["POST"])
 def file_delete(id):
     f = db.get_or_404(AttachedFile, id)

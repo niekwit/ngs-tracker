@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
+from pathlib import Path
 
 db = SQLAlchemy()
 
@@ -160,6 +161,7 @@ class ScriptOutputFile(db.Model):
 
 FILE_TYPES = {
     "config": ("Snakemake Config", "primary"),
+    "sample_info": ("Sample Info", "success"),
     "qc": ("QC", "info"),
     "results": ("Results", "purple"),
     "other": ("Other", "secondary"),
@@ -251,6 +253,22 @@ class AttachedFile(db.Model):
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
     parsed_config = db.Column(db.Text, nullable=True)  # JSON; only set for config files
+
+    _IMAGE_EXTENSIONS = {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".webp",
+        ".bmp",
+        ".tiff",
+        ".tif",
+    }
+
+    @property
+    def is_image(self):
+        return Path(self.original_filename).suffix.lower() in self._IMAGE_EXTENSIONS
 
     @property
     def type_label(self):

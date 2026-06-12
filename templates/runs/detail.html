@@ -289,7 +289,11 @@
         {% for f in run.attached_files %}
         <tr class="file-row">
           <td>
+            {% if f.is_image %}
+            <i class="bi bi-file-earmark-image me-1 text-info"></i>
+            {% else %}
             <i class="bi bi-file-earmark me-1 text-secondary"></i>
+            {% endif %}
             <a href="{{ url_for('file_download', id=f.id) }}" class="text-decoration-none">
               {{ f.original_filename }}
             </a>
@@ -301,6 +305,14 @@
           <td class="text-muted small">{{ f.description or '—' }}</td>
           <td class="text-muted small">{{ f.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
           <td class="text-end">
+            {% if f.is_image %}
+            <button class="btn btn-xs btn-outline-info"
+                    data-bs-toggle="modal" data-bs-target="#imgModal"
+                    data-src="{{ url_for('file_view', id=f.id) }}"
+                    data-name="{{ f.original_filename }}">
+              <i class="bi bi-eye"></i>
+            </button>
+            {% endif %}
             <a href="{{ url_for('file_download', id=f.id) }}" class="btn btn-xs btn-outline-primary">
               <i class="bi bi-download"></i>
             </a>
@@ -321,4 +333,37 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Image lightbox modal -->
+<div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0" id="imgModalLabel"></h6>
+        <div class="ms-auto d-flex gap-2 align-items-center">
+          <a id="imgModalDownload" href="#" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-download me-1"></i>Download
+          </a>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="modal-body text-center p-2">
+        <img id="imgModalImg" src="" alt="" class="img-fluid rounded" style="max-height:80vh;">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('imgModal').addEventListener('show.bs.modal', function(e) {
+  var btn = e.relatedTarget;
+  var src = btn.getAttribute('data-src');
+  var name = btn.getAttribute('data-name');
+  document.getElementById('imgModalImg').src = src;
+  document.getElementById('imgModalLabel').textContent = name;
+  document.getElementById('imgModalDownload').href = src.replace('/view', '/download');
+});
+</script>
 {% endblock %}
