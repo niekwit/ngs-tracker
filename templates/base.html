@@ -101,6 +101,12 @@
     <a class="nav-link {% if request.endpoint == 'researchers_list' %}active{% endif %}" href="{{ url_for('researchers_list') }}">
       <i class="bi bi-person-fill"></i> Researchers
     </a>
+    <a class="nav-link {% if request.endpoint == 'projects_list' %}active{% endif %}" href="{{ url_for('projects_list') }}">
+      <i class="bi bi-folder-fill"></i> Projects
+    </a>
+    <a class="nav-link {% if request.endpoint == 'runs_list' %}active{% endif %}" href="{{ url_for('runs_list') }}">
+      <i class="bi bi-play-circle-fill"></i> Runs
+    </a>
 
     <div class="nav-label mt-1">Add New</div>
     <a class="nav-link" href="{{ url_for('group_new') }}">
