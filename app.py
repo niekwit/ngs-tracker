@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import shutil
+
 import yaml
 
 from flask import (
@@ -20,13 +22,22 @@ from werkzeug.utils import secure_filename
 
 from models import FILE_TYPES, WORKFLOWS, AttachedFile, Project, Researcher, ResearchGroup, WorkflowRun, db
 
-SETTINGS_FILE = Path(__file__).parent / "settings.json"
-DEFAULT_DB = Path(__file__).parent / "ngs_tracker.db"
+# Settings live in the user's home directory so they survive re-clones.
+SETTINGS_DIR  = Path.home() / ".ngs-tracker"
+SETTINGS_FILE = SETTINGS_DIR / "settings.json"
+# Legacy location (app directory) — migrated on first load if found.
+_LEGACY_SETTINGS = Path(__file__).parent / "settings.json"
+DEFAULT_DB      = SETTINGS_DIR / "ngs_tracker.db"
 
 
 # ── Settings helpers ──────────────────────────────────────────────────────────
 
 def load_settings() -> dict:
+    # Migrate from old app-directory location on first run after upgrade
+    if not SETTINGS_FILE.exists() and _LEGACY_SETTINGS.exists():
+        SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(_LEGACY_SETTINGS, SETTINGS_FILE)
+        _LEGACY_SETTINGS.unlink(missing_ok=True)
     if SETTINGS_FILE.exists():
         with open(SETTINGS_FILE) as f:
             return json.load(f)
@@ -34,6 +45,7 @@ def load_settings() -> dict:
 
 
 def save_settings(settings: dict) -> None:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f, indent=2)
 
@@ -47,7 +59,7 @@ def get_storage_path() -> Path:
     s = load_settings()
     if s.get("storage_path"):
         return Path(s["storage_path"])
-    return Path(__file__).parent / "uploads"
+    return SETTINGS_DIR / "uploads"
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
@@ -138,10 +150,10 @@ def setup():
 
     settings = load_settings()
     defaults = {
-        "storage_path": settings.get("storage_path", str(Path(__file__).parent / "uploads")),
+        "storage_path": settings.get("storage_path", str(SETTINGS_DIR / "uploads")),
         "db_path": settings.get("db_path", str(DEFAULT_DB)),
     }
-    return render_template("setup.html", settings=defaults)
+    return render_template("setup.html", settings=defaults, settings_file=str(SETTINGS_FILE))
 
 
 # ── Research Groups ───────────────────────────────────────────────────────────
