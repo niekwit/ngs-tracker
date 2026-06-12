@@ -168,25 +168,6 @@ FILE_TYPES = {
 BACKUP_LOCATIONS = ["Local", "RCS", "RFS"]
 
 
-WORKFLOWS = [
-    "atac-seq",
-    "chip-seq",
-    "crispr-screens",
-    "cut_and_run",
-    "damid-seq",
-    "eCLIP",
-    "gps-orfeome",
-    "methyl-seq",
-    "remora",
-    "rip-seq",
-    "rna-seq-salmon-deseq2",
-    "rna-seq-star-deseq2",
-    "rna-seq-star-tetranscripts",
-    "smallRNA-seq",
-    "tt-seq",
-]
-
-
 class WorkflowRun(db.Model):
     __tablename__ = "workflow_run"
     id = db.Column(db.Integer, primary_key=True)

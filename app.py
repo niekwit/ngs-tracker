@@ -22,7 +22,6 @@ from werkzeug.utils import secure_filename
 
 from models import (
     FILE_TYPES,
-    WORKFLOWS,
     SCRIPT_LANGUAGES,
     AttachedFile,
     Project,
@@ -37,9 +36,37 @@ from models import (
 # Settings live in the user's home directory so they survive re-clones.
 SETTINGS_DIR = Path.home() / ".ngs-tracker"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
+WORKFLOWS_FILE = SETTINGS_DIR / "workflows.yaml"
 # Legacy location (app directory) — migrated on first load if found.
 _LEGACY_SETTINGS = Path(__file__).parent / "settings.json"
 DEFAULT_DB = SETTINGS_DIR / "ngs_tracker.db"
+
+_DEFAULT_WORKFLOWS = [
+    {"name": "atac-seq", "url": "https://github.com/niekwit/atac-seq"},
+    {"name": "chip-seq", "url": "https://github.com/niekwit/chip-seq"},
+    {"name": "crispr-screens", "url": "https://github.com/niekwit/crispr-screens"},
+    {"name": "cut_and_run", "url": "https://github.com/niekwit/cut_and_run"},
+    {"name": "damid-seq", "url": "https://github.com/niekwit/damid-seq"},
+    {"name": "eCLIP", "url": "https://github.com/niekwit/eCLIP"},
+    {"name": "gps-orfeome", "url": "https://github.com/niekwit/gps-orfeome"},
+    {"name": "methyl-seq", "url": "https://github.com/niekwit/methyl-seq"},
+    {"name": "remora", "url": "https://github.com/niekwit/remora"},
+    {"name": "rip-seq", "url": "https://github.com/niekwit/rip-seq"},
+    {
+        "name": "rna-seq-salmon-deseq2",
+        "url": "https://github.com/niekwit/rna-seq-salmon-deseq2",
+    },
+    {
+        "name": "rna-seq-star-deseq2",
+        "url": "https://github.com/niekwit/rna-seq-star-deseq2",
+    },
+    {
+        "name": "rna-seq-star-tetranscripts",
+        "url": "https://github.com/niekwit/rna-seq-star-tetranscripts",
+    },
+    {"name": "smallRNA-seq", "url": "https://github.com/niekwit/smallRNA-seq"},
+    {"name": "tt-seq", "url": "https://github.com/niekwit/tt-seq"},
+]
 
 
 # ── Settings helpers ──────────────────────────────────────────────────────────
@@ -73,6 +100,24 @@ def get_storage_path() -> Path:
     if s.get("storage_path"):
         return Path(s["storage_path"])
     return SETTINGS_DIR / "uploads"
+
+
+# ── Workflow helpers ───────────────────────────────────────────────────────────
+
+
+def load_workflows() -> list:
+    if not WORKFLOWS_FILE.exists():
+        SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(WORKFLOWS_FILE, "w") as f:
+            yaml.dump(_DEFAULT_WORKFLOWS, f, default_flow_style=False, sort_keys=False)
+    with open(WORKFLOWS_FILE) as f:
+        return yaml.safe_load(f) or []
+
+
+def save_workflows(workflows: list) -> None:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(WORKFLOWS_FILE, "w") as f:
+        yaml.dump(workflows, f, default_flow_style=False, sort_keys=False)
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
@@ -539,7 +584,7 @@ def run_new():
                 projects=projects,
                 preselected=preselected,
                 file_types=FILE_TYPES,
-                workflows=WORKFLOWS,
+                workflows=load_workflows(),
             )
 
         run = WorkflowRun(
@@ -567,15 +612,16 @@ def run_new():
         projects=projects,
         preselected=preselected,
         file_types=FILE_TYPES,
-        workflows=WORKFLOWS,
+        workflows=load_workflows(),
     )
 
 
 @app.route("/runs/<int:id>")
 def run_detail(id):
     run = db.get_or_404(WorkflowRun, id)
+    wf_urls = {w["name"]: w["url"] for w in load_workflows()}
     return render_template(
-        "runs/detail.html", run=run, file_types=FILE_TYPES, workflows=WORKFLOWS
+        "runs/detail.html", run=run, file_types=FILE_TYPES, wf_urls=wf_urls
     )
 
 
@@ -612,7 +658,7 @@ def run_edit(id):
         projects=projects,
         preselected=run.project_id,
         file_types=FILE_TYPES,
-        workflows=WORKFLOWS,
+        workflows=load_workflows(),
     )
 
 
@@ -623,6 +669,44 @@ def run_delete(id):
     db.session.commit()
     flash(f'Workflow run "{run.workflow_name}" moved to trash.', "success")
     return redirect(url_for("project_detail", id=run.project_id))
+
+
+# ── Workflow management ───────────────────────────────────────────────────────
+
+
+@app.route("/workflows", methods=["GET", "POST"])
+def workflows_manage():
+    if request.method == "POST":
+        action = request.form.get("action")
+        workflows = load_workflows()
+
+        if action == "add":
+            name = request.form.get("name", "").strip()
+            url = request.form.get("url", "").strip()
+            if not name or not url:
+                flash("Name and URL are required.", "danger")
+            elif any(w["name"] == name for w in workflows):
+                flash(f'Workflow "{name}" already exists.', "warning")
+            else:
+                workflows.append({"name": name, "url": url})
+                workflows.sort(key=lambda w: w["name"].lower())
+                save_workflows(workflows)
+                flash(f'Workflow "{name}" added.', "success")
+
+        elif action == "delete":
+            name = request.form.get("name", "")
+            workflows = [w for w in workflows if w["name"] != name]
+            save_workflows(workflows)
+            flash(f'Workflow "{name}" removed.', "success")
+
+        return redirect(url_for("workflows_manage"))
+
+    workflows = load_workflows()
+    return render_template(
+        "workflows/manage.html",
+        workflows=workflows,
+        workflows_file=str(WORKFLOWS_FILE),
+    )
 
 
 # ── File Attachments ──────────────────────────────────────────────────────────

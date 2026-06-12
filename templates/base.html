@@ -124,6 +124,9 @@
     </a>
 
     <div class="nav-label mt-1">System</div>
+    <a class="nav-link {% if request.endpoint == 'workflows_manage' %}active{% endif %}" href="{{ url_for('workflows_manage') }}">
+      <i class="bi bi-diagram-3"></i> Workflows
+    </a>
     <a class="nav-link {% if request.endpoint == 'trash' %}active{% endif %}" href="{{ url_for('trash') }}">
       <i class="bi bi-trash3"></i> Trash
     </a>

@@ -63,9 +63,9 @@
               <select class="form-select" name="workflow_name" id="workflow_name" required>
                 <option value="">— select workflow —</option>
                 {% for wf in workflows %}
-                <option value="{{ wf }}"
-                  {% if run and run.workflow_name == wf %}selected{% endif %}>
-                  {{ wf }}
+                <option value="{{ wf.name }}" data-url="{{ wf.url }}"
+                  {% if run and run.workflow_name == wf.name %}selected{% endif %}>
+                  {{ wf.name }}
                 </option>
                 {% endfor %}
               </select>
@@ -152,32 +152,44 @@
   const spinner   = document.getElementById('tag-spinner');
   const hint      = document.getElementById('tag-hint');
 
-  async function fetchTags(workflow) {
+  function repoFromUrl(repoUrl) {
+    // Extract "owner/repo" from any GitHub URL
+    const m = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+    return m ? m[1].replace(/\.git$/, '') : null;
+  }
+
+  async function fetchTags(repoUrl) {
     tagSelect.disabled = true;
     tagSelect.innerHTML = '<option value="">Loading…</option>';
     spinner.classList.remove('d-none');
     hint.textContent = '';
 
     const preselected = tagSelect.dataset.preselected || '';
+    const repo = repoFromUrl(repoUrl);
+
+    if (!repo) {
+      tagSelect.innerHTML = '<option value="">Invalid repo URL</option>';
+      hint.textContent = 'Could not parse GitHub URL for this workflow.';
+      tagSelect.disabled = false;
+      spinner.classList.add('d-none');
+      return;
+    }
 
     try {
-      // Try releases first, fall back to tags if none found
       let items = [];
       const relResp = await fetch(
-        `https://api.github.com/repos/niekwit/${workflow}/releases?per_page=50`
+        `https://api.github.com/repos/${repo}/releases?per_page=50`
       );
       if (relResp.ok) {
-        const releases = await relResp.json();
-        items = releases.map(r => r.tag_name);
+        items = (await relResp.json()).map(r => r.tag_name);
       }
 
       if (items.length === 0) {
         const tagResp = await fetch(
-          `https://api.github.com/repos/niekwit/${workflow}/tags?per_page=50`
+          `https://api.github.com/repos/${repo}/tags?per_page=50`
         );
         if (tagResp.ok) {
-          const tags = await tagResp.json();
-          items = tags.map(t => t.name);
+          items = (await tagResp.json()).map(t => t.name);
         }
       }
 
@@ -203,8 +215,9 @@
   }
 
   wfSelect.addEventListener('change', function () {
-    if (this.value) {
-      fetchTags(this.value);
+    const url = this.options[this.selectedIndex]?.dataset.url || '';
+    if (url) {
+      fetchTags(url);
     } else {
       tagSelect.innerHTML = '<option value="">— select workflow first —</option>';
       tagSelect.disabled = true;
@@ -214,7 +227,8 @@
 
   // On edit page: workflow is already selected — load its tags immediately
   if (wfSelect.value) {
-    fetchTags(wfSelect.value);
+    const url = wfSelect.options[wfSelect.selectedIndex]?.dataset.url || '';
+    if (url) fetchTags(url);
   }
 })();
 

@@ -22,11 +22,18 @@
     <h4 class="fw-bold mb-0">
       <i class="bi bi-play-circle-fill text-danger me-1"></i> {{ run.workflow_name }}
       {% if run.workflow_tag %}
-      <a href="https://github.com/niekwit/{{ run.workflow_name }}/releases/tag/{{ run.workflow_tag }}"
-         target="_blank" rel="noopener"
-         class="badge bg-dark text-decoration-none ms-1" style="font-size:.75rem; font-weight:500;">
-        <i class="bi bi-tag me-1"></i>{{ run.workflow_tag }}
-      </a>
+        {% set wf_url = wf_urls.get(run.workflow_name) %}
+        {% if wf_url %}
+        <a href="{{ wf_url }}/releases/tag/{{ run.workflow_tag }}"
+           target="_blank" rel="noopener"
+           class="badge bg-dark text-decoration-none ms-1" style="font-size:.75rem; font-weight:500;">
+          <i class="bi bi-tag me-1"></i>{{ run.workflow_tag }}
+        </a>
+        {% else %}
+        <span class="badge bg-dark ms-1" style="font-size:.75rem; font-weight:500;">
+          <i class="bi bi-tag me-1"></i>{{ run.workflow_tag }}
+        </span>
+        {% endif %}
       {% endif %}
     </h4>
     {% if run.description %}
