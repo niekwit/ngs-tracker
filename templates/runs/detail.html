@@ -256,8 +256,8 @@
       <form method="POST" action="{{ url_for('run_upload', id=run.id) }}" enctype="multipart/form-data">
         <div class="row g-2 align-items-end">
           <div class="col-md-4">
-            <label class="form-label fw-semibold mb-1">File <span class="text-danger">*</span></label>
-            <input type="file" class="form-control form-control-sm" name="file" required>
+            <label class="form-label fw-semibold mb-1">File(s) <span class="text-danger">*</span></label>
+            <input type="file" class="form-control form-control-sm" name="file" multiple required>
           </div>
           <div class="col-md-3">
             <label class="form-label fw-semibold mb-1">Type</label>

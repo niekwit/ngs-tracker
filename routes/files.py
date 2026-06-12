@@ -14,43 +14,49 @@ def register(app):
     def run_upload(id):
         run = db.get_or_404(WorkflowRun, id)
 
-        if "file" not in request.files or request.files["file"].filename == "":
+        files = [f for f in request.files.getlist("file") if f.filename]
+        if not files:
             flash("No file selected.", "danger")
             return redirect(url_for("run_detail", id=id))
 
-        file = request.files["file"]
         file_type = request.form.get("file_type", "other")
         description = request.form.get("description", "").strip()
-
-        original_name = secure_filename(file.filename)
         run_dir = get_storage_path() / "runs" / str(id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
-        stored_name = f"{uuid.uuid4().hex}_{original_name}"
-        stored_path = run_dir / stored_name
-        file.save(str(stored_path))
+        saved = []
+        for file in files:
+            original_name = secure_filename(file.filename)
+            stored_path = run_dir / f"{uuid.uuid4().hex}_{original_name}"
+            file.save(str(stored_path))
 
-        parsed_config = (
-            _parse_snakemake_config(stored_path) if file_type == "config" else None
-        )
+            parsed_config = (
+                _parse_snakemake_config(stored_path) if file_type == "config" else None
+            )
 
-        attached = AttachedFile(
-            workflow_run_id=id,
-            original_filename=original_name,
-            stored_path=str(stored_path),
-            file_type=file_type,
-            description=description,
-            parsed_config=parsed_config,
-        )
-        db.session.add(attached)
+            attached = AttachedFile(
+                workflow_run_id=id,
+                original_filename=original_name,
+                stored_path=str(stored_path),
+                file_type=file_type,
+                description=description,
+                parsed_config=parsed_config,
+            )
+            db.session.add(attached)
+            db.session.flush()
+            db_log(
+                "CREATE",
+                "AttachedFile",
+                attached.id,
+                f"{original_name} [{file_type}] on run id={id}",
+            )
+            saved.append(original_name)
+
         db.session.commit()
-        db_log(
-            "CREATE",
-            "AttachedFile",
-            attached.id,
-            f"{original_name} [{file_type}] on run id={id}",
-        )
-        flash(f'File "{original_name}" uploaded.', "success")
+        if len(saved) == 1:
+            flash(f'File "{saved[0]}" uploaded.', "success")
+        else:
+            flash(f"{len(saved)} files uploaded.", "success")
         return redirect(url_for("run_detail", id=id))
 
     @app.route("/files/<int:id>/download")
