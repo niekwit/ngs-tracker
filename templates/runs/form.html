@@ -49,8 +49,8 @@
             </div>
             <div class="col-md-4">
               <label class="form-label fw-semibold">Run date</label>
-              <input type="datetime-local" class="form-control" name="run_date"
-                     value="{{ run.run_date.strftime('%Y-%m-%dT%H:%M') if run else '' }}">
+              <input type="date" class="form-control" name="run_date"
+                     value="{{ run.run_date.strftime('%Y-%m-%d') if run else '' }}">
             </div>
           </div>
 
