@@ -149,9 +149,25 @@ def set_current_user(name: str) -> None:
 
 # ── Default tags ──────────────────────────────────────────────────────────────
 
+_DEFAULT_TAGS = [
+    "contamination",
+    "failed-QC",
+    "final",
+    "low-coverage",
+    "needs-review",
+    "pilot",
+    "published",
+    "re-run",
+    "test",
+]
+
 
 def get_default_tags() -> list[str]:
-    return sorted(load_settings().get("default_tags", []), key=str.lower)
+    s = load_settings()
+    if "default_tags" not in s:
+        s["default_tags"] = sorted(_DEFAULT_TAGS, key=str.lower)
+        save_settings(s)
+    return sorted(s["default_tags"], key=str.lower)
 
 
 def add_default_tag(name: str) -> None:
