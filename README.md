@@ -142,6 +142,61 @@ Access the trash via the **Trash** link in the sidebar.
 
 ---
 
+## Running at startup (Fedora / Ubuntu)
+
+A systemd user service starts NGS Tracker automatically at login — or at boot if lingering is enabled (no login required).
+
+**1. Find the full path to conda**
+
+```bash
+which conda   # e.g. /home/niek/miniforge3/condabin/conda
+```
+
+Systemd user services do not source `.bashrc`, so `conda` will not be in `PATH` unless you use the absolute path.
+
+**2. Create the service file**
+
+Create `~/.config/systemd/user/ngs-tracker.service` (substitute your conda path and repo location):
+
+```ini
+[Unit]
+Description=NGS Tracker
+After=network.target
+
+[Service]
+WorkingDirectory=/path/to/ngs-tracker
+ExecStart=/home/you/miniforge3/condabin/conda run -n ngs-tracker python app.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+**3. Enable and start**
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now ngs-tracker
+```
+
+**4. Start at boot without a login session**
+
+```bash
+loginctl enable-linger $USER
+```
+
+**Useful commands**
+
+```bash
+systemctl --user status ngs-tracker     # check status
+systemctl --user restart ngs-tracker    # restart manually
+journalctl --user -u ngs-tracker -f     # live logs
+```
+
+> **Memory:** NGS Tracker uses roughly 40–80 MB RAM at idle — comparable to a terminal window.
+
+---
+
 ## Updating
 
 ```bash
