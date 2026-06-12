@@ -8,13 +8,16 @@ from flask import flash, redirect, render_template, request, url_for
 from config import (
     DEFAULT_DB,
     SETTINGS_FILE,
+    add_default_tag,
     add_user,
     db_log,
     get_current_user,
+    get_default_tags,
     get_storage_path,
     get_users,
     is_configured,
     load_settings,
+    remove_default_tag,
     remove_user,
     save_settings,
     set_current_user,
@@ -119,6 +122,23 @@ def register(app):
                 flash(f'Switched to "{name}".', "success")
                 return redirect(url_for("setup"))
 
+            if action == "add_tag":
+                name = request.form.get("tag_name", "").strip()
+                if not name:
+                    flash("Tag name is required.", "danger")
+                elif name in get_default_tags():
+                    flash(f'Tag "{name}" already exists.', "warning")
+                else:
+                    add_default_tag(name)
+                    flash(f'Tag "{name}" added.', "success")
+                return redirect(url_for("setup"))
+
+            if action == "remove_tag":
+                name = request.form.get("tag_name", "")
+                remove_default_tag(name)
+                flash(f'Tag "{name}" removed from defaults.', "success")
+                return redirect(url_for("setup"))
+
             # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
@@ -149,4 +169,5 @@ def register(app):
             settings_file=str(SETTINGS_FILE),
             users=get_users(),
             current_user=get_current_user(),
+            default_tags=get_default_tags(),
         )

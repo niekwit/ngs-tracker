@@ -1,6 +1,12 @@
 from flask import flash, redirect, render_template, request, url_for
 
-from config import db_log, get_current_user, load_workflows
+from config import (
+    add_default_tag,
+    db_log,
+    get_current_user,
+    get_default_tags,
+    load_workflows,
+)
 from helpers import _compare_configs, _parse_datetime
 from models import (
     FILE_TYPES,
@@ -106,7 +112,6 @@ def register(app):
             workflow_name = request.form.get("workflow_name", "").strip()
             workflow_tag = request.form.get("workflow_tag", "").strip()
             description = request.form.get("description", "").strip()
-            tags = request.form.get("tags", "").strip()
             notes = request.form.get("notes", "").strip()
             status = request.form.get("status", "completed")
             run_date = _parse_datetime(request.form.get("run_date", ""))
@@ -117,8 +122,15 @@ def register(app):
             backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
             backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
 
+            # Persist any newly created tags to the defaults list
+            for t in request.form.get("new_tags", "").split(","):
+                add_default_tag(t.strip())
+            selected_tags = request.form.getlist("tags")
+            tags = ", ".join(t for t in selected_tags if t.strip())
+
             if not workflow_name or not project_id:
                 flash("Workflow name and project are required.", "danger")
+                default_tags = get_default_tags()
                 return render_template(
                     "runs/form.html",
                     run=None,
@@ -127,6 +139,8 @@ def register(app):
                     file_types=FILE_TYPES,
                     workflows=load_workflows(),
                     run_statuses=RUN_STATUSES,
+                    default_tags=default_tags,
+                    extra_tags=[],
                 )
 
             run = WorkflowRun(
@@ -157,6 +171,7 @@ def register(app):
             flash(f'Workflow run "{workflow_name}" created.', "success")
             return redirect(url_for("run_detail", id=run.id))
 
+        default_tags = get_default_tags()
         return render_template(
             "runs/form.html",
             run=None,
@@ -165,6 +180,8 @@ def register(app):
             file_types=FILE_TYPES,
             workflows=load_workflows(),
             run_statuses=RUN_STATUSES,
+            default_tags=default_tags,
+            extra_tags=[],
         )
 
     @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
@@ -183,7 +200,6 @@ def register(app):
             run.workflow_name = request.form.get("workflow_name", "").strip()
             run.workflow_tag = request.form.get("workflow_tag", "").strip()
             run.description = request.form.get("description", "").strip()
-            run.tags = request.form.get("tags", "").strip()
             run.notes = request.form.get("notes", "").strip()
             run.status = request.form.get("status", "completed")
             run.run_date = _parse_datetime(request.form.get("run_date", ""))
@@ -193,12 +209,18 @@ def register(app):
             run.backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
             run.backup_rfs = "backup_rfs" in request.form
             run.backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
+            for t in request.form.get("new_tags", "").split(","):
+                add_default_tag(t.strip())
+            selected_tags = request.form.getlist("tags")
+            run.tags = ", ".join(t for t in selected_tags if t.strip())
             db.session.commit()
             db_log(
                 "UPDATE", "WorkflowRun", id, f"{run.workflow_name} status={run.status}"
             )
             flash("Workflow run updated.", "success")
             return redirect(url_for("run_detail", id=id))
+        default_tags = get_default_tags()
+        extra_tags = [t for t in run.tag_list if t not in default_tags]
         return render_template(
             "runs/form.html",
             run=run,
@@ -207,6 +229,8 @@ def register(app):
             file_types=FILE_TYPES,
             workflows=load_workflows(),
             run_statuses=RUN_STATUSES,
+            default_tags=default_tags,
+            extra_tags=extra_tags,
         )
 
     @app.route("/runs/<int:id>/clone", methods=["POST"])

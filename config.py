@@ -147,6 +147,32 @@ def set_current_user(name: str) -> None:
         save_settings(s)
 
 
+# ── Default tags ──────────────────────────────────────────────────────────────
+
+
+def get_default_tags() -> list[str]:
+    return sorted(load_settings().get("default_tags", []), key=str.lower)
+
+
+def add_default_tag(name: str) -> None:
+    name = name.strip()
+    if not name:
+        return
+    s = load_settings()
+    tags = s.get("default_tags", [])
+    if name not in tags:
+        tags.append(name)
+        tags.sort(key=str.lower)
+        s["default_tags"] = tags
+        save_settings(s)
+
+
+def remove_default_tag(name: str) -> None:
+    s = load_settings()
+    s["default_tags"] = [t for t in s.get("default_tags", []) if t != name]
+    save_settings(s)
+
+
 # ── Workflows ─────────────────────────────────────────────────────────────────
 
 

@@ -76,6 +76,40 @@
       </div>
     </div>
 
+    <!-- Default tags -->
+    <h4 class="mb-1 fw-bold mt-4"><i class="bi bi-tags me-1"></i> Default Tags</h4>
+    <p class="text-muted mb-3">Tags available when creating or editing a workflow run.</p>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        {% if default_tags %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for tag in default_tags %}
+          <form method="POST" class="d-inline" onsubmit="return confirm('Remove tag &quot;{{ tag }}&quot; from defaults?')">
+            <input type="hidden" name="action" value="remove_tag">
+            <input type="hidden" name="tag_name" value="{{ tag }}">
+            <span class="badge bg-warning text-dark d-inline-flex align-items-center gap-1" style="font-size:.82rem;">
+              <i class="bi bi-tag"></i>{{ tag }}
+              <button type="submit" class="btn-close btn-close-dark ms-1" style="font-size:.55rem;" title="Remove"></button>
+            </span>
+          </form>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-3">No default tags yet.</p>
+        {% endif %}
+
+        <form method="POST" class="d-flex gap-2">
+          <input type="hidden" name="action" value="add_tag">
+          <input type="text" class="form-control form-control-sm" name="tag_name"
+                 placeholder="New tag name" required style="max-width:220px;">
+          <button type="submit" class="btn btn-sm btn-success text-nowrap">
+            <i class="bi bi-plus-lg me-1"></i>Add
+          </button>
+        </form>
+      </div>
+    </div>
+
     <div class="alert alert-info mt-3 py-2">
       <i class="bi bi-info-circle me-1"></i>
       Settings are saved to <code>{{ settings_file }}</code> and persist across restarts.
