@@ -211,7 +211,8 @@ def restart():
         import time
 
         time.sleep(0.3)
-        os._exit(42)  # run.sh restart loop catches exit code 42
+        (SETTINGS_DIR / ".restart").touch()  # run.sh checks this flag
+        os._exit(0)
 
     threading.Thread(target=_exit, daemon=True).start()
     return "", 204
