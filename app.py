@@ -16,7 +16,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from models import FILE_TYPES, AttachedFile, Project, Researcher, ResearchGroup, WorkflowRun, db
+from models import FILE_TYPES, WORKFLOWS, AttachedFile, Project, Researcher, ResearchGroup, WorkflowRun, db
 
 SETTINGS_FILE = Path(__file__).parent / "settings.json"
 DEFAULT_DB = Path(__file__).parent / "ngs_tracker.db"
@@ -65,6 +65,14 @@ def create_app() -> Flask:
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        # Inline migration: add workflow_tag column if the DB predates this feature
+        try:
+            db.session.execute(db.text(
+                "ALTER TABLE workflow_run ADD COLUMN workflow_tag VARCHAR(50) DEFAULT ''"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return app
 
@@ -344,6 +352,7 @@ def run_new():
     if request.method == "POST":
         project_id = request.form.get("project_id", type=int)
         workflow_name = request.form.get("workflow_name", "").strip()
+        workflow_tag = request.form.get("workflow_tag", "").strip()
         description = request.form.get("description", "").strip()
         notes = request.form.get("notes", "").strip()
         run_date = _parse_datetime(request.form.get("run_date", ""))
@@ -353,11 +362,12 @@ def run_new():
 
         if not workflow_name or not project_id:
             flash("Workflow name and project are required.", "danger")
-            return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES)
+            return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES, workflows=WORKFLOWS)
 
         run = WorkflowRun(
             project_id=project_id,
             workflow_name=workflow_name,
+            workflow_tag=workflow_tag,
             description=description,
             run_date=run_date,
             notes=notes,
@@ -370,13 +380,13 @@ def run_new():
         flash(f'Workflow run "{workflow_name}" created.', "success")
         return redirect(url_for("run_detail", id=run.id))
 
-    return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES)
+    return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES, workflows=WORKFLOWS)
 
 
 @app.route("/runs/<int:id>")
 def run_detail(id):
     run = db.get_or_404(WorkflowRun, id)
-    return render_template("runs/detail.html", run=run, file_types=FILE_TYPES)
+    return render_template("runs/detail.html", run=run, file_types=FILE_TYPES, workflows=WORKFLOWS)
 
 
 @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
@@ -390,6 +400,7 @@ def run_edit(id):
     )
     if request.method == "POST":
         run.workflow_name = request.form.get("workflow_name", "").strip()
+        run.workflow_tag = request.form.get("workflow_tag", "").strip()
         run.description = request.form.get("description", "").strip()
         run.notes = request.form.get("notes", "").strip()
         run.run_date = _parse_datetime(request.form.get("run_date", ""))
@@ -399,7 +410,7 @@ def run_edit(id):
         db.session.commit()
         flash("Workflow run updated.", "success")
         return redirect(url_for("run_detail", id=id))
-    return render_template("runs/form.html", run=run, projects=projects, preselected=run.project_id, file_types=FILE_TYPES)
+    return render_template("runs/form.html", run=run, projects=projects, preselected=run.project_id, file_types=FILE_TYPES, workflows=WORKFLOWS)
 
 
 @app.route("/runs/<int:id>/delete", methods=["POST"])

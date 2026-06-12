@@ -22,6 +22,8 @@
       </div>
       <div class="card-body">
         <form method="POST">
+
+          <!-- Project + date row -->
           <div class="row g-3 mb-3">
             <div class="col-md-8">
               <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
@@ -46,17 +48,40 @@
               {% endif %}
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-semibold">Run date <span class="text-danger">*</span></label>
+              <label class="form-label fw-semibold">Run date</label>
               <input type="datetime-local" class="form-control" name="run_date"
                      value="{{ run.run_date.strftime('%Y-%m-%dT%H:%M') if run else '' }}">
             </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Workflow name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="workflow_name"
-                   value="{{ run.workflow_name if run else '' }}" required autofocus
-                   placeholder="e.g. ChIP-seq_pipeline, RNA-seq_alignment">
+          <!-- Workflow + tag row -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">
+                Workflow <span class="text-danger">*</span>
+              </label>
+              <select class="form-select" name="workflow_name" id="workflow_name" required>
+                <option value="">— select workflow —</option>
+                {% for wf in workflows %}
+                <option value="{{ wf }}"
+                  {% if run and run.workflow_name == wf %}selected{% endif %}>
+                  {{ wf }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold d-flex align-items-center gap-2">
+                Release tag
+                <span id="tag-spinner" class="spinner-border spinner-border-sm text-secondary d-none" role="status"></span>
+              </label>
+              <select class="form-select" name="workflow_tag" id="workflow_tag"
+                      data-preselected="{{ run.workflow_tag if run else '' }}"
+                      disabled>
+                <option value="">— select workflow first —</option>
+              </select>
+              <div class="form-text" id="tag-hint"></div>
+            </div>
           </div>
 
           <div class="mb-3">
@@ -69,7 +94,7 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Notes</label>
             <textarea class="form-control" name="notes" rows="4"
-                      placeholder="Any notes about parameters, issues, or results…">{{ run.notes if run else '' }}</textarea>
+                      placeholder="Parameters, issues, results…">{{ run.notes if run else '' }}</textarea>
           </div>
 
           <div class="mb-4">
@@ -109,9 +134,86 @@
             <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
             {% endif %}
           </div>
+
         </form>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const wfSelect  = document.getElementById('workflow_name');
+  const tagSelect = document.getElementById('workflow_tag');
+  const spinner   = document.getElementById('tag-spinner');
+  const hint      = document.getElementById('tag-hint');
+
+  async function fetchTags(workflow) {
+    tagSelect.disabled = true;
+    tagSelect.innerHTML = '<option value="">Loading…</option>';
+    spinner.classList.remove('d-none');
+    hint.textContent = '';
+
+    const preselected = tagSelect.dataset.preselected || '';
+
+    try {
+      // Try releases first, fall back to tags if none found
+      let items = [];
+      const relResp = await fetch(
+        `https://api.github.com/repos/niekwit/${workflow}/releases?per_page=50`
+      );
+      if (relResp.ok) {
+        const releases = await relResp.json();
+        items = releases.map(r => r.tag_name);
+      }
+
+      if (items.length === 0) {
+        const tagResp = await fetch(
+          `https://api.github.com/repos/niekwit/${workflow}/tags?per_page=50`
+        );
+        if (tagResp.ok) {
+          const tags = await tagResp.json();
+          items = tags.map(t => t.name);
+        }
+      }
+
+      tagSelect.innerHTML = '<option value="">— select tag —</option>';
+      if (items.length === 0) {
+        hint.textContent = 'No releases found for this workflow.';
+      } else {
+        items.forEach(tag => {
+          const opt = document.createElement('option');
+          opt.value = tag;
+          opt.textContent = tag;
+          if (tag === preselected) opt.selected = true;
+          tagSelect.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      tagSelect.innerHTML = '<option value="">Could not fetch tags</option>';
+      hint.textContent = 'Check your internet connection.';
+    }
+
+    tagSelect.disabled = false;
+    spinner.classList.add('d-none');
+  }
+
+  wfSelect.addEventListener('change', function () {
+    if (this.value) {
+      fetchTags(this.value);
+    } else {
+      tagSelect.innerHTML = '<option value="">— select workflow first —</option>';
+      tagSelect.disabled = true;
+      hint.textContent = '';
+    }
+  });
+
+  // On edit page: workflow is already selected — load its tags immediately
+  if (wfSelect.value) {
+    fetchTags(wfSelect.value);
+  }
+})();
+</script>
 {% endblock %}

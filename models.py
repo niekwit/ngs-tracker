@@ -78,11 +78,31 @@ FILE_TYPES = {
 BACKUP_LOCATIONS = ["Local", "RCS", "RFS"]
 
 
+WORKFLOWS = [
+    "atac-seq",
+    "chip-seq",
+    "crispr-screens",
+    "cut_and_run",
+    "damid-seq",
+    "eCLIP",
+    "gps-orfeome",
+    "methyl-seq",
+    "remora",
+    "rip-seq",
+    "rna-seq-salmon-deseq2",
+    "rna-seq-star-deseq2",
+    "rna-seq-star-tetranscripts",
+    "smallRNA-seq",
+    "tt-seq",
+]
+
+
 class WorkflowRun(db.Model):
     __tablename__ = "workflow_run"
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
     workflow_name = db.Column(db.String(150), nullable=False)
+    workflow_tag = db.Column(db.String(50), default="")
     description = db.Column(db.Text, default="")
     run_date = db.Column(db.DateTime, default=_now)
     notes = db.Column(db.Text, default="")
