@@ -1,4 +1,7 @@
-# NGS Tracker
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo/ngs-tracker_v3_text_dark.png">
+  <img alt="NGS Tracker" src="logo/ngs-tracker_v3_text.png" height="80">
+</picture>
 
 A browser-based web app for tracking bioinformatics projects and analyses.
 Data is organised as **Research Group → Researcher → Project → Workflow Run**,
