@@ -101,6 +101,12 @@
             <a href="{{ url_for('script_output_download', id=out.id) }}" class="btn btn-xs btn-outline-primary">
               <i class="bi bi-download"></i>
             </a>
+            <button class="btn btn-xs btn-outline-secondary edit-desc-btn"
+                    data-id="{{ out.id }}"
+                    data-desc="{{ out.description or '' }}"
+                    data-bs-toggle="modal" data-bs-target="#editDescModal">
+              <i class="bi bi-pencil"></i>
+            </button>
             <form method="POST" action="{{ url_for('script_output_delete', id=out.id) }}" class="d-inline"
                   onsubmit="return confirm('Delete {{ out.original_filename }}?')">
               <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
@@ -118,4 +124,37 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Edit description modal -->
+<div class="modal fade" id="editDescModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="editDescForm">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-1"></i> Edit Description</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" class="form-control" name="description" id="editDescInput"
+                 placeholder="e.g. DESeq2 results table, volcano plot PDF…">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.edit-desc-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('editDescForm').action = `/script-outputs/${btn.dataset.id}/edit`;
+    document.getElementById('editDescInput').value = btn.dataset.desc;
+  });
+});
+</script>
 {% endblock %}

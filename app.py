@@ -681,6 +681,15 @@ def script_output_download(id):
     return send_file(str(stored), as_attachment=True, download_name=out.original_filename)
 
 
+@app.route("/script-outputs/<int:id>/edit", methods=["POST"])
+def script_output_edit(id):
+    out = db.get_or_404(ScriptOutputFile, id)
+    out.description = request.form.get("description", "").strip()
+    db.session.commit()
+    flash("Description updated.", "success")
+    return redirect(url_for("script_detail", id=out.script_id))
+
+
 @app.route("/script-outputs/<int:id>/delete", methods=["POST"])
 def script_output_delete(id):
     out = db.get_or_404(ScriptOutputFile, id)
