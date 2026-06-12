@@ -53,8 +53,11 @@ def db_log(action: str, model: str, record_id: int, detail: str) -> None:
             shutil.copyfileobj(f_in, f_out)
         LOG_FILE.unlink()
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    user = get_current_user() or "—"
     with open(LOG_FILE, "a") as f:
-        f.write(f"{ts} | {action:<8} | {model:<20} | id={record_id:<6} | {detail}\n")
+        f.write(
+            f"{ts} | {action:<8} | {model:<20} | id={record_id:<6} | user={user:<20} | {detail}\n"
+        )
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────
