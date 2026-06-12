@@ -107,8 +107,11 @@ class WorkflowRun(db.Model):
     run_date = db.Column(db.DateTime, default=_now)
     notes = db.Column(db.Text, default="")
     backup_local = db.Column(db.Boolean, default=False)
+    backup_local_path = db.Column(db.String(500), default="")
     backup_rcs = db.Column(db.Boolean, default=False)
+    backup_rcs_path = db.Column(db.String(500), default="")
     backup_rfs = db.Column(db.Boolean, default=False)
+    backup_rfs_path = db.Column(db.String(500), default="")
     attached_files = db.relationship(
         "AttachedFile",
         backref="run",

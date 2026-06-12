@@ -54,14 +54,23 @@
       <div class="card-header"><i class="bi bi-shield-check me-1"></i> Backup Status</div>
       <div class="card-body">
         <div class="d-flex flex-column gap-2">
-          {% for loc, flag in [('Local', run.backup_local), ('RCS', run.backup_rcs), ('RFS', run.backup_rfs)] %}
-          <div class="d-flex align-items-center gap-2">
-            {% if flag %}
-            <i class="bi bi-check-circle-fill text-success fs-5"></i>
-            {% else %}
-            <i class="bi bi-x-circle text-secondary fs-5"></i>
+          {% for loc, flag, path in [
+            ('Local', run.backup_local, run.backup_local_path),
+            ('RCS',   run.backup_rcs,   run.backup_rcs_path),
+            ('RFS',   run.backup_rfs,   run.backup_rfs_path),
+          ] %}
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              {% if flag %}
+              <i class="bi bi-check-circle-fill text-success fs-5"></i>
+              {% else %}
+              <i class="bi bi-x-circle text-secondary fs-5"></i>
+              {% endif %}
+              <span class="{% if not flag %}text-muted{% endif %}">{{ loc }}</span>
+            </div>
+            {% if flag and path %}
+            <div class="text-muted small font-monospace ms-4 mt-1">{{ path }}</div>
             {% endif %}
-            <span class="{% if not flag %}text-muted{% endif %}">{{ loc }}</span>
           </div>
           {% endfor %}
         </div>

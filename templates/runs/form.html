@@ -99,28 +99,30 @@
 
           <div class="mb-4">
             <label class="form-label fw-semibold d-block">Backup status</label>
-            <div class="d-flex gap-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="backup_local" id="backup_local"
-                       {% if run and run.backup_local %}checked{% endif %}>
-                <label class="form-check-label" for="backup_local">
-                  <i class="bi bi-hdd me-1 text-success"></i> Local
-                </label>
+            {% set locs = [
+              ('backup_local', 'Local', 'bi-hdd',   'text-success', run.backup_local_path if run else ''),
+              ('backup_rcs',   'RCS',   'bi-cloud',  'text-primary', run.backup_rcs_path  if run else ''),
+              ('backup_rfs',   'RFS',   'bi-cloud',  'text-info',    run.backup_rfs_path  if run else ''),
+            ] %}
+            <div class="d-flex flex-column gap-2">
+              {% for name, label, icon, color, path_val in locs %}
+              <div class="d-flex align-items-center gap-2">
+                <div class="form-check mb-0" style="min-width:90px;">
+                  <input class="form-check-input backup-cb" type="checkbox"
+                         name="{{ name }}" id="{{ name }}"
+                         data-path-id="{{ name }}_path"
+                         {% if run and run[name] %}checked{% endif %}>
+                  <label class="form-check-label" for="{{ name }}">
+                    <i class="bi {{ icon }} me-1 {{ color }}"></i> {{ label }}
+                  </label>
+                </div>
+                <input type="text" class="form-control form-control-sm"
+                       name="{{ name }}_path" id="{{ name }}_path"
+                       value="{{ path_val }}"
+                       placeholder="Storage path…"
+                       {% if not (run and run[name]) %}style="opacity:.45;"{% endif %}>
               </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="backup_rcs" id="backup_rcs"
-                       {% if run and run.backup_rcs %}checked{% endif %}>
-                <label class="form-check-label" for="backup_rcs">
-                  <i class="bi bi-cloud me-1 text-primary"></i> RCS
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="backup_rfs" id="backup_rfs"
-                       {% if run and run.backup_rfs %}checked{% endif %}>
-                <label class="form-check-label" for="backup_rfs">
-                  <i class="bi bi-cloud me-1 text-info"></i> RFS
-                </label>
-              </div>
+              {% endfor %}
             </div>
           </div>
 
@@ -215,5 +217,13 @@
     fetchTags(wfSelect.value);
   }
 })();
+
+// Dim path inputs when backup checkbox is unchecked
+document.querySelectorAll('.backup-cb').forEach(cb => {
+  const input = document.getElementById(cb.dataset.pathId);
+  cb.addEventListener('change', () => {
+    input.style.opacity = cb.checked ? '1' : '.45';
+  });
+});
 </script>
 {% endblock %}

@@ -71,6 +71,9 @@ def create_app() -> Flask:
         for stmt in [
             "ALTER TABLE workflow_run ADD COLUMN workflow_tag VARCHAR(50) DEFAULT ''",
             "ALTER TABLE attached_file ADD COLUMN parsed_config TEXT",
+            "ALTER TABLE workflow_run ADD COLUMN backup_local_path VARCHAR(500) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN backup_rcs_path VARCHAR(500) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN backup_rfs_path VARCHAR(500) DEFAULT ''",
         ]:
             try:
                 db.session.execute(db.text(stmt))
@@ -363,6 +366,9 @@ def run_new():
         backup_local = "backup_local" in request.form
         backup_rcs = "backup_rcs" in request.form
         backup_rfs = "backup_rfs" in request.form
+        backup_local_path = request.form.get("backup_local_path", "").strip()
+        backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
+        backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
 
         if not workflow_name or not project_id:
             flash("Workflow name and project are required.", "danger")
@@ -376,8 +382,11 @@ def run_new():
             run_date=run_date,
             notes=notes,
             backup_local=backup_local,
+            backup_local_path=backup_local_path,
             backup_rcs=backup_rcs,
+            backup_rcs_path=backup_rcs_path,
             backup_rfs=backup_rfs,
+            backup_rfs_path=backup_rfs_path,
         )
         db.session.add(run)
         db.session.commit()
@@ -409,8 +418,11 @@ def run_edit(id):
         run.notes = request.form.get("notes", "").strip()
         run.run_date = _parse_datetime(request.form.get("run_date", ""))
         run.backup_local = "backup_local" in request.form
+        run.backup_local_path = request.form.get("backup_local_path", "").strip()
         run.backup_rcs = "backup_rcs" in request.form
+        run.backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
         run.backup_rfs = "backup_rfs" in request.form
+        run.backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
         db.session.commit()
         flash("Workflow run updated.", "success")
         return redirect(url_for("run_detail", id=id))
