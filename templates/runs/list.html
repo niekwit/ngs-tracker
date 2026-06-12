@@ -9,18 +9,30 @@
   </a>
 </div>
 
+{% macro sort_link(col, label) %}
+{% set next_dir = 'desc' if sort == col and dir == 'asc' else 'asc' %}
+<a href="{{ url_for('runs_list', sort=col, dir=next_dir) }}" class="text-decoration-none text-dark">
+  {{ label }}
+  {% if sort == col %}
+  <i class="bi bi-arrow-{{ 'up' if dir == 'asc' else 'down' }}-short"></i>
+  {% else %}
+  <i class="bi bi-arrow-down-up text-muted opacity-50" style="font-size:.75em;"></i>
+  {% endif %}
+</a>
+{% endmacro %}
+
 {% if runs %}
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead class="table-light">
         <tr>
-          <th>Workflow</th>
-          <th>Project</th>
-          <th>Researcher</th>
-          <th>Date</th>
-          <th>Backup</th>
-          <th>Files</th>
+          <th>{{ sort_link('workflow', 'Workflow') }}</th>
+          <th>{{ sort_link('project', 'Project') }}</th>
+          <th>{{ sort_link('researcher', 'Researcher') }}</th>
+          <th>{{ sort_link('date', 'Date') }}</th>
+          <th>{{ sort_link('backup', 'Backup') }}</th>
+          <th>{{ sort_link('files', 'Files') }}</th>
           <th></th>
         </tr>
       </thead>

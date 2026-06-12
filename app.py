@@ -194,22 +194,48 @@ def researchers_list():
 
 @app.route("/projects")
 def projects_list():
+    sort = request.args.get("sort", "name")
+    direction = request.args.get("dir", "asc")
+    reverse = direction == "desc"
+
     projects = (
         Project.query.filter_by(trashed=False)
-        .join(Researcher)
-        .filter(Researcher.trashed == False)
-        .join(ResearchGroup)
-        .filter(ResearchGroup.trashed == False)
-        .order_by(ResearchGroup.name, Researcher.name, Project.name)
+        .join(Researcher).filter(Researcher.trashed == False)
+        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
         .all()
     )
-    return render_template("projects/list.html", projects=projects)
+
+    key_map = {
+        "name":       lambda p: p.name.lower(),
+        "researcher": lambda p: p.researcher.name.lower(),
+        "group":      lambda p: p.researcher.group.name.lower(),
+        "runs":       lambda p: sum(1 for r in p.workflow_runs if not r.trashed),
+        "published":  lambda p: p.published,
+    }
+    projects.sort(key=key_map.get(sort, key_map["name"]), reverse=reverse)
+
+    return render_template("projects/list.html", projects=projects, sort=sort, dir=direction)
 
 
 @app.route("/runs")
 def runs_list():
-    runs = WorkflowRun.query.filter_by(trashed=False).order_by(WorkflowRun.run_date.desc()).all()
-    return render_template("runs/list.html", runs=runs)
+    sort = request.args.get("sort", "date")
+    direction = request.args.get("dir", "desc")
+    reverse = direction == "desc"
+
+    runs = WorkflowRun.query.filter_by(trashed=False).all()
+
+    key_map = {
+        "workflow":   lambda r: r.workflow_name.lower(),
+        "project":    lambda r: r.project.name.lower(),
+        "researcher": lambda r: r.project.researcher.name.lower(),
+        "date":       lambda r: r.run_date,
+        "backup":     lambda r: len(r.backup_labels),
+        "files":      lambda r: len(r.attached_files),
+    }
+    runs.sort(key=key_map.get(sort, key_map["date"]), reverse=reverse)
+
+    return render_template("runs/list.html", runs=runs, sort=sort, dir=direction)
 
 
 @app.route("/groups/new", methods=["GET", "POST"])
