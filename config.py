@@ -1,6 +1,7 @@
 import gzip
 import json
 import shutil
+import subprocess
 import yaml
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,21 @@ _DEFAULT_WORKFLOWS = [
     {"name": "smallRNA-seq", "url": "https://github.com/niekwit/smallRNA-seq"},
     {"name": "tt-seq", "url": "https://github.com/niekwit/tt-seq"},
 ]
+
+
+# ── Version ───────────────────────────────────────────────────────────────────
+
+
+def get_version() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "describe", "--tags", "--always", "--abbrev=7"],
+            cwd=Path(__file__).parent,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return ""
 
 
 # ── Change log ────────────────────────────────────────────────────────────────

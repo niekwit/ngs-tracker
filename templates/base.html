@@ -102,6 +102,13 @@
         </button>
       </li>
       <li class="nav-item">
+        <a class="btn btn-sm btn-outline-secondary text-white border-secondary"
+           href="{{ github_url }}" target="_blank" rel="noopener"
+           title="View source on GitHub" style="font-size:.8rem;">
+          <i class="bi bi-github me-1"></i>{% if app_version %}{{ app_version }}{% else %}GitHub{% endif %}
+        </a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link text-secondary" href="{{ url_for('setup') }}" title="Settings">
           {% if current_user %}
           <i class="bi bi-person-circle me-1"></i>{{ current_user }}

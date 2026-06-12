@@ -4,7 +4,13 @@ import os
 from flask import Flask, redirect, url_for
 from flask import request as flask_request
 
-from config import DEFAULT_DB, get_current_user, is_configured, load_settings
+from config import (
+    DEFAULT_DB,
+    get_current_user,
+    get_version,
+    is_configured,
+    load_settings,
+)
 from models import db
 
 import routes.dashboard
@@ -64,6 +70,8 @@ def create_app() -> Flask:
 
 app = create_app()
 app.jinja_env.filters["from_json"] = json.loads
+app.jinja_env.globals["app_version"] = get_version()
+app.jinja_env.globals["github_url"] = "https://github.com/niekwit/ngs-tracker"
 
 
 @app.context_processor
