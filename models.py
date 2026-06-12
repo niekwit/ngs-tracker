@@ -193,6 +193,12 @@ class WorkflowRun(db.Model):
     backup_rcs_path = db.Column(db.String(500), default="")
     backup_rfs = db.Column(db.Boolean, default=False)
     backup_rfs_path = db.Column(db.String(500), default="")
+    sample_sheet = db.relationship(
+        "SampleSheet",
+        backref="run",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     attached_files = db.relationship(
         "AttachedFile",
         backref="run",
@@ -219,6 +225,18 @@ class WorkflowRun(db.Model):
         if self.backup_rfs:
             labels.append("RFS")
         return labels
+
+
+class SampleSheet(db.Model):
+    __tablename__ = "sample_sheet"
+    id = db.Column(db.Integer, primary_key=True)
+    workflow_run_id = db.Column(
+        db.Integer, db.ForeignKey("workflow_run.id"), nullable=False, unique=True
+    )
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_path = db.Column(db.String(500), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=_now)
+    csv_data = db.Column(db.Text, nullable=True)  # JSON list-of-lists (header + rows)
 
 
 class AttachedFile(db.Model):

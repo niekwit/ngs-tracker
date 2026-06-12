@@ -27,6 +27,7 @@ from models import (
     AttachedFile,
     Project,
     ProjectScript,
+    SampleSheet,
     ScriptOutputFile,
     Researcher,
     ResearchGroup,
@@ -166,6 +167,7 @@ def create_app() -> Flask:
 
 
 app = create_app()
+app.jinja_env.filters["from_json"] = json.loads
 
 
 # ── Guards ────────────────────────────────────────────────────────────────────
@@ -837,6 +839,70 @@ def file_delete(id):
     return redirect(url_for("run_detail", id=run_id))
 
 
+# ── Sample Sheets ─────────────────────────────────────────────────────────────
+
+
+@app.route("/runs/<int:id>/samples/upload", methods=["POST"])
+def sample_upload(id):
+    run = db.get_or_404(WorkflowRun, id)
+
+    if "file" not in request.files or request.files["file"].filename == "":
+        flash("No file selected.", "danger")
+        return redirect(url_for("run_detail", id=id))
+
+    file = request.files["file"]
+    original_name = secure_filename(file.filename)
+
+    sample_dir = get_storage_path() / "runs" / str(id) / "samples"
+    sample_dir.mkdir(parents=True, exist_ok=True)
+    stored_path = sample_dir / f"{uuid.uuid4().hex}_{original_name}"
+    file.save(str(stored_path))
+
+    csv_data = _parse_csv(stored_path)
+
+    if run.sample_sheet:
+        _delete_file(run.sample_sheet.stored_path)
+        db.session.delete(run.sample_sheet)
+        db.session.flush()
+
+    sheet = SampleSheet(
+        workflow_run_id=id,
+        original_filename=original_name,
+        stored_path=str(stored_path),
+        csv_data=csv_data,
+    )
+    db.session.add(sheet)
+    db.session.commit()
+    flash(f'Sample sheet "{original_name}" uploaded.', "success")
+    return redirect(url_for("run_detail", id=id))
+
+
+@app.route("/runs/<int:id>/samples/download")
+def sample_download(id):
+    run = db.get_or_404(WorkflowRun, id)
+    if not run.sample_sheet:
+        abort(404)
+    stored = Path(run.sample_sheet.stored_path)
+    if not stored.exists():
+        abort(404)
+    return send_file(
+        str(stored),
+        as_attachment=True,
+        download_name=run.sample_sheet.original_filename,
+    )
+
+
+@app.route("/runs/<int:id>/samples/delete", methods=["POST"])
+def sample_delete(id):
+    run = db.get_or_404(WorkflowRun, id)
+    if run.sample_sheet:
+        _delete_file(run.sample_sheet.stored_path)
+        db.session.delete(run.sample_sheet)
+        db.session.commit()
+        flash("Sample sheet deleted.", "success")
+    return redirect(url_for("run_detail", id=id))
+
+
 # ── Project Scripts ───────────────────────────────────────────────────────────
 
 
@@ -1067,6 +1133,19 @@ def _trash_hard_delete(type_key: str, record) -> None:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _parse_csv(path: Path) -> str | None:
+    """Parse a CSV file and return its rows as a JSON list-of-lists."""
+    import csv
+
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.reader(f)
+            rows = [row for row in reader if any(cell.strip() for cell in row)]
+        return json.dumps(rows)
+    except Exception:
+        return None
 
 
 def _parse_snakemake_config(path: Path) -> str | None:
