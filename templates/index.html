@@ -8,9 +8,9 @@
 <div class="row g-3 mb-4">
   {% set cards = [
     ('Groups',      stats.groups,      'bi-people-fill',       'blue',   url_for('groups_list')),
-    ('Researchers', stats.researchers,  'bi-person-fill',       'green',  url_for('researcher_new')),
-    ('Projects',    stats.projects,     'bi-folder-fill',       'purple', url_for('project_new')),
-    ('Runs',        stats.runs,         'bi-play-circle-fill',  'orange', url_for('run_new')),
+    ('Researchers', stats.researchers,  'bi-person-fill',       'green',  url_for('researchers_list')),
+    ('Projects',    stats.projects,     'bi-folder-fill',       'purple', url_for('projects_list')),
+    ('Runs',        stats.runs,         'bi-play-circle-fill',  'orange', url_for('runs_list')),
     ('Files',       stats.files,        'bi-paperclip',         'teal',   '#'),
   ] %}
   {% for label, count, icon, color, link in cards %}

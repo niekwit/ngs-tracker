@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Researchers — NGS Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="fw-bold mb-0"><i class="bi bi-person-fill me-1 text-success"></i> Researchers</h4>
+  <a href="{{ url_for('researcher_new') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> New Researcher
+  </a>
+</div>
+
+{% if researchers %}
+{% set current_group = namespace(name='') %}
+{% for r in researchers %}
+  {% if r.group.name != current_group.name %}
+    {% if not loop.first %}</div>{% endif %}
+    <h6 class="text-muted fw-semibold mt-3 mb-2">
+      <a href="{{ url_for('group_detail', id=r.group_id) }}" class="text-decoration-none text-muted">
+        <i class="bi bi-people me-1"></i>{{ r.group.name }}
+      </a>
+    </h6>
+    <div class="row g-2">
+    {% set current_group.name = r.group.name %}
+  {% endif %}
+
+  <div class="col-md-4 col-lg-3">
+    <div class="card h-100">
+      <div class="card-body py-2 px-3">
+        <div class="fw-semibold">
+          <a href="{{ url_for('researcher_detail', id=r.id) }}" class="text-decoration-none text-dark">
+            {{ r.name }}
+          </a>
+        </div>
+        {% if r.email %}
+        <div class="text-muted small"><i class="bi bi-envelope me-1"></i>{{ r.email }}</div>
+        {% endif %}
+        <div class="text-muted small mt-1">
+          <i class="bi bi-folder me-1"></i>{{ r.projects|length }} project{{ 's' if r.projects|length != 1 }}
+        </div>
+      </div>
+      <div class="card-footer d-flex gap-2 py-1">
+        <a href="{{ url_for('researcher_detail', id=r.id) }}" class="btn btn-xs btn-outline-primary">View</a>
+        <a href="{{ url_for('researcher_edit', id=r.id) }}" class="btn btn-xs btn-outline-secondary ms-auto">Edit</a>
+      </div>
+    </div>
+  </div>
+
+  {% if loop.last %}</div>{% endif %}
+{% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-person fs-1 opacity-25"></i>
+    <p class="mt-2">No researchers yet.</p>
+    <a href="{{ url_for('researcher_new') }}" class="btn btn-primary btn-sm">Add first researcher</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

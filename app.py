@@ -163,12 +163,39 @@ def setup():
     return render_template("setup.html", settings=defaults, settings_file=str(SETTINGS_FILE))
 
 
-# ── Research Groups ───────────────────────────────────────────────────────────
+# ── List views ────────────────────────────────────────────────────────────────
 
 @app.route("/groups")
 def groups_list():
     groups = ResearchGroup.query.order_by(ResearchGroup.name).all()
     return render_template("groups/list.html", groups=groups)
+
+
+@app.route("/researchers")
+def researchers_list():
+    researchers = (
+        Researcher.query.join(ResearchGroup)
+        .order_by(ResearchGroup.name, Researcher.name)
+        .all()
+    )
+    return render_template("researchers/list.html", researchers=researchers)
+
+
+@app.route("/projects")
+def projects_list():
+    projects = (
+        Project.query.join(Researcher)
+        .join(ResearchGroup)
+        .order_by(ResearchGroup.name, Researcher.name, Project.name)
+        .all()
+    )
+    return render_template("projects/list.html", projects=projects)
+
+
+@app.route("/runs")
+def runs_list():
+    runs = WorkflowRun.query.order_by(WorkflowRun.run_date.desc()).all()
+    return render_template("runs/list.html", runs=runs)
 
 
 @app.route("/groups/new", methods=["GET", "POST"])
