@@ -56,6 +56,8 @@ class Project(db.Model):
     description = db.Column(db.Text, default="")
     researcher_id = db.Column(db.Integer, db.ForeignKey("researcher.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=_now)
+    published = db.Column(db.Boolean, default=False)
+    publication_url = db.Column(db.String(500), default="")
     workflow_runs = db.relationship(
         "WorkflowRun",
         backref="project",

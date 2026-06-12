@@ -90,7 +90,9 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN backup_local_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN backup_rcs_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN backup_rfs_path VARCHAR(500) DEFAULT ''",
-            # project_script table is created by db.create_all(); no ALTER needed
+            "ALTER TABLE project ADD COLUMN published BOOLEAN DEFAULT 0",
+            "ALTER TABLE project ADD COLUMN publication_url VARCHAR(500) DEFAULT ''",
+            # project_script / script_output_file tables created by db.create_all()
         ]:
             try:
                 db.session.execute(db.text(stmt))
@@ -311,7 +313,10 @@ def project_new():
         if not name or not researcher_id:
             flash("Name and researcher are required.", "danger")
             return render_template("projects/form.html", project=None, researchers=researchers, preselected=preselected)
-        project = Project(name=name, description=description, researcher_id=researcher_id)
+        published = "published" in request.form
+        publication_url = request.form.get("publication_url", "").strip()
+        project = Project(name=name, description=description, researcher_id=researcher_id,
+                          published=published, publication_url=publication_url)
         db.session.add(project)
         db.session.commit()
         flash(f'Project "{name}" created.', "success")
@@ -338,6 +343,8 @@ def project_edit(id):
         project.name = request.form.get("name", "").strip()
         project.description = request.form.get("description", "").strip()
         project.researcher_id = request.form.get("researcher_id", type=int)
+        project.published = "published" in request.form
+        project.publication_url = request.form.get("publication_url", "").strip()
         db.session.commit()
         flash("Project updated.", "success")
         return redirect(url_for("project_detail", id=id))
