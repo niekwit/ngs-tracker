@@ -1,10 +1,11 @@
 from flask import flash, redirect, render_template, request, url_for
 
 from config import db_log, get_current_user, load_workflows
-from helpers import _parse_datetime
+from helpers import _compare_configs, _parse_datetime
 from models import (
     FILE_TYPES,
     RUN_STATUSES,
+    AttachedFile,
     Project,
     ResearchGroup,
     Researcher,
@@ -54,8 +55,33 @@ def register(app):
     def run_detail(id):
         run = db.get_or_404(WorkflowRun, id)
         wf_urls = {w["name"]: w["url"] for w in load_workflows()}
+
+        # Runs with at least one parsed config, excluding this run, for the compare picker
+        config_run_ids = (
+            db.session.query(AttachedFile.workflow_run_id)
+            .filter(
+                AttachedFile.file_type == "config",
+                AttachedFile.parsed_config.isnot(None),
+            )
+            .distinct()
+            .subquery()
+        )
+        compare_runs = (
+            WorkflowRun.query.filter(
+                WorkflowRun.id != id,
+                WorkflowRun.trashed == False,
+                WorkflowRun.id.in_(config_run_ids),
+            )
+            .order_by(WorkflowRun.workflow_name, WorkflowRun.run_date.desc())
+            .all()
+        )
+
         return render_template(
-            "runs/detail.html", run=run, file_types=FILE_TYPES, wf_urls=wf_urls
+            "runs/detail.html",
+            run=run,
+            file_types=FILE_TYPES,
+            wf_urls=wf_urls,
+            compare_runs=compare_runs,
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
@@ -211,6 +237,54 @@ def register(app):
         )
         flash(f'Run cloned from "{src.workflow_name}" — review and save.', "success")
         return redirect(url_for("run_edit", id=clone.id))
+
+    @app.route("/runs/compare")
+    def run_compare():
+        id_a = request.args.get("a", type=int)
+        id_b = request.args.get("b", type=int)
+        if not id_a or not id_b:
+            flash("Two run IDs are required for comparison.", "danger")
+            return redirect(url_for("runs_list"))
+
+        run_a = db.get_or_404(WorkflowRun, id_a)
+        run_b = db.get_or_404(WorkflowRun, id_b)
+
+        config_a = next(
+            (
+                f.config_dict
+                for f in run_a.attached_files
+                if f.file_type == "config" and f.config_dict
+            ),
+            None,
+        )
+        config_b = next(
+            (
+                f.config_dict
+                for f in run_b.attached_files
+                if f.file_type == "config" and f.config_dict
+            ),
+            None,
+        )
+
+        if not config_a and not config_b:
+            flash("Neither run has a parsed Snakemake config.", "warning")
+            return redirect(url_for("run_detail", id=id_a))
+
+        diff_rows = _compare_configs(config_a or {}, config_b or {})
+        counts = {
+            s: sum(1 for r in diff_rows if r["status"] == s)
+            for s in ("same", "changed", "added", "removed")
+        }
+
+        return render_template(
+            "runs/compare.html",
+            run_a=run_a,
+            run_b=run_b,
+            diff_rows=diff_rows,
+            counts=counts,
+            config_a=config_a,
+            config_b=config_b,
+        )
 
     @app.route("/runs/<int:id>/delete", methods=["POST"])
     def run_delete(id):

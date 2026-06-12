@@ -56,6 +56,12 @@
     </span>
   </div>
   <div class="d-flex gap-2">
+    {% set has_config = run.attached_files | selectattr('file_type', 'eq', 'config') | selectattr('config_dict') | list %}
+    {% if has_config and compare_runs %}
+    <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#compareModal">
+      <i class="bi bi-arrows-angle-expand me-1"></i> Compare Config
+    </button>
+    {% endif %}
     <form method="POST" action="{{ url_for('run_clone', id=run.id) }}">
       <button class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-copy me-1"></i> Clone
@@ -345,6 +351,52 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Compare config picker modal -->
+{% set has_config = run.attached_files | selectattr('file_type', 'eq', 'config') | selectattr('config_dict') | list %}
+{% if has_config and compare_runs %}
+<div class="modal fade" id="compareModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="GET" action="{{ url_for('run_compare') }}">
+        <input type="hidden" name="a" value="{{ run.id }}">
+        <div class="modal-header py-2">
+          <h6 class="modal-title mb-0"><i class="bi bi-arrows-angle-expand me-1"></i> Compare Config</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Comparing <strong>{{ run.workflow_name }}</strong>
+            ({{ run.run_date.strftime('%Y-%m-%d') }}) against:
+          </p>
+          <select class="form-select" name="b" required>
+            <option value="">— select a run —</option>
+            {% set current_wf = namespace(name='') %}
+            {% for r in compare_runs %}
+              {% if r.workflow_name != current_wf.name %}
+                {% if not loop.first %}</optgroup>{% endif %}
+                <optgroup label="{{ r.workflow_name }}">
+                {% set current_wf.name = r.workflow_name %}
+              {% endif %}
+              <option value="{{ r.id }}">
+                {{ r.project.name }} · {{ r.run_date.strftime('%Y-%m-%d') }}
+                {% if r.workflow_tag %}({{ r.workflow_tag }}){% endif %}
+              </option>
+              {% if loop.last %}</optgroup>{% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info text-white">
+            <i class="bi bi-arrows-angle-expand me-1"></i> Compare
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Image lightbox modal -->
 <div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">

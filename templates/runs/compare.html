@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Config Diff — {{ run_a.workflow_name }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('runs_list') }}">Runs</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('run_detail', id=run_a.id) }}">{{ run_a.workflow_name }}</a></li>
+    <li class="breadcrumb-item active">Config Diff</li>
+  </ol>
+</nav>
+
+<h4 class="fw-bold mb-3"><i class="bi bi-arrows-angle-expand me-1"></i> Config Diff</h4>
+
+<!-- Run headers -->
+<div class="row g-3 mb-3">
+  {% for run, config, side in [(run_a, config_a, 'A'), (run_b, config_b, 'B')] %}
+  <div class="col-md-6">
+    <div class="card border-{{ 'danger' if side == 'A' else 'primary' }} h-100">
+      <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-{{ 'danger' if side == 'A' else 'primary' }} fs-6">{{ side }}</span>
+          <div>
+            <div class="fw-semibold">
+              <a href="{{ url_for('run_detail', id=run.id) }}" class="text-decoration-none">
+                {{ run.workflow_name }}
+              </a>
+              {% if run.workflow_tag %}
+              <span class="badge bg-dark ms-1" style="font-size:.72rem;">{{ run.workflow_tag }}</span>
+              {% endif %}
+            </div>
+            <div class="text-muted small">
+              {{ run.project.name }} · {{ run.project.researcher.name }}
+              · {{ run.run_date.strftime('%Y-%m-%d') }}
+            </div>
+          </div>
+          {% if not config %}
+          <span class="badge bg-warning text-dark ms-auto">No config</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Summary badges -->
+<div class="d-flex gap-2 mb-3 align-items-center">
+  <span class="text-muted small me-1">Changes:</span>
+  {% if counts.changed %}
+  <span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">
+    {{ counts.changed }} changed
+  </span>
+  {% endif %}
+  {% if counts.added %}
+  <span class="badge" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;">
+    {{ counts.added }} added
+  </span>
+  {% endif %}
+  {% if counts.removed %}
+  <span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">
+    {{ counts.removed }} removed
+  </span>
+  {% endif %}
+  {% if counts.same %}
+  <span class="badge bg-light text-muted border">{{ counts.same }} unchanged</span>
+  {% endif %}
+
+  <div class="ms-auto d-flex gap-2 align-items-center">
+    <label class="form-check-label small text-muted" for="hideUnchanged">Hide unchanged</label>
+    <div class="form-check form-switch mb-0">
+      <input class="form-check-input" type="checkbox" id="hideUnchanged">
+    </div>
+  </div>
+</div>
+
+<!-- Diff table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered mb-0" style="font-size:.84rem;">
+      <thead class="table-dark">
+        <tr>
+          <th style="width:30%;">Key</th>
+          <th style="width:35%;">
+            <span class="badge bg-danger me-1">A</span>
+            {{ run_a.workflow_name }} · {{ run_a.run_date.strftime('%Y-%m-%d') }}
+          </th>
+          <th style="width:35%;">
+            <span class="badge bg-primary me-1">B</span>
+            {{ run_b.workflow_name }} · {{ run_b.run_date.strftime('%Y-%m-%d') }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in diff_rows %}
+        {% if row.status == 'changed' %}
+          {% set row_style = 'background:#fffbeb;' %}
+          {% set cell_a_style = 'background:#fef3c7;' %}
+          {% set cell_b_style = 'background:#fef3c7;' %}
+        {% elif row.status == 'removed' %}
+          {% set row_style = 'background:#fef2f2;' %}
+          {% set cell_a_style = 'background:#fee2e2;' %}
+          {% set cell_b_style = 'background:#fef2f2; color:#9ca3af;' %}
+        {% elif row.status == 'added' %}
+          {% set row_style = 'background:#f0fdf4;' %}
+          {% set cell_a_style = 'background:#f0fdf4; color:#9ca3af;' %}
+          {% set cell_b_style = 'background:#dcfce7;' %}
+        {% else %}
+          {% set row_style = '' %}
+          {% set cell_a_style = '' %}
+          {% set cell_b_style = '' %}
+        {% endif %}
+        <tr class="diff-row diff-{{ row.status }}" style="{{ row_style }}">
+          <td class="font-monospace text-nowrap" style="font-size:.78rem;">
+            {% if row.status != 'same' %}
+            {% if row.status == 'changed' %}
+            <i class="bi bi-pencil-fill text-warning me-1" style="font-size:.7rem;"></i>
+            {% elif row.status == 'removed' %}
+            <i class="bi bi-dash-circle-fill text-danger me-1" style="font-size:.7rem;"></i>
+            {% elif row.status == 'added' %}
+            <i class="bi bi-plus-circle-fill text-success me-1" style="font-size:.7rem;"></i>
+            {% endif %}
+            {% endif %}
+            {{ row.key }}
+          </td>
+          <td style="{{ cell_a_style }}">
+            {% if row.status == 'added' %}
+            <span class="text-muted fst-italic">—</span>
+            {% elif row.val_a is none %}
+            <span class="text-muted fst-italic">null</span>
+            {% elif row.val_a is iterable and row.val_a is not string %}
+            <code>{{ row.val_a | join(', ') }}</code>
+            {% else %}
+            <code>{{ row.val_a }}</code>
+            {% endif %}
+          </td>
+          <td style="{{ cell_b_style }}">
+            {% if row.status == 'removed' %}
+            <span class="text-muted fst-italic">—</span>
+            {% elif row.val_b is none %}
+            <span class="text-muted fst-italic">null</span>
+            {% elif row.val_b is iterable and row.val_b is not string %}
+            <code>{{ row.val_b | join(', ') }}</code>
+            {% else %}
+            <code>{{ row.val_b }}</code>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('hideUnchanged').addEventListener('change', function() {
+  document.querySelectorAll('.diff-same').forEach(function(row) {
+    row.style.display = this.checked ? 'none' : '';
+  }, this);
+});
+</script>
+{% endblock %}

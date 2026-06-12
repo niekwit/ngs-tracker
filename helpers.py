@@ -58,6 +58,41 @@ def _parse_datetime(value: str) -> datetime:
     return datetime.utcnow()
 
 
+def _flatten_config(d: dict, prefix: str = "") -> dict:
+    result = {}
+    if not isinstance(d, dict):
+        return result
+    for k, v in d.items():
+        key = f"{prefix}.{k}" if prefix else str(k)
+        if isinstance(v, dict):
+            result.update(_flatten_config(v, key))
+        else:
+            result[key] = v
+    return result
+
+
+def _compare_configs(a: dict, b: dict) -> list[dict]:
+    flat_a = _flatten_config(a)
+    flat_b = _flatten_config(b)
+    all_keys = sorted(set(flat_a) | set(flat_b), key=str.lower)
+    rows = []
+    for key in all_keys:
+        in_a = key in flat_a
+        in_b = key in flat_b
+        val_a = flat_a.get(key)
+        val_b = flat_b.get(key)
+        if in_a and not in_b:
+            status = "removed"
+        elif not in_a and in_b:
+            status = "added"
+        elif repr(val_a) != repr(val_b):
+            status = "changed"
+        else:
+            status = "same"
+        rows.append({"key": key, "val_a": val_a, "val_b": val_b, "status": status})
+    return rows
+
+
 def _total_file_size() -> int:
     total = 0
     for model in (AttachedFile, ProjectScript, ScriptOutputFile):
