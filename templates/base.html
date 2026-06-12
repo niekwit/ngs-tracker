@@ -74,8 +74,9 @@
 
 <nav class="navbar navbar-expand navbar-dark py-2">
   <div class="container-fluid">
-    <a class="navbar-brand text-white" href="{{ url_for('index') }}">
-      <i class="bi bi-diagram-3-fill text-primary"></i> NGS Tracker
+    <a class="navbar-brand text-white d-flex align-items-center gap-2" href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="NGS Tracker" height="32">
+      NGS Tracker
     </a>
     <ul class="navbar-nav ms-auto">
       <li class="nav-item">
