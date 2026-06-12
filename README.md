@@ -16,18 +16,26 @@ and publication tracking.
 
 - Hierarchical records: Research Groups → Researchers → Projects → Workflow Runs
 - Attach Snakemake config files (YAML) — settings are parsed and displayed inline
+- **Config diff** — side-by-side comparison of two Snakemake configs with colour-coded changes
 - Upload a sample sheet (CSV) per run — rendered as a full scrollable table
 - User-configurable workflow list with per-workflow GitHub URLs (any account or organisation)
 - Track backup status per run (Local / RCS / RFS) with storage paths
 - Run status tracking: Completed / Running / Pending / Failed
+- **Tags on runs** — free-text labels (e.g. `pilot`, `failed-QC`) with a filter bar on the runs list
 - Clone a workflow run — copies all settings to a new run for quick re-use
-- Attach processed data files to workflow runs (peak calls, data, etc.)
+- Attach processed data files to workflow runs — multiple files at once, with type and description
+- Inline preview for image files (PNG, JPG, SVG, …) and PDFs without leaving the page
 - Upload custom analysis scripts per project with output file attachments
 - Mark projects as published with an optional publication URL
 - Global search across groups, researchers, projects, runs, and scripts
 - Soft-delete trash bin — deleted records can be restored or permanently removed
-- Dashboard with live stats (record counts and total file size)
+- **User system** — select who is currently working (no passwords required); tracked in change log
+- **Change log** — plain-text audit trail at `~/.ngs-tracker/changes.log`, gzip-rotated at 100 MB
+- **In-app log viewer** — browse and filter the change log by user, action type, or keyword
+- Dashboard with live stats, a file-type pie chart, and a runs-per-month bar chart
+- **GitHub link** in navbar showing the current release tag (or commit hash)
 - Sortable tables on the Projects and Runs list pages
+- Restart / Stop server buttons in the navbar
 - Settings (database path, file storage path) persisted to `~/.ngs-tracker/`
 
 ---
@@ -91,7 +99,7 @@ Research Group
     └── Project
         ├── Workflow Run
         │   ├── Sample Sheet (CSV, displayed as table)
-        │   └── Attached Files  (config, peak calls, processed data, other)
+        │   └── Attached Files  (config, QC, results, sample info, other)
         └── Custom Analysis Script
             └── Script Output Files
 ```
@@ -101,9 +109,25 @@ Research Group
 - Select a workflow from the configurable list; release tags are fetched live from GitHub
 - Upload a Snakemake YAML config — all settings (excluding `resources`) are displayed in the run view
 - Upload a sample sheet (CSV) — rendered as a full scrollable table with sticky header
+- Attach multiple files at once — choose a type (Snakemake Config, Sample Info, QC, Results, Other) and optional description for the whole batch
+- Image files (PNG, JPG, SVG, WEBP, …) and PDFs can be previewed inline without downloading
 - Track run status: **Completed**, **Running**, **Pending**, or **Failed**
+- Add comma-separated **tags** (e.g. `pilot`, `failed-QC`, `resequenced`) for filtering on the runs list
 - Clone a run to copy all its settings into a new run (status resets to Pending)
 - Record backup locations (Local, RCS, RFS) with storage paths
+
+### Config diff
+
+When a run has a parsed Snakemake config, a **Compare Config** button appears on the detail page. Select any other run that also has a config, and the comparison page shows a three-column table (key · value A · value B) with colour-coded rows:
+
+| Colour | Meaning |
+|---|---|
+| Yellow | Value differs between the two runs |
+| Red | Key only present in run A (removed) |
+| Green | Key only present in run B (added) |
+| Plain | Identical in both runs |
+
+Nested config keys are flattened to dot-notation (e.g. `params.threads`). A **Hide unchanged** toggle collapses identical rows so only differences are visible.
 
 ### Workflow management
 
@@ -121,6 +145,37 @@ Manage workflows via the **Workflows** page in the sidebar (add / remove) or by 
 ### Custom Analysis Scripts
 
 Supported languages (auto-detected from extension): Python, R, Shell, Bash, Perl, MATLAB, Julia, Jupyter
+
+---
+
+## Users
+
+The **Settings** page lets you add named users and switch between them — no passwords required. The active user is shown in the navbar and recorded in every change log entry. Users are stored in `~/.ngs-tracker/settings.json`.
+
+---
+
+## Change log
+
+Every create, update, trash, restore, and delete action is appended to `~/.ngs-tracker/changes.log` in plain text:
+
+```
+2025-06-12 14:03:22 | CREATE   | WorkflowRun         | id=42     | user=Niek                 | rna-seq-star-deseq2 (project: KO screen)
+```
+
+When the file exceeds 100 MB it is gzip-archived (e.g. `changes.20250612_140322.log.gz`) and a new file is started.
+
+Browse and filter the log directly in the browser via **Change Log** in the sidebar. Filters: user, action type (CREATE / UPDATE / TRASH / DELETE / RESTORE), and free-text search. Results are paginated at 100 entries per page, most recent first.
+
+---
+
+## Dashboard
+
+The dashboard shows:
+
+- **Stats row** — counts for Groups, Researchers, Projects, Runs, and Files (click Files to see a pie chart broken down by file type)
+- **Groups panel** — quick overview of all research groups with researcher and project counts
+- **Recent runs** — the 8 most recently added workflow runs
+- **Runs per month** — bar chart of workflow run activity over the last 12 calendar months
 
 ---
 
