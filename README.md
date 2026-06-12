@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="logo/ngs-tracker_v3_text_dark.png">
-  <img alt="NGS Tracker" src="logo/ngs-tracker_v3_text.png" height="80">
+  <img alt="NGS Tracker" src="logo/ngs-tracker_v3_text.png" height="240">
 </picture>
 
 A browser-based web app for tracking bioinformatics projects and analyses.
