@@ -36,8 +36,14 @@
         {% endif %}
       {% endif %}
     </h4>
-    <div class="mt-1">
+    <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
       <span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span>
+      {% for tag in run.tag_list %}
+      <a href="{{ url_for('runs_list', tag=tag) }}"
+         class="badge bg-warning text-dark text-decoration-none" style="font-size:.72rem;">
+        <i class="bi bi-tag me-1"></i>{{ tag }}
+      </a>
+      {% endfor %}
     </div>
     {% if run.description %}
     <p class="text-muted mb-0 mt-1">{{ run.description }}</p>

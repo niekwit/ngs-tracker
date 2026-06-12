@@ -105,6 +105,14 @@
           </div>
 
           <div class="mb-3">
+            <label class="form-label fw-semibold">Tags</label>
+            <input type="text" class="form-control" name="tags"
+                   value="{{ run.tags if run else '' }}"
+                   placeholder="e.g. pilot, failed-QC, resequenced (comma-separated)">
+            <div class="form-text">Comma-separated labels for filtering on the runs list.</div>
+          </div>
+
+          <div class="mb-3">
             <label class="form-label fw-semibold">Notes</label>
             <textarea class="form-control" name="notes" rows="4"
                       placeholder="Parameters, issues, results…">{{ run.notes if run else '' }}</textarea>

@@ -51,6 +51,7 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN status VARCHAR(20) DEFAULT 'completed'",
             "ALTER TABLE workflow_run ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
             "ALTER TABLE project_script ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN tags VARCHAR(500) DEFAULT ''",
         ]:
             try:
                 db.session.execute(db.text(stmt))

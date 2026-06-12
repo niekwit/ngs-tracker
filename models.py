@@ -197,6 +197,7 @@ class WorkflowRun(db.Model):
     backup_rcs_path = db.Column(db.String(500), default="")
     backup_rfs = db.Column(db.Boolean, default=False)
     backup_rfs_path = db.Column(db.String(500), default="")
+    tags = db.Column(db.String(500), default="")
     sample_sheet = db.relationship(
         "SampleSheet",
         backref="run",
@@ -218,6 +219,12 @@ class WorkflowRun(db.Model):
     @property
     def status_color(self):
         return RUN_STATUSES.get(self.status, ("Unknown", "secondary"))[1]
+
+    @property
+    def tag_list(self):
+        return (
+            [t.strip() for t in self.tags.split(",") if t.strip()] if self.tags else []
+        )
 
     @property
     def backup_labels(self):

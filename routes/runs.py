@@ -18,9 +18,17 @@ def register(app):
     def runs_list():
         sort = request.args.get("sort", "date")
         direction = request.args.get("dir", "desc")
+        tag_filter = request.args.get("tag", "").strip()
         reverse = direction == "desc"
 
-        runs = WorkflowRun.query.filter_by(trashed=False).all()
+        all_runs = WorkflowRun.query.filter_by(trashed=False).all()
+        all_tags = sorted({tag for r in all_runs for tag in r.tag_list})
+
+        runs = (
+            [r for r in all_runs if tag_filter in r.tag_list]
+            if tag_filter
+            else all_runs
+        )
 
         key_map = {
             "workflow": lambda r: r.workflow_name.lower(),
@@ -33,7 +41,14 @@ def register(app):
         }
         runs.sort(key=key_map.get(sort, key_map["date"]), reverse=reverse)
 
-        return render_template("runs/list.html", runs=runs, sort=sort, dir=direction)
+        return render_template(
+            "runs/list.html",
+            runs=runs,
+            sort=sort,
+            dir=direction,
+            tag_filter=tag_filter,
+            all_tags=all_tags,
+        )
 
     @app.route("/runs/<int:id>")
     def run_detail(id):
@@ -65,6 +80,7 @@ def register(app):
             workflow_name = request.form.get("workflow_name", "").strip()
             workflow_tag = request.form.get("workflow_tag", "").strip()
             description = request.form.get("description", "").strip()
+            tags = request.form.get("tags", "").strip()
             notes = request.form.get("notes", "").strip()
             status = request.form.get("status", "completed")
             run_date = _parse_datetime(request.form.get("run_date", ""))
@@ -92,6 +108,7 @@ def register(app):
                 workflow_name=workflow_name,
                 workflow_tag=workflow_tag,
                 description=description,
+                tags=tags,
                 run_date=run_date,
                 notes=notes,
                 status=status,
@@ -140,6 +157,7 @@ def register(app):
             run.workflow_name = request.form.get("workflow_name", "").strip()
             run.workflow_tag = request.form.get("workflow_tag", "").strip()
             run.description = request.form.get("description", "").strip()
+            run.tags = request.form.get("tags", "").strip()
             run.notes = request.form.get("notes", "").strip()
             run.status = request.form.get("status", "completed")
             run.run_date = _parse_datetime(request.form.get("run_date", ""))
@@ -173,6 +191,7 @@ def register(app):
             workflow_name=src.workflow_name,
             workflow_tag=src.workflow_tag,
             description=src.description,
+            tags=src.tags,
             notes=src.notes,
             status="pending",
             backup_local=src.backup_local,
