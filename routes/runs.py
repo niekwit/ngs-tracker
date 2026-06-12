@@ -1,0 +1,202 @@
+from flask import flash, redirect, render_template, request, url_for
+
+from config import db_log, load_workflows
+from helpers import _parse_datetime
+from models import (
+    FILE_TYPES,
+    RUN_STATUSES,
+    Project,
+    ResearchGroup,
+    Researcher,
+    WorkflowRun,
+    db,
+)
+
+
+def register(app):
+    @app.route("/runs")
+    def runs_list():
+        sort = request.args.get("sort", "date")
+        direction = request.args.get("dir", "desc")
+        reverse = direction == "desc"
+
+        runs = WorkflowRun.query.filter_by(trashed=False).all()
+
+        key_map = {
+            "workflow": lambda r: r.workflow_name.lower(),
+            "project": lambda r: r.project.name.lower(),
+            "researcher": lambda r: r.project.researcher.name.lower(),
+            "date": lambda r: r.run_date,
+            "status": lambda r: r.status,
+            "backup": lambda r: len(r.backup_labels),
+            "files": lambda r: len(r.attached_files),
+        }
+        runs.sort(key=key_map.get(sort, key_map["date"]), reverse=reverse)
+
+        return render_template("runs/list.html", runs=runs, sort=sort, dir=direction)
+
+    @app.route("/runs/<int:id>")
+    def run_detail(id):
+        run = db.get_or_404(WorkflowRun, id)
+        wf_urls = {w["name"]: w["url"] for w in load_workflows()}
+        return render_template(
+            "runs/detail.html", run=run, file_types=FILE_TYPES, wf_urls=wf_urls
+        )
+
+    @app.route("/runs/new", methods=["GET", "POST"])
+    def run_new():
+        projects = (
+            Project.query.filter_by(trashed=False)
+            .join(Researcher)
+            .filter(Researcher.trashed == False)
+            .join(ResearchGroup)
+            .filter(ResearchGroup.trashed == False)
+            .order_by(ResearchGroup.name, Researcher.name, Project.name)
+            .all()
+        )
+        if not projects:
+            flash("Create a project first.", "warning")
+            return redirect(url_for("project_new"))
+
+        preselected = request.args.get("project_id", type=int)
+
+        if request.method == "POST":
+            project_id = request.form.get("project_id", type=int)
+            workflow_name = request.form.get("workflow_name", "").strip()
+            workflow_tag = request.form.get("workflow_tag", "").strip()
+            description = request.form.get("description", "").strip()
+            notes = request.form.get("notes", "").strip()
+            status = request.form.get("status", "completed")
+            run_date = _parse_datetime(request.form.get("run_date", ""))
+            backup_local = "backup_local" in request.form
+            backup_rcs = "backup_rcs" in request.form
+            backup_rfs = "backup_rfs" in request.form
+            backup_local_path = request.form.get("backup_local_path", "").strip()
+            backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
+            backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
+
+            if not workflow_name or not project_id:
+                flash("Workflow name and project are required.", "danger")
+                return render_template(
+                    "runs/form.html",
+                    run=None,
+                    projects=projects,
+                    preselected=preselected,
+                    file_types=FILE_TYPES,
+                    workflows=load_workflows(),
+                    run_statuses=RUN_STATUSES,
+                )
+
+            run = WorkflowRun(
+                project_id=project_id,
+                workflow_name=workflow_name,
+                workflow_tag=workflow_tag,
+                description=description,
+                run_date=run_date,
+                notes=notes,
+                status=status,
+                backup_local=backup_local,
+                backup_local_path=backup_local_path,
+                backup_rcs=backup_rcs,
+                backup_rcs_path=backup_rcs_path,
+                backup_rfs=backup_rfs,
+                backup_rfs_path=backup_rfs_path,
+            )
+            db.session.add(run)
+            db.session.commit()
+            db_log(
+                "CREATE",
+                "WorkflowRun",
+                run.id,
+                f"{run.workflow_name} (project: {run.project.name})",
+            )
+            flash(f'Workflow run "{workflow_name}" created.', "success")
+            return redirect(url_for("run_detail", id=run.id))
+
+        return render_template(
+            "runs/form.html",
+            run=None,
+            projects=projects,
+            preselected=preselected,
+            file_types=FILE_TYPES,
+            workflows=load_workflows(),
+            run_statuses=RUN_STATUSES,
+        )
+
+    @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
+    def run_edit(id):
+        run = db.get_or_404(WorkflowRun, id)
+        projects = (
+            Project.query.filter_by(trashed=False)
+            .join(Researcher)
+            .filter(Researcher.trashed == False)
+            .join(ResearchGroup)
+            .filter(ResearchGroup.trashed == False)
+            .order_by(ResearchGroup.name, Researcher.name, Project.name)
+            .all()
+        )
+        if request.method == "POST":
+            run.workflow_name = request.form.get("workflow_name", "").strip()
+            run.workflow_tag = request.form.get("workflow_tag", "").strip()
+            run.description = request.form.get("description", "").strip()
+            run.notes = request.form.get("notes", "").strip()
+            run.status = request.form.get("status", "completed")
+            run.run_date = _parse_datetime(request.form.get("run_date", ""))
+            run.backup_local = "backup_local" in request.form
+            run.backup_local_path = request.form.get("backup_local_path", "").strip()
+            run.backup_rcs = "backup_rcs" in request.form
+            run.backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
+            run.backup_rfs = "backup_rfs" in request.form
+            run.backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
+            db.session.commit()
+            db_log(
+                "UPDATE", "WorkflowRun", id, f"{run.workflow_name} status={run.status}"
+            )
+            flash("Workflow run updated.", "success")
+            return redirect(url_for("run_detail", id=id))
+        return render_template(
+            "runs/form.html",
+            run=run,
+            projects=projects,
+            preselected=run.project_id,
+            file_types=FILE_TYPES,
+            workflows=load_workflows(),
+            run_statuses=RUN_STATUSES,
+        )
+
+    @app.route("/runs/<int:id>/clone", methods=["POST"])
+    def run_clone(id):
+        src = db.get_or_404(WorkflowRun, id)
+        clone = WorkflowRun(
+            project_id=src.project_id,
+            workflow_name=src.workflow_name,
+            workflow_tag=src.workflow_tag,
+            description=src.description,
+            notes=src.notes,
+            status="pending",
+            backup_local=src.backup_local,
+            backup_local_path=src.backup_local_path,
+            backup_rcs=src.backup_rcs,
+            backup_rcs_path=src.backup_rcs_path,
+            backup_rfs=src.backup_rfs,
+            backup_rfs_path=src.backup_rfs_path,
+        )
+        db.session.add(clone)
+        db.session.commit()
+        db_log(
+            "CREATE",
+            "WorkflowRun",
+            clone.id,
+            f"{clone.workflow_name} (cloned from id={src.id})",
+        )
+        flash(f'Run cloned from "{src.workflow_name}" — review and save.', "success")
+        return redirect(url_for("run_edit", id=clone.id))
+
+    @app.route("/runs/<int:id>/delete", methods=["POST"])
+    def run_delete(id):
+        run = db.get_or_404(WorkflowRun, id)
+        run.trashed = True
+        db.session.commit()
+        db_log("TRASH", "WorkflowRun", run.id, run.workflow_name)
+        flash(f'Workflow run "{run.workflow_name}" moved to trash.', "success")
+        return redirect(url_for("project_detail", id=run.project_id))
