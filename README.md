@@ -16,11 +16,15 @@ and publication tracking.
 
 - Hierarchical records: Research Groups → Researchers → Projects → Workflow Runs
 - Attach Snakemake config files (YAML) — settings are parsed and displayed inline
+- Upload a sample sheet (CSV) per run — rendered as a full scrollable table
 - User-configurable workflow list with per-workflow GitHub URLs (any account or organisation)
 - Track backup status per run (Local / RCS / RFS) with storage paths
+- Run status tracking: Completed / Running / Pending / Failed
+- Clone a workflow run — copies all settings to a new run for quick re-use
 - Attach processed data files to workflow runs (peak calls, data, etc.)
 - Upload custom analysis scripts per project with output file attachments
 - Mark projects as published with an optional publication URL
+- Global search across groups, researchers, projects, runs, and scripts
 - Soft-delete trash bin — deleted records can be restored or permanently removed
 - Dashboard with live stats (record counts and total file size)
 - Sortable tables on the Projects and Runs list pages
@@ -86,6 +90,7 @@ Research Group
 └── Researcher
     └── Project
         ├── Workflow Run
+        │   ├── Sample Sheet (CSV, displayed as table)
         │   └── Attached Files  (config, peak calls, processed data, other)
         └── Custom Analysis Script
             └── Script Output Files
@@ -95,6 +100,9 @@ Research Group
 
 - Select a workflow from the configurable list; release tags are fetched live from GitHub
 - Upload a Snakemake YAML config — all settings (excluding `resources`) are displayed in the run view
+- Upload a sample sheet (CSV) — rendered as a full scrollable table with sticky header
+- Track run status: **Completed**, **Running**, **Pending**, or **Failed**
+- Clone a run to copy all its settings into a new run (status resets to Pending)
 - Record backup locations (Local, RCS, RFS) with storage paths
 
 ### Workflow management
@@ -113,6 +121,12 @@ Manage workflows via the **Workflows** page in the sidebar (add / remove) or by 
 ### Custom Analysis Scripts
 
 Supported languages (auto-detected from extension): Python, R, Shell, Bash, Perl, MATLAB, Julia, Jupyter
+
+---
+
+## Search
+
+A search box in the navbar searches across all record types simultaneously — Research Groups, Researchers, Projects, Workflow Runs, and Scripts. Results are grouped by type and link directly to each record.
 
 ---
 
