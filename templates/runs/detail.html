@@ -291,6 +291,8 @@
           <td>
             {% if f.is_image %}
             <i class="bi bi-file-earmark-image me-1 text-info"></i>
+            {% elif f.is_pdf %}
+            <i class="bi bi-file-earmark-pdf me-1 text-danger"></i>
             {% else %}
             <i class="bi bi-file-earmark me-1 text-secondary"></i>
             {% endif %}
@@ -305,11 +307,12 @@
           <td class="text-muted small">{{ f.description or '—' }}</td>
           <td class="text-muted small">{{ f.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
           <td class="text-end">
-            {% if f.is_image %}
+            {% if f.is_viewable %}
             <button class="btn btn-xs btn-outline-info"
                     data-bs-toggle="modal" data-bs-target="#imgModal"
                     data-src="{{ url_for('file_view', id=f.id) }}"
-                    data-name="{{ f.original_filename }}">
+                    data-name="{{ f.original_filename }}"
+                    data-type="{{ 'pdf' if f.is_pdf else 'image' }}">
               <i class="bi bi-eye"></i>
             </button>
             {% endif %}
@@ -348,7 +351,8 @@
         </div>
       </div>
       <div class="modal-body text-center p-2">
-        <img id="imgModalImg" src="" alt="" class="img-fluid rounded" style="max-height:80vh;">
+        <img id="imgModalImg" src="" alt="" class="img-fluid rounded" style="max-height:80vh; display:none;">
+        <iframe id="imgModalPdf" src="" style="width:100%; height:80vh; border:none; display:none;"></iframe>
       </div>
     </div>
   </div>
@@ -357,13 +361,31 @@
 
 {% block scripts %}
 <script>
-document.getElementById('imgModal').addEventListener('show.bs.modal', function(e) {
+var imgModal = document.getElementById('imgModal');
+imgModal.addEventListener('show.bs.modal', function(e) {
   var btn = e.relatedTarget;
   var src = btn.getAttribute('data-src');
   var name = btn.getAttribute('data-name');
-  document.getElementById('imgModalImg').src = src;
+  var type = btn.getAttribute('data-type');
+  var img = document.getElementById('imgModalImg');
+  var pdf = document.getElementById('imgModalPdf');
   document.getElementById('imgModalLabel').textContent = name;
   document.getElementById('imgModalDownload').href = src.replace('/view', '/download');
+  if (type === 'pdf') {
+    img.style.display = 'none';
+    img.src = '';
+    pdf.style.display = '';
+    pdf.src = src;
+  } else {
+    pdf.style.display = 'none';
+    pdf.src = '';
+    img.style.display = '';
+    img.src = src;
+  }
+});
+imgModal.addEventListener('hidden.bs.modal', function() {
+  document.getElementById('imgModalImg').src = '';
+  document.getElementById('imgModalPdf').src = '';
 });
 </script>
 {% endblock %}

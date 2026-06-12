@@ -271,6 +271,14 @@ class AttachedFile(db.Model):
         return Path(self.original_filename).suffix.lower() in self._IMAGE_EXTENSIONS
 
     @property
+    def is_pdf(self):
+        return Path(self.original_filename).suffix.lower() == ".pdf"
+
+    @property
+    def is_viewable(self):
+        return self.is_image or self.is_pdf
+
+    @property
     def type_label(self):
         return FILE_TYPES.get(self.file_type, ("Other", "secondary"))[0]
 
