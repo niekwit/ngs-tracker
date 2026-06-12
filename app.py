@@ -135,7 +135,7 @@ def index():
         "researchers": Researcher.query.filter_by(trashed=False).count(),
         "projects": Project.query.filter_by(trashed=False).count(),
         "runs": WorkflowRun.query.filter_by(trashed=False).count(),
-        "files": AttachedFile.query.count(),
+        "files": _format_file_size(_total_file_size()),
     }
     return render_template("index.html", groups=groups, recent_runs=recent_runs, stats=stats)
 
@@ -783,6 +783,25 @@ def _delete_file(path: str) -> None:
 def _delete_run_files(run: WorkflowRun) -> None:
     for f in run.attached_files:
         _delete_file(f.stored_path)
+
+
+def _total_file_size() -> int:
+    """Return total bytes for all stored files across all three file tables."""
+    total = 0
+    for model in (AttachedFile, ProjectScript, ScriptOutputFile):
+        for row in model.query.all():
+            try:
+                total += Path(row.stored_path).stat().st_size
+            except OSError:
+                pass
+    return total
+
+
+def _format_file_size(size: int) -> str:
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if size < 1024 or unit == "TB":
+            return f"{size:.1f} {unit}" if unit != "B" else f"{size} B"
+        size /= 1024
 
 
 if __name__ == "__main__":
