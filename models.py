@@ -62,10 +62,57 @@ class Project(db.Model):
         lazy=True,
         cascade="all, delete-orphan",
     )
+    scripts = db.relationship(
+        "ProjectScript",
+        backref="project",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ProjectScript.uploaded_at",
+    )
 
     @property
     def sorted_runs(self):
         return sorted(self.workflow_runs, key=lambda r: r.run_date, reverse=True)
+
+
+SCRIPT_LANGUAGES = {
+    ".py":   "Python",
+    ".r":    "R",
+    ".R":    "R",
+    ".sh":   "Shell",
+    ".bash": "Bash",
+    ".pl":   "Perl",
+    ".m":    "MATLAB",
+    ".jl":   "Julia",
+    ".nb":   "Jupyter",
+    ".ipynb":"Jupyter",
+}
+
+SCRIPT_LANGUAGE_COLORS = {
+    "Python":  "primary",
+    "R":       "danger",
+    "Shell":   "secondary",
+    "Bash":    "secondary",
+    "Perl":    "warning",
+    "MATLAB":  "warning",
+    "Julia":   "success",
+    "Jupyter": "info",
+}
+
+
+class ProjectScript(db.Model):
+    __tablename__ = "project_script"
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_path = db.Column(db.String(500), nullable=False)
+    language = db.Column(db.String(50), default="")
+    description = db.Column(db.String(255), default="")
+    uploaded_at = db.Column(db.DateTime, default=_now)
+
+    @property
+    def language_color(self):
+        return SCRIPT_LANGUAGE_COLORS.get(self.language, "secondary")
 
 
 FILE_TYPES = {

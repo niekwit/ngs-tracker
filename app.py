@@ -20,7 +20,10 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from models import FILE_TYPES, WORKFLOWS, AttachedFile, Project, Researcher, ResearchGroup, WorkflowRun, db
+from models import (
+    FILE_TYPES, WORKFLOWS, SCRIPT_LANGUAGES,
+    AttachedFile, Project, ProjectScript, Researcher, ResearchGroup, WorkflowRun, db,
+)
 
 # Settings live in the user's home directory so they survive re-clones.
 SETTINGS_DIR  = Path.home() / ".ngs-tracker"
@@ -86,6 +89,7 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN backup_local_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN backup_rcs_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN backup_rfs_path VARCHAR(500) DEFAULT ''",
+            # project_script table is created by db.create_all(); no ALTER needed
         ]:
             try:
                 db.session.execute(db.text(stmt))
@@ -318,7 +322,7 @@ def project_new():
 @app.route("/projects/<int:id>")
 def project_detail(id):
     project = db.get_or_404(Project, id)
-    return render_template("projects/detail.html", project=project)
+    return render_template("projects/detail.html", project=project, script_languages=SCRIPT_LANGUAGES)
 
 
 @app.route("/projects/<int:id>/edit", methods=["GET", "POST"])
@@ -346,6 +350,8 @@ def project_delete(id):
     researcher_id = project.researcher_id
     for run in project.workflow_runs:
         _delete_run_files(run)
+    for script in project.scripts:
+        _delete_file(script.stored_path)
     db.session.delete(project)
     db.session.commit()
     flash(f'Project "{name}" deleted.', "success")
@@ -504,14 +510,68 @@ def file_download(id):
 def file_delete(id):
     f = db.get_or_404(AttachedFile, id)
     run_id = f.workflow_run_id
-    try:
-        Path(f.stored_path).unlink(missing_ok=True)
-    except Exception:
-        pass
+    _delete_file(f.stored_path)
     db.session.delete(f)
     db.session.commit()
     flash(f'File "{f.original_filename}" deleted.', "success")
     return redirect(url_for("run_detail", id=run_id))
+
+
+# ── Project Scripts ───────────────────────────────────────────────────────────
+
+@app.route("/projects/<int:id>/scripts/upload", methods=["POST"])
+def script_upload(id):
+    project = db.get_or_404(Project, id)
+
+    if "file" not in request.files or request.files["file"].filename == "":
+        flash("No file selected.", "danger")
+        return redirect(url_for("project_detail", id=id))
+
+    file = request.files["file"]
+    description = request.form.get("description", "").strip()
+
+    original_name = secure_filename(file.filename)
+    ext = Path(original_name).suffix.lower()
+    language = SCRIPT_LANGUAGES.get(ext) or SCRIPT_LANGUAGES.get(Path(original_name).suffix) or "Other"
+
+    script_dir = get_storage_path() / "projects" / str(id) / "scripts"
+    script_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_name = f"{uuid.uuid4().hex}_{original_name}"
+    stored_path = script_dir / stored_name
+    file.save(str(stored_path))
+
+    script = ProjectScript(
+        project_id=id,
+        original_filename=original_name,
+        stored_path=str(stored_path),
+        language=language,
+        description=description,
+    )
+    db.session.add(script)
+    db.session.commit()
+    flash(f'Script "{original_name}" uploaded.', "success")
+    return redirect(url_for("project_detail", id=id))
+
+
+@app.route("/scripts/<int:id>/download")
+def script_download(id):
+    script = db.get_or_404(ProjectScript, id)
+    stored = Path(script.stored_path)
+    if not stored.exists():
+        abort(404)
+    return send_file(str(stored), as_attachment=True, download_name=script.original_filename)
+
+
+@app.route("/scripts/<int:id>/delete", methods=["POST"])
+def script_delete(id):
+    script = db.get_or_404(ProjectScript, id)
+    project_id = script.project_id
+    _delete_file(script.stored_path)
+    db.session.delete(script)
+    db.session.commit()
+    flash(f'Script "{script.original_filename}" deleted.', "success")
+    return redirect(url_for("project_detail", id=project_id))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -538,12 +598,16 @@ def _parse_datetime(value: str) -> datetime:
     return datetime.utcnow()
 
 
+def _delete_file(path: str) -> None:
+    try:
+        Path(path).unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def _delete_run_files(run: WorkflowRun) -> None:
     for f in run.attached_files:
-        try:
-            Path(f.stored_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+        _delete_file(f.stored_path)
 
 
 if __name__ == "__main__":
