@@ -214,6 +214,13 @@ def index():
         .limit(8)
         .all()
     )
+    file_type_counts = {
+        label: AttachedFile.query.filter_by(file_type=key).count()
+        for key, (label, _) in FILE_TYPES.items()
+    }
+    file_type_counts["Scripts"] = ProjectScript.query.count()
+    file_type_counts["Script Outputs"] = ScriptOutputFile.query.count()
+    file_type_counts = {k: v for k, v in file_type_counts.items() if v > 0}
     stats = {
         "groups": ResearchGroup.query.filter_by(trashed=False).count(),
         "researchers": Researcher.query.filter_by(trashed=False).count(),
@@ -225,7 +232,11 @@ def index():
         "file_size": _format_file_size(_total_file_size()),
     }
     return render_template(
-        "index.html", groups=groups, recent_runs=recent_runs, stats=stats
+        "index.html",
+        groups=groups,
+        recent_runs=recent_runs,
+        stats=stats,
+        file_type_counts=json.dumps(file_type_counts),
     )
 
 

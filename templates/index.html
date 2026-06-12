@@ -11,11 +11,12 @@
     ('Researchers', stats.researchers,  'bi-person-fill',       'green',  url_for('researchers_list'), ''),
     ('Projects',    stats.projects,     'bi-folder-fill',       'purple', url_for('projects_list'), ''),
     ('Runs',        stats.runs,         'bi-play-circle-fill',  'orange', url_for('runs_list'), ''),
-    ('Files',       stats.files,        'bi-paperclip',         'teal',   '#', stats.file_size),
+    ('Files',       stats.files,        'bi-paperclip',         'teal',   '#fileChartModal', stats.file_size),
   ] %}
   {% for label, count, icon, color, link, subtitle in cards %}
   <div class="col-6 col-md-4 col-lg-2">
-    <a href="{{ link }}" class="text-decoration-none">
+    <a href="{{ link }}" class="text-decoration-none"
+       {% if link == '#fileChartModal' %}data-bs-toggle="modal"{% endif %}>
       <div class="card stat-card {{ color }} h-100">
         <div class="card-body py-3">
           <div class="d-flex justify-content-between align-items-start">
@@ -122,4 +123,67 @@
     </div>
   </div>
 </div>
+
+<!-- File type chart modal -->
+<div class="modal fade" id="fileChartModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-pie-chart me-2"></i>Files by Type</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {% if stats.files > 0 %}
+        <canvas id="fileChart" height="300"></canvas>
+        {% else %}
+        <p class="text-muted text-center py-4 mb-0">No files uploaded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if stats.files > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var data = {{ file_type_counts | safe }};
+  var palette = [
+    '#0d6efd', '#198754', '#0dcaf0', '#7c3aed',
+    '#6c757d', '#ffc107', '#fd7e14', '#dc3545'
+  ];
+  var labels = Object.keys(data);
+  var values = Object.values(data);
+  var colors = labels.map(function(_, i) { return palette[i % palette.length]; });
+
+  document.getElementById('fileChartModal').addEventListener('shown.bs.modal', function() {
+    var ctx = document.getElementById('fileChart').getContext('2d');
+    if (window._fileChart) window._fileChart.destroy();
+    window._fileChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{ data: values, backgroundColor: colors, borderWidth: 1 }]
+      },
+      options: {
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                var pct = Math.round(ctx.parsed / total * 100);
+                return ' ' + ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+              }
+            }
+          }
+        }
+      }
+    });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
