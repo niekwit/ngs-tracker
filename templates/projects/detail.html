@@ -155,6 +155,7 @@
           <th>Filename</th>
           <th>Language</th>
           <th>Description</th>
+          <th>Outputs</th>
           <th>Uploaded</th>
           <th></th>
         </tr>
@@ -164,7 +165,7 @@
         <tr>
           <td>
             <i class="bi bi-file-earmark-code me-1 text-secondary"></i>
-            <a href="{{ url_for('script_download', id=s.id) }}" class="text-decoration-none">
+            <a href="{{ url_for('script_detail', id=s.id) }}" class="text-decoration-none fw-semibold">
               {{ s.original_filename }}
             </a>
           </td>
@@ -172,13 +173,21 @@
             <span class="badge bg-{{ s.language_color }}">{{ s.language }}</span>
           </td>
           <td class="text-muted small">{{ s.description or '—' }}</td>
+          <td>
+            {% if s.output_files %}
+            <span class="badge bg-light text-dark border">{{ s.output_files|length }} file{{ 's' if s.output_files|length != 1 }}</span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
           <td class="text-muted small">{{ s.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
           <td class="text-end">
-            <a href="{{ url_for('script_download', id=s.id) }}" class="btn btn-xs btn-outline-primary">
+            <a href="{{ url_for('script_detail', id=s.id) }}" class="btn btn-xs btn-outline-primary">View</a>
+            <a href="{{ url_for('script_download', id=s.id) }}" class="btn btn-xs btn-outline-secondary">
               <i class="bi bi-download"></i>
             </a>
             <form method="POST" action="{{ url_for('script_delete', id=s.id) }}" class="d-inline"
-                  onsubmit="return confirm('Delete script {{ s.original_filename }}?')">
+                  onsubmit="return confirm('Delete script {{ s.original_filename }} and all its output files?')">
               <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
             </form>
           </td>

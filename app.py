@@ -22,7 +22,8 @@ from werkzeug.utils import secure_filename
 
 from models import (
     FILE_TYPES, WORKFLOWS, SCRIPT_LANGUAGES,
-    AttachedFile, Project, ProjectScript, Researcher, ResearchGroup, WorkflowRun, db,
+    AttachedFile, Project, ProjectScript, ScriptOutputFile,
+    Researcher, ResearchGroup, WorkflowRun, db,
 )
 
 # Settings live in the user's home directory so they survive re-clones.
@@ -352,6 +353,8 @@ def project_delete(id):
         _delete_run_files(run)
     for script in project.scripts:
         _delete_file(script.stored_path)
+        for out in script.output_files:
+            _delete_file(out.stored_path)
     db.session.delete(project)
     db.session.commit()
     flash(f'Project "{name}" deleted.', "success")
@@ -563,15 +566,74 @@ def script_download(id):
     return send_file(str(stored), as_attachment=True, download_name=script.original_filename)
 
 
+@app.route("/scripts/<int:id>")
+def script_detail(id):
+    script = db.get_or_404(ProjectScript, id)
+    return render_template("scripts/detail.html", script=script)
+
+
 @app.route("/scripts/<int:id>/delete", methods=["POST"])
 def script_delete(id):
     script = db.get_or_404(ProjectScript, id)
     project_id = script.project_id
+    for out in script.output_files:
+        _delete_file(out.stored_path)
     _delete_file(script.stored_path)
     db.session.delete(script)
     db.session.commit()
     flash(f'Script "{script.original_filename}" deleted.', "success")
     return redirect(url_for("project_detail", id=project_id))
+
+
+@app.route("/scripts/<int:id>/outputs/upload", methods=["POST"])
+def script_output_upload(id):
+    script = db.get_or_404(ProjectScript, id)
+
+    if "file" not in request.files or request.files["file"].filename == "":
+        flash("No file selected.", "danger")
+        return redirect(url_for("script_detail", id=id))
+
+    file = request.files["file"]
+    description = request.form.get("description", "").strip()
+    original_name = secure_filename(file.filename)
+
+    out_dir = get_storage_path() / "projects" / str(script.project_id) / "scripts" / str(id) / "outputs"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_name = f"{uuid.uuid4().hex}_{original_name}"
+    stored_path = out_dir / stored_name
+    file.save(str(stored_path))
+
+    out = ScriptOutputFile(
+        script_id=id,
+        original_filename=original_name,
+        stored_path=str(stored_path),
+        description=description,
+    )
+    db.session.add(out)
+    db.session.commit()
+    flash(f'Output file "{original_name}" attached.', "success")
+    return redirect(url_for("script_detail", id=id))
+
+
+@app.route("/script-outputs/<int:id>/download")
+def script_output_download(id):
+    out = db.get_or_404(ScriptOutputFile, id)
+    stored = Path(out.stored_path)
+    if not stored.exists():
+        abort(404)
+    return send_file(str(stored), as_attachment=True, download_name=out.original_filename)
+
+
+@app.route("/script-outputs/<int:id>/delete", methods=["POST"])
+def script_output_delete(id):
+    out = db.get_or_404(ScriptOutputFile, id)
+    script_id = out.script_id
+    _delete_file(out.stored_path)
+    db.session.delete(out)
+    db.session.commit()
+    flash(f'Output file "{out.original_filename}" deleted.', "success")
+    return redirect(url_for("script_detail", id=script_id))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

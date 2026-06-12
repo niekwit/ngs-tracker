@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}{{ script.original_filename }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('group_detail', id=script.project.researcher.group_id) }}">{{ script.project.researcher.group.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('researcher_detail', id=script.project.researcher_id) }}">{{ script.project.researcher.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('project_detail', id=script.project_id) }}">{{ script.project.name }}</a>
+    </li>
+    <li class="breadcrumb-item active">{{ script.original_filename }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">
+      <i class="bi bi-file-earmark-code-fill me-1 text-secondary"></i>
+      {{ script.original_filename }}
+      <span class="badge bg-{{ script.language_color }} ms-1" style="font-size:.75rem;">{{ script.language }}</span>
+    </h4>
+    {% if script.description %}
+    <p class="text-muted mb-0 mt-1">{{ script.description }}</p>
+    {% endif %}
+    <span class="text-muted small">
+      <i class="bi bi-calendar3 me-1"></i>{{ script.uploaded_at.strftime('%Y-%m-%d %H:%M') }}
+    </span>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('script_download', id=script.id) }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-download me-1"></i> Download Script
+    </a>
+    <form method="POST" action="{{ url_for('script_delete', id=script.id) }}"
+          onsubmit="return confirm('Delete this script and all its output files?')">
+      <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Delete</button>
+    </form>
+  </div>
+</div>
+
+<!-- Output files -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-file-earmark-bar-graph me-1"></i> Output Files ({{ script.output_files|length }})</span>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#uploadOutput">
+      <i class="bi bi-upload me-1"></i> Attach Output
+    </button>
+  </div>
+
+  <!-- Upload form -->
+  <div class="collapse" id="uploadOutput">
+    <div class="card-body border-bottom bg-light">
+      <form method="POST" action="{{ url_for('script_output_upload', id=script.id) }}" enctype="multipart/form-data">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label fw-semibold mb-1">File <span class="text-danger">*</span></label>
+            <input type="file" class="form-control form-control-sm" name="file" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold mb-1">Description</label>
+            <input type="text" class="form-control form-control-sm" name="description"
+                   placeholder="e.g. DESeq2 results table, volcano plot PDF…">
+          </div>
+          <div class="col-md-1">
+            <button type="submit" class="btn btn-success btn-sm w-100">
+              <i class="bi bi-upload"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if script.output_files %}
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Filename</th>
+          <th>Description</th>
+          <th>Uploaded</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for out in script.output_files %}
+        <tr class="file-row">
+          <td>
+            <i class="bi bi-file-earmark me-1 text-secondary"></i>
+            <a href="{{ url_for('script_output_download', id=out.id) }}" class="text-decoration-none">
+              {{ out.original_filename }}
+            </a>
+          </td>
+          <td class="text-muted small">{{ out.description or '—' }}</td>
+          <td class="text-muted small">{{ out.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('script_output_download', id=out.id) }}" class="btn btn-xs btn-outline-primary">
+              <i class="bi bi-download"></i>
+            </a>
+            <form method="POST" action="{{ url_for('script_output_delete', id=out.id) }}" class="d-inline"
+                  onsubmit="return confirm('Delete {{ out.original_filename }}?')">
+              <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body text-center py-4 text-muted">
+    <i class="bi bi-file-earmark-bar-graph fs-2 opacity-25"></i>
+    <p class="mt-2 mb-0">No output files attached yet.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

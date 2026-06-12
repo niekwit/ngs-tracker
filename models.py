@@ -109,10 +109,27 @@ class ProjectScript(db.Model):
     language = db.Column(db.String(50), default="")
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
+    output_files = db.relationship(
+        "ScriptOutputFile",
+        backref="script",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ScriptOutputFile.uploaded_at",
+    )
 
     @property
     def language_color(self):
         return SCRIPT_LANGUAGE_COLORS.get(self.language, "secondary")
+
+
+class ScriptOutputFile(db.Model):
+    __tablename__ = "script_output_file"
+    id = db.Column(db.Integer, primary_key=True)
+    script_id = db.Column(db.Integer, db.ForeignKey("project_script.id"), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_path = db.Column(db.String(500), nullable=False)
+    description = db.Column(db.String(255), default="")
+    uploaded_at = db.Column(db.DateTime, default=_now)
 
 
 FILE_TYPES = {
