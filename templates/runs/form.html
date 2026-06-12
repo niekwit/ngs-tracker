@@ -54,6 +54,19 @@
             </div>
           </div>
 
+          <!-- Status -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Status</label>
+            <select class="form-select" name="status">
+              {% for key, (label, color) in run_statuses.items() %}
+              <option value="{{ key }}"
+                {% if (run and run.status == key) or (not run and key == 'completed') %}selected{% endif %}>
+                {{ label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
           <!-- Workflow + tag row -->
           <div class="row g-3 mb-3">
             <div class="col-md-6">

@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 
 from models import (
     FILE_TYPES,
+    RUN_STATUSES,
     SCRIPT_LANGUAGES,
     AttachedFile,
     Project,
@@ -152,6 +153,7 @@ def create_app() -> Flask:
             "ALTER TABLE project ADD COLUMN trashed BOOLEAN DEFAULT 0",
             "ALTER TABLE workflow_run ADD COLUMN trashed BOOLEAN DEFAULT 0",
             "ALTER TABLE project_script ADD COLUMN trashed BOOLEAN DEFAULT 0",
+            "ALTER TABLE workflow_run ADD COLUMN status VARCHAR(20) DEFAULT 'completed'",
             # project_script / script_output_file tables created by db.create_all()
         ]:
             try:
@@ -308,12 +310,48 @@ def runs_list():
         "project": lambda r: r.project.name.lower(),
         "researcher": lambda r: r.project.researcher.name.lower(),
         "date": lambda r: r.run_date,
+        "status": lambda r: r.status,
         "backup": lambda r: len(r.backup_labels),
         "files": lambda r: len(r.attached_files),
     }
     runs.sort(key=key_map.get(sort, key_map["date"]), reverse=reverse)
 
     return render_template("runs/list.html", runs=runs, sort=sort, dir=direction)
+
+
+@app.route("/search")
+def search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return render_template("search.html", q="", results=None)
+    like = f"%{q}%"
+    results = {
+        "groups": ResearchGroup.query.filter(
+            ResearchGroup.trashed == False,
+            ResearchGroup.name.ilike(like) | ResearchGroup.description.ilike(like),
+        ).all(),
+        "researchers": Researcher.query.filter(
+            Researcher.trashed == False,
+            Researcher.name.ilike(like) | Researcher.email.ilike(like),
+        ).all(),
+        "projects": Project.query.filter(
+            Project.trashed == False,
+            Project.name.ilike(like) | Project.description.ilike(like),
+        ).all(),
+        "runs": WorkflowRun.query.filter(
+            WorkflowRun.trashed == False,
+            WorkflowRun.workflow_name.ilike(like)
+            | WorkflowRun.description.ilike(like)
+            | WorkflowRun.notes.ilike(like),
+        ).all(),
+        "scripts": ProjectScript.query.filter(
+            ProjectScript.trashed == False,
+            ProjectScript.original_filename.ilike(like)
+            | ProjectScript.description.ilike(like),
+        ).all(),
+    }
+    total = sum(len(v) for v in results.values())
+    return render_template("search.html", q=q, results=results, total=total)
 
 
 @app.route("/groups/new", methods=["GET", "POST"])
@@ -568,6 +606,7 @@ def run_new():
         workflow_tag = request.form.get("workflow_tag", "").strip()
         description = request.form.get("description", "").strip()
         notes = request.form.get("notes", "").strip()
+        status = request.form.get("status", "completed")
         run_date = _parse_datetime(request.form.get("run_date", ""))
         backup_local = "backup_local" in request.form
         backup_rcs = "backup_rcs" in request.form
@@ -585,6 +624,7 @@ def run_new():
                 preselected=preselected,
                 file_types=FILE_TYPES,
                 workflows=load_workflows(),
+                run_statuses=RUN_STATUSES,
             )
 
         run = WorkflowRun(
@@ -594,6 +634,7 @@ def run_new():
             description=description,
             run_date=run_date,
             notes=notes,
+            status=status,
             backup_local=backup_local,
             backup_local_path=backup_local_path,
             backup_rcs=backup_rcs,
@@ -613,6 +654,7 @@ def run_new():
         preselected=preselected,
         file_types=FILE_TYPES,
         workflows=load_workflows(),
+        run_statuses=RUN_STATUSES,
     )
 
 
@@ -642,6 +684,7 @@ def run_edit(id):
         run.workflow_tag = request.form.get("workflow_tag", "").strip()
         run.description = request.form.get("description", "").strip()
         run.notes = request.form.get("notes", "").strip()
+        run.status = request.form.get("status", "completed")
         run.run_date = _parse_datetime(request.form.get("run_date", ""))
         run.backup_local = "backup_local" in request.form
         run.backup_local_path = request.form.get("backup_local_path", "").strip()
@@ -659,7 +702,31 @@ def run_edit(id):
         preselected=run.project_id,
         file_types=FILE_TYPES,
         workflows=load_workflows(),
+        run_statuses=RUN_STATUSES,
     )
+
+
+@app.route("/runs/<int:id>/clone", methods=["POST"])
+def run_clone(id):
+    src = db.get_or_404(WorkflowRun, id)
+    clone = WorkflowRun(
+        project_id=src.project_id,
+        workflow_name=src.workflow_name,
+        workflow_tag=src.workflow_tag,
+        description=src.description,
+        notes=src.notes,
+        status="pending",
+        backup_local=src.backup_local,
+        backup_local_path=src.backup_local_path,
+        backup_rcs=src.backup_rcs,
+        backup_rcs_path=src.backup_rcs_path,
+        backup_rfs=src.backup_rfs,
+        backup_rfs_path=src.backup_rfs_path,
+    )
+    db.session.add(clone)
+    db.session.commit()
+    flash(f'Run cloned from "{src.workflow_name}" — review and save.', "success")
+    return redirect(url_for("run_edit", id=clone.id))
 
 
 @app.route("/runs/<int:id>/delete", methods=["POST"])

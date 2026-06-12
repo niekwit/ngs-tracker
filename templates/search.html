@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Search — NGS Tracker{% endblock %}
+
+{% block content %}
+<h4 class="fw-bold mb-3"><i class="bi bi-search me-1"></i> Search</h4>
+
+<form method="GET" action="{{ url_for('search') }}" class="mb-4">
+  <div class="input-group">
+    <input type="search" class="form-control" name="q" value="{{ q }}"
+           placeholder="Search projects, runs, researchers…" autofocus>
+    <button class="btn btn-primary" type="submit">Search</button>
+  </div>
+</form>
+
+{% if results is none %}
+  {# landing state — no query yet #}
+{% elif total == 0 %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-search fs-1 opacity-25"></i>
+    <p class="mt-2">No results for <strong>{{ q }}</strong>.</p>
+  </div>
+</div>
+{% else %}
+<p class="text-muted small mb-3">{{ total }} result{{ 's' if total != 1 }} for <strong>{{ q }}</strong></p>
+
+{% macro section(title, icon, color, items) %}
+{% if items %}
+<div class="card mb-3">
+  <div class="card-header">
+    <i class="bi {{ icon }} me-1 text-{{ color }}"></i> {{ title }}
+    <span class="badge bg-secondary ms-1">{{ items|length }}</span>
+  </div>
+  <div class="list-group list-group-flush">
+    {{ caller() }}
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% call section('Research Groups', 'bi-people-fill', 'primary', results.groups) %}
+  {% for g in results.groups %}
+  <a href="{{ url_for('group_detail', id=g.id) }}"
+     class="list-group-item list-group-item-action py-2">
+    <span class="fw-semibold">{{ g.name }}</span>
+    {% if g.description %}
+    <span class="text-muted ms-2 small">{{ g.description[:100] }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+{% endcall %}
+
+{% call section('Researchers', 'bi-person-fill', 'success', results.researchers) %}
+  {% for r in results.researchers %}
+  <a href="{{ url_for('researcher_detail', id=r.id) }}"
+     class="list-group-item list-group-item-action py-2">
+    <span class="fw-semibold">{{ r.name }}</span>
+    <span class="text-muted ms-2 small">{{ r.group.name }}</span>
+    {% if r.email %}
+    <span class="text-muted ms-2 small"><i class="bi bi-envelope me-1"></i>{{ r.email }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+{% endcall %}
+
+{% call section('Projects', 'bi-folder-fill', 'warning', results.projects) %}
+  {% for p in results.projects %}
+  <a href="{{ url_for('project_detail', id=p.id) }}"
+     class="list-group-item list-group-item-action py-2">
+    <span class="fw-semibold">{{ p.name }}</span>
+    <span class="text-muted ms-2 small">{{ p.researcher.name }} · {{ p.researcher.group.name }}</span>
+    {% if p.description %}
+    <div class="text-muted small">{{ p.description[:100] }}</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+{% endcall %}
+
+{% call section('Workflow Runs', 'bi-play-circle-fill', 'danger', results.runs) %}
+  {% for r in results.runs %}
+  <a href="{{ url_for('run_detail', id=r.id) }}"
+     class="list-group-item list-group-item-action py-2">
+    <span class="fw-semibold">{{ r.workflow_name }}</span>
+    {% if r.workflow_tag %}
+    <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ r.workflow_tag }}</span>
+    {% endif %}
+    <span class="badge bg-{{ r.status_color }} ms-1" style="font-size:.7rem;">{{ r.status_label }}</span>
+    <span class="text-muted ms-2 small">{{ r.project.name }} · {{ r.run_date.strftime('%Y-%m-%d') }}</span>
+    {% if r.description %}
+    <div class="text-muted small">{{ r.description[:100] }}</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+{% endcall %}
+
+{% call section('Scripts', 'bi-file-code-fill', 'info', results.scripts) %}
+  {% for s in results.scripts %}
+  <a href="{{ url_for('script_detail', id=s.id) }}"
+     class="list-group-item list-group-item-action py-2">
+    <span class="fw-semibold">{{ s.original_filename }}</span>
+    <span class="badge bg-{{ s.language_color }} ms-1" style="font-size:.7rem;">{{ s.language }}</span>
+    <span class="text-muted ms-2 small">{{ s.project.name }}</span>
+    {% if s.description %}
+    <span class="text-muted ms-2 small">— {{ s.description[:80] }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+{% endcall %}
+
+{% endif %}
+{% endblock %}

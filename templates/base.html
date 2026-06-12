@@ -79,7 +79,17 @@
       <img src="{{ url_for('static', filename='logo.png') }}" alt="NGS Tracker" height="32">
       NGS Tracker
     </a>
-    <ul class="navbar-nav ms-auto">
+    <form class="d-flex ms-auto me-3" method="GET" action="{{ url_for('search') }}" style="width:260px;">
+      <div class="input-group input-group-sm">
+        <input class="form-control" type="search" name="q"
+               value="{{ request.args.get('q', '') if request.endpoint == 'search' else '' }}"
+               placeholder="Search…">
+        <button class="btn btn-outline-secondary" type="submit">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </form>
+    <ul class="navbar-nav">
       <li class="nav-item">
         <a class="nav-link text-secondary" href="{{ url_for('setup') }}" title="Settings">
           <i class="bi bi-gear"></i> Settings

@@ -168,6 +168,14 @@ FILE_TYPES = {
 BACKUP_LOCATIONS = ["Local", "RCS", "RFS"]
 
 
+RUN_STATUSES = {
+    "completed": ("Completed", "success"),
+    "running": ("Running", "warning"),
+    "pending": ("Pending", "secondary"),
+    "failed": ("Failed", "danger"),
+}
+
+
 class WorkflowRun(db.Model):
     __tablename__ = "workflow_run"
     id = db.Column(db.Integer, primary_key=True)
@@ -176,6 +184,7 @@ class WorkflowRun(db.Model):
     workflow_tag = db.Column(db.String(50), default="")
     description = db.Column(db.Text, default="")
     trashed = db.Column(db.Boolean, default=False, nullable=False)
+    status = db.Column(db.String(20), default="completed", nullable=False)
     run_date = db.Column(db.DateTime, default=_now)
     notes = db.Column(db.Text, default="")
     backup_local = db.Column(db.Boolean, default=False)
@@ -191,6 +200,14 @@ class WorkflowRun(db.Model):
         cascade="all, delete-orphan",
         order_by="AttachedFile.uploaded_at",
     )
+
+    @property
+    def status_label(self):
+        return RUN_STATUSES.get(self.status, ("Unknown", "secondary"))[0]
+
+    @property
+    def status_color(self):
+        return RUN_STATUSES.get(self.status, ("Unknown", "secondary"))[1]
 
     @property
     def backup_labels(self):
