@@ -1,3 +1,4 @@
+import gzip
 import json
 import os
 import uuid
@@ -39,6 +40,8 @@ from models import (
 SETTINGS_DIR = Path.home() / ".ngs-tracker"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 WORKFLOWS_FILE = SETTINGS_DIR / "workflows.yaml"
+LOG_FILE = SETTINGS_DIR / "changes.log"
+_LOG_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 # Legacy location (app directory) — migrated on first load if found.
 _LEGACY_SETTINGS = Path(__file__).parent / "settings.json"
 DEFAULT_DB = SETTINGS_DIR / "ngs_tracker.db"
@@ -69,6 +72,22 @@ _DEFAULT_WORKFLOWS = [
     {"name": "smallRNA-seq", "url": "https://github.com/niekwit/smallRNA-seq"},
     {"name": "tt-seq", "url": "https://github.com/niekwit/tt-seq"},
 ]
+
+
+# ── Change log ────────────────────────────────────────────────────────────────
+
+
+def _db_log(action: str, model: str, record_id: int, detail: str) -> None:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    if LOG_FILE.exists() and LOG_FILE.stat().st_size >= _LOG_MAX_BYTES:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        archive = LOG_FILE.with_name(f"changes.{ts}.log.gz")
+        with open(LOG_FILE, "rb") as f_in, gzip.open(archive, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+        LOG_FILE.unlink()
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOG_FILE, "a") as f:
+        f.write(f"{ts} | {action:<8} | {model:<20} | id={record_id:<6} | {detail}\n")
 
 
 # ── Settings helpers ──────────────────────────────────────────────────────────
@@ -370,6 +389,7 @@ def group_new():
         group = ResearchGroup(name=name, description=description)
         db.session.add(group)
         db.session.commit()
+        _db_log("CREATE", "ResearchGroup", group.id, group.name)
         flash(f'Research group "{name}" created.', "success")
         return redirect(url_for("group_detail", id=group.id))
     return render_template("groups/form.html", group=None)
@@ -392,6 +412,7 @@ def group_edit(id):
         group.name = name
         group.description = request.form.get("description", "").strip()
         db.session.commit()
+        _db_log("UPDATE", "ResearchGroup", id, group.name)
         flash("Group updated.", "success")
         return redirect(url_for("group_detail", id=id))
     return render_template("groups/form.html", group=group)
@@ -402,6 +423,7 @@ def group_delete(id):
     group = db.get_or_404(ResearchGroup, id)
     group.trashed = True
     db.session.commit()
+    _db_log("TRASH", "ResearchGroup", group.id, group.name)
     flash(f'Group "{group.name}" moved to trash.', "success")
     return redirect(url_for("groups_list"))
 
@@ -442,6 +464,12 @@ def researcher_new():
         researcher = Researcher(name=name, email=email, group_id=group_id)
         db.session.add(researcher)
         db.session.commit()
+        _db_log(
+            "CREATE",
+            "Researcher",
+            researcher.id,
+            f"{researcher.name} (group: {researcher.group.name})",
+        )
         flash(f'Researcher "{name}" created.', "success")
         return redirect(url_for("researcher_detail", id=researcher.id))
 
@@ -467,6 +495,7 @@ def researcher_edit(id):
         researcher.email = request.form.get("email", "").strip()
         researcher.group_id = request.form.get("group_id", type=int)
         db.session.commit()
+        _db_log("UPDATE", "Researcher", id, researcher.name)
         flash("Researcher updated.", "success")
         return redirect(url_for("researcher_detail", id=id))
     return render_template(
@@ -482,6 +511,7 @@ def researcher_delete(id):
     researcher = db.get_or_404(Researcher, id)
     researcher.trashed = True
     db.session.commit()
+    _db_log("TRASH", "Researcher", researcher.id, researcher.name)
     flash(f'Researcher "{researcher.name}" moved to trash.', "success")
     return redirect(url_for("group_detail", id=researcher.group_id))
 
@@ -527,6 +557,12 @@ def project_new():
         )
         db.session.add(project)
         db.session.commit()
+        _db_log(
+            "CREATE",
+            "Project",
+            project.id,
+            f"{project.name} (researcher: {project.researcher.name})",
+        )
         flash(f'Project "{name}" created.', "success")
         return redirect(url_for("project_detail", id=project.id))
 
@@ -563,6 +599,7 @@ def project_edit(id):
         project.published = "published" in request.form
         project.publication_url = request.form.get("publication_url", "").strip()
         db.session.commit()
+        _db_log("UPDATE", "Project", id, project.name)
         flash("Project updated.", "success")
         return redirect(url_for("project_detail", id=id))
     return render_template(
@@ -578,6 +615,7 @@ def project_delete(id):
     project = db.get_or_404(Project, id)
     project.trashed = True
     db.session.commit()
+    _db_log("TRASH", "Project", project.id, project.name)
     flash(f'Project "{project.name}" moved to trash.', "success")
     return redirect(url_for("researcher_detail", id=project.researcher_id))
 
@@ -646,6 +684,12 @@ def run_new():
         )
         db.session.add(run)
         db.session.commit()
+        _db_log(
+            "CREATE",
+            "WorkflowRun",
+            run.id,
+            f"{run.workflow_name} (project: {run.project.name})",
+        )
         flash(f'Workflow run "{workflow_name}" created.', "success")
         return redirect(url_for("run_detail", id=run.id))
 
@@ -695,6 +739,7 @@ def run_edit(id):
         run.backup_rfs = "backup_rfs" in request.form
         run.backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
         db.session.commit()
+        _db_log("UPDATE", "WorkflowRun", id, f"{run.workflow_name} status={run.status}")
         flash("Workflow run updated.", "success")
         return redirect(url_for("run_detail", id=id))
     return render_template(
@@ -727,6 +772,12 @@ def run_clone(id):
     )
     db.session.add(clone)
     db.session.commit()
+    _db_log(
+        "CREATE",
+        "WorkflowRun",
+        clone.id,
+        f"{clone.workflow_name} (cloned from id={src.id})",
+    )
     flash(f'Run cloned from "{src.workflow_name}" — review and save.', "success")
     return redirect(url_for("run_edit", id=clone.id))
 
@@ -736,6 +787,7 @@ def run_delete(id):
     run = db.get_or_404(WorkflowRun, id)
     run.trashed = True
     db.session.commit()
+    _db_log("TRASH", "WorkflowRun", run.id, run.workflow_name)
     flash(f'Workflow run "{run.workflow_name}" moved to trash.', "success")
     return redirect(url_for("project_detail", id=run.project_id))
 
@@ -815,6 +867,12 @@ def run_upload(id):
     )
     db.session.add(attached)
     db.session.commit()
+    _db_log(
+        "CREATE",
+        "AttachedFile",
+        attached.id,
+        f"{original_name} [{file_type}] on run id={id}",
+    )
     flash(f'File "{original_name}" uploaded.', "success")
     return redirect(url_for("run_detail", id=id))
 
@@ -843,10 +901,12 @@ def file_view(id):
 def file_delete(id):
     f = db.get_or_404(AttachedFile, id)
     run_id = f.workflow_run_id
+    fname = f.original_filename
     _delete_file(f.stored_path)
     db.session.delete(f)
     db.session.commit()
-    flash(f'File "{f.original_filename}" deleted.', "success")
+    _db_log("DELETE", "AttachedFile", id, f"{fname} from run id={run_id}")
+    flash(f'File "{fname}" deleted.', "success")
     return redirect(url_for("run_detail", id=run_id))
 
 
@@ -884,6 +944,7 @@ def sample_upload(id):
     )
     db.session.add(sheet)
     db.session.commit()
+    _db_log("CREATE", "SampleSheet", sheet.id, f"{original_name} on run id={id}")
     flash(f'Sample sheet "{original_name}" uploaded.', "success")
     return redirect(url_for("run_detail", id=id))
 
@@ -907,9 +968,12 @@ def sample_download(id):
 def sample_delete(id):
     run = db.get_or_404(WorkflowRun, id)
     if run.sample_sheet:
+        sheet_id = run.sample_sheet.id
+        fname = run.sample_sheet.original_filename
         _delete_file(run.sample_sheet.stored_path)
         db.session.delete(run.sample_sheet)
         db.session.commit()
+        _db_log("DELETE", "SampleSheet", sheet_id, f"{fname} from run id={id}")
         flash("Sample sheet deleted.", "success")
     return redirect(url_for("run_detail", id=id))
 
@@ -952,6 +1016,12 @@ def script_upload(id):
     )
     db.session.add(script)
     db.session.commit()
+    _db_log(
+        "CREATE",
+        "ProjectScript",
+        script.id,
+        f"{original_name} ({language}) on project id={id}",
+    )
     flash(f'Script "{original_name}" uploaded.', "success")
     return redirect(url_for("project_detail", id=id))
 
@@ -978,6 +1048,7 @@ def script_delete(id):
     script = db.get_or_404(ProjectScript, id)
     script.trashed = True
     db.session.commit()
+    _db_log("TRASH", "ProjectScript", script.id, script.original_filename)
     flash(f'Script "{script.original_filename}" moved to trash.', "success")
     return redirect(url_for("project_detail", id=script.project_id))
 
@@ -1016,6 +1087,7 @@ def script_output_upload(id):
     )
     db.session.add(out)
     db.session.commit()
+    _db_log("CREATE", "ScriptOutputFile", out.id, f"{original_name} on script id={id}")
     flash(f'Output file "{original_name}" attached.', "success")
     return redirect(url_for("script_detail", id=id))
 
@@ -1036,6 +1108,9 @@ def script_output_edit(id):
     out = db.get_or_404(ScriptOutputFile, id)
     out.description = request.form.get("description", "").strip()
     db.session.commit()
+    _db_log(
+        "UPDATE", "ScriptOutputFile", id, f"{out.original_filename} description updated"
+    )
     flash("Description updated.", "success")
     return redirect(url_for("script_detail", id=out.script_id))
 
@@ -1044,10 +1119,12 @@ def script_output_edit(id):
 def script_output_delete(id):
     out = db.get_or_404(ScriptOutputFile, id)
     script_id = out.script_id
+    fname = out.original_filename
     _delete_file(out.stored_path)
     db.session.delete(out)
     db.session.commit()
-    flash(f'Output file "{out.original_filename}" deleted.', "success")
+    _db_log("DELETE", "ScriptOutputFile", id, f"{fname} from script id={script_id}")
+    flash(f'Output file "{fname}" deleted.', "success")
     return redirect(url_for("script_detail", id=script_id))
 
 
@@ -1091,6 +1168,7 @@ def trash_restore(type, id):
     record = db.get_or_404(model, id)
     record.trashed = False
     db.session.commit()
+    _db_log("RESTORE", model.__name__, id, _trash_label(type, record))
     flash("Record restored.", "success")
     return redirect(url_for("trash"))
 
@@ -1101,7 +1179,9 @@ def trash_delete(type, id):
     if not model:
         abort(404)
     record = db.get_or_404(model, id)
+    label = _trash_label(type, record)
     _trash_hard_delete(type, record)
+    _db_log("DELETE", model.__name__, id, f"{label} (permanent)")
     flash("Record permanently deleted.", "success")
     return redirect(url_for("trash"))
 
@@ -1110,9 +1190,22 @@ def trash_delete(type, id):
 def trash_empty():
     for type_key, model in _TRASH_MODELS.items():
         for record in model.query.filter_by(trashed=True).all():
+            label = _trash_label(type_key, record)
+            rec_id = record.id
             _trash_hard_delete(type_key, record)
+            _db_log("DELETE", model.__name__, rec_id, f"{label} (permanent)")
     flash("Trash emptied.", "success")
     return redirect(url_for("trash"))
+
+
+def _trash_label(type_key: str, record) -> str:
+    if type_key in ("group", "researcher", "project"):
+        return record.name
+    if type_key == "run":
+        return record.workflow_name
+    if type_key == "script":
+        return record.original_filename
+    return str(record.id)
 
 
 def _trash_hard_delete(type_key: str, record) -> None:
