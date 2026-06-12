@@ -26,16 +26,23 @@ class ResearchGroup(db.Model):
     @property
     def project_count(self):
         return sum(
-            1 for r in self.researchers if not r.trashed
-            for p in r.projects if not p.trashed
+            1
+            for r in self.researchers
+            if not r.trashed
+            for p in r.projects
+            if not p.trashed
         )
 
     @property
     def run_count(self):
         return sum(
-            1 for r in self.researchers if not r.trashed
-            for p in r.projects if not p.trashed
-            for run in p.workflow_runs if not run.trashed
+            1
+            for r in self.researchers
+            if not r.trashed
+            for p in r.projects
+            if not p.trashed
+            for run in p.workflow_runs
+            if not run.trashed
         )
 
 
@@ -61,7 +68,9 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, default="")
-    researcher_id = db.Column(db.Integer, db.ForeignKey("researcher.id"), nullable=False)
+    researcher_id = db.Column(
+        db.Integer, db.ForeignKey("researcher.id"), nullable=False
+    )
     created_at = db.Column(db.DateTime, default=_now)
     published = db.Column(db.Boolean, default=False)
     publication_url = db.Column(db.String(500), default="")
@@ -84,31 +93,32 @@ class Project(db.Model):
     def sorted_runs(self):
         return sorted(
             (r for r in self.workflow_runs if not r.trashed),
-            key=lambda r: r.run_date, reverse=True,
+            key=lambda r: r.run_date,
+            reverse=True,
         )
 
 
 SCRIPT_LANGUAGES = {
-    ".py":   "Python",
-    ".r":    "R",
-    ".R":    "R",
-    ".sh":   "Shell",
+    ".py": "Python",
+    ".r": "R",
+    ".R": "R",
+    ".sh": "Shell",
     ".bash": "Bash",
-    ".pl":   "Perl",
-    ".m":    "MATLAB",
-    ".jl":   "Julia",
-    ".nb":   "Jupyter",
-    ".ipynb":"Jupyter",
+    ".pl": "Perl",
+    ".m": "MATLAB",
+    ".jl": "Julia",
+    ".nb": "Jupyter",
+    ".ipynb": "Jupyter",
 }
 
 SCRIPT_LANGUAGE_COLORS = {
-    "Python":  "primary",
-    "R":       "danger",
-    "Shell":   "secondary",
-    "Bash":    "secondary",
-    "Perl":    "warning",
-    "MATLAB":  "warning",
-    "Julia":   "success",
+    "Python": "primary",
+    "R": "danger",
+    "Shell": "secondary",
+    "Bash": "secondary",
+    "Perl": "warning",
+    "MATLAB": "warning",
+    "Julia": "success",
     "Jupyter": "info",
 }
 
@@ -139,7 +149,9 @@ class ProjectScript(db.Model):
 class ScriptOutputFile(db.Model):
     __tablename__ = "script_output_file"
     id = db.Column(db.Integer, primary_key=True)
-    script_id = db.Column(db.Integer, db.ForeignKey("project_script.id"), nullable=False)
+    script_id = db.Column(
+        db.Integer, db.ForeignKey("project_script.id"), nullable=False
+    )
     original_filename = db.Column(db.String(255), nullable=False)
     stored_path = db.Column(db.String(500), nullable=False)
     description = db.Column(db.String(255), default="")
@@ -214,7 +226,9 @@ class WorkflowRun(db.Model):
 class AttachedFile(db.Model):
     __tablename__ = "attached_file"
     id = db.Column(db.Integer, primary_key=True)
-    workflow_run_id = db.Column(db.Integer, db.ForeignKey("workflow_run.id"), nullable=False)
+    workflow_run_id = db.Column(
+        db.Integer, db.ForeignKey("workflow_run.id"), nullable=False
+    )
     original_filename = db.Column(db.String(255), nullable=False)
     stored_path = db.Column(db.String(500), nullable=False)
     file_type = db.Column(db.String(50), default="other")
@@ -234,5 +248,6 @@ class AttachedFile(db.Model):
     def config_dict(self):
         if self.parsed_config:
             import json
+
             return json.loads(self.parsed_config)
         return None

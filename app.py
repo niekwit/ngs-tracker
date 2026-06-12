@@ -21,20 +21,29 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from models import (
-    FILE_TYPES, WORKFLOWS, SCRIPT_LANGUAGES,
-    AttachedFile, Project, ProjectScript, ScriptOutputFile,
-    Researcher, ResearchGroup, WorkflowRun, db,
+    FILE_TYPES,
+    WORKFLOWS,
+    SCRIPT_LANGUAGES,
+    AttachedFile,
+    Project,
+    ProjectScript,
+    ScriptOutputFile,
+    Researcher,
+    ResearchGroup,
+    WorkflowRun,
+    db,
 )
 
 # Settings live in the user's home directory so they survive re-clones.
-SETTINGS_DIR  = Path.home() / ".ngs-tracker"
+SETTINGS_DIR = Path.home() / ".ngs-tracker"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 # Legacy location (app directory) — migrated on first load if found.
 _LEGACY_SETTINGS = Path(__file__).parent / "settings.json"
-DEFAULT_DB      = SETTINGS_DIR / "ngs_tracker.db"
+DEFAULT_DB = SETTINGS_DIR / "ngs_tracker.db"
 
 
 # ── Settings helpers ──────────────────────────────────────────────────────────
+
 
 def load_settings() -> dict:
     # Migrate from old app-directory location on first run after upgrade
@@ -67,6 +76,7 @@ def get_storage_path() -> Path:
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
+
 
 def create_app() -> Flask:
     app = Flask(__name__)
@@ -113,6 +123,7 @@ app = create_app()
 
 # ── Guards ────────────────────────────────────────────────────────────────────
 
+
 @app.before_request
 def require_setup():
     if request.endpoint in ("setup", "static"):
@@ -123,25 +134,35 @@ def require_setup():
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
+
 @app.route("/")
 def index():
-    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    groups = (
+        ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    )
     recent_runs = (
         WorkflowRun.query.filter_by(trashed=False)
-        .order_by(WorkflowRun.run_date.desc()).limit(8).all()
+        .order_by(WorkflowRun.run_date.desc())
+        .limit(8)
+        .all()
     )
     stats = {
         "groups": ResearchGroup.query.filter_by(trashed=False).count(),
         "researchers": Researcher.query.filter_by(trashed=False).count(),
         "projects": Project.query.filter_by(trashed=False).count(),
         "runs": WorkflowRun.query.filter_by(trashed=False).count(),
-        "files": AttachedFile.query.count() + ProjectScript.query.count() + ScriptOutputFile.query.count(),
+        "files": AttachedFile.query.count()
+        + ProjectScript.query.count()
+        + ScriptOutputFile.query.count(),
         "file_size": _format_file_size(_total_file_size()),
     }
-    return render_template("index.html", groups=groups, recent_runs=recent_runs, stats=stats)
+    return render_template(
+        "index.html", groups=groups, recent_runs=recent_runs, stats=stats
+    )
 
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
+
 
 @app.route("/setup", methods=["GET", "POST"])
 def setup():
@@ -161,7 +182,10 @@ def setup():
             return redirect(url_for("setup"))
 
         save_settings({"storage_path": storage_path, "db_path": db_path})
-        flash("Settings saved. Restart the server for the database path to take effect.", "success")
+        flash(
+            "Settings saved. Restart the server for the database path to take effect.",
+            "success",
+        )
         return redirect(url_for("index"))
 
     settings = load_settings()
@@ -169,14 +193,19 @@ def setup():
         "storage_path": settings.get("storage_path", str(SETTINGS_DIR / "uploads")),
         "db_path": settings.get("db_path", str(DEFAULT_DB)),
     }
-    return render_template("setup.html", settings=defaults, settings_file=str(SETTINGS_FILE))
+    return render_template(
+        "setup.html", settings=defaults, settings_file=str(SETTINGS_FILE)
+    )
 
 
 # ── List views ────────────────────────────────────────────────────────────────
 
+
 @app.route("/groups")
 def groups_list():
-    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    groups = (
+        ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    )
     return render_template("groups/list.html", groups=groups)
 
 
@@ -200,21 +229,25 @@ def projects_list():
 
     projects = (
         Project.query.filter_by(trashed=False)
-        .join(Researcher).filter(Researcher.trashed == False)
-        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
+        .join(Researcher)
+        .filter(Researcher.trashed == False)
+        .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .all()
     )
 
     key_map = {
-        "name":       lambda p: p.name.lower(),
+        "name": lambda p: p.name.lower(),
         "researcher": lambda p: p.researcher.name.lower(),
-        "group":      lambda p: p.researcher.group.name.lower(),
-        "runs":       lambda p: sum(1 for r in p.workflow_runs if not r.trashed),
-        "published":  lambda p: p.published,
+        "group": lambda p: p.researcher.group.name.lower(),
+        "runs": lambda p: sum(1 for r in p.workflow_runs if not r.trashed),
+        "published": lambda p: p.published,
     }
     projects.sort(key=key_map.get(sort, key_map["name"]), reverse=reverse)
 
-    return render_template("projects/list.html", projects=projects, sort=sort, dir=direction)
+    return render_template(
+        "projects/list.html", projects=projects, sort=sort, dir=direction
+    )
 
 
 @app.route("/runs")
@@ -226,12 +259,12 @@ def runs_list():
     runs = WorkflowRun.query.filter_by(trashed=False).all()
 
     key_map = {
-        "workflow":   lambda r: r.workflow_name.lower(),
-        "project":    lambda r: r.project.name.lower(),
+        "workflow": lambda r: r.workflow_name.lower(),
+        "project": lambda r: r.project.name.lower(),
         "researcher": lambda r: r.project.researcher.name.lower(),
-        "date":       lambda r: r.run_date,
-        "backup":     lambda r: len(r.backup_labels),
-        "files":      lambda r: len(r.attached_files),
+        "date": lambda r: r.run_date,
+        "backup": lambda r: len(r.backup_labels),
+        "files": lambda r: len(r.attached_files),
     }
     runs.sort(key=key_map.get(sort, key_map["date"]), reverse=reverse)
 
@@ -297,9 +330,12 @@ def _delete_group_files(group: ResearchGroup) -> None:
 
 # ── Researchers ───────────────────────────────────────────────────────────────
 
+
 @app.route("/researchers/new", methods=["GET", "POST"])
 def researcher_new():
-    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    groups = (
+        ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    )
     if not groups:
         flash("Create a research group first.", "warning")
         return redirect(url_for("group_new"))
@@ -312,14 +348,21 @@ def researcher_new():
         group_id = request.form.get("group_id", type=int)
         if not name or not group_id:
             flash("Name and group are required.", "danger")
-            return render_template("researchers/form.html", researcher=None, groups=groups, preselected=preselected)
+            return render_template(
+                "researchers/form.html",
+                researcher=None,
+                groups=groups,
+                preselected=preselected,
+            )
         researcher = Researcher(name=name, email=email, group_id=group_id)
         db.session.add(researcher)
         db.session.commit()
         flash(f'Researcher "{name}" created.', "success")
         return redirect(url_for("researcher_detail", id=researcher.id))
 
-    return render_template("researchers/form.html", researcher=None, groups=groups, preselected=preselected)
+    return render_template(
+        "researchers/form.html", researcher=None, groups=groups, preselected=preselected
+    )
 
 
 @app.route("/researchers/<int:id>")
@@ -331,7 +374,9 @@ def researcher_detail(id):
 @app.route("/researchers/<int:id>/edit", methods=["GET", "POST"])
 def researcher_edit(id):
     researcher = db.get_or_404(Researcher, id)
-    groups = ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    groups = (
+        ResearchGroup.query.filter_by(trashed=False).order_by(ResearchGroup.name).all()
+    )
     if request.method == "POST":
         researcher.name = request.form.get("name", "").strip()
         researcher.email = request.form.get("email", "").strip()
@@ -339,7 +384,12 @@ def researcher_edit(id):
         db.session.commit()
         flash("Researcher updated.", "success")
         return redirect(url_for("researcher_detail", id=id))
-    return render_template("researchers/form.html", researcher=researcher, groups=groups, preselected=researcher.group_id)
+    return render_template(
+        "researchers/form.html",
+        researcher=researcher,
+        groups=groups,
+        preselected=researcher.group_id,
+    )
 
 
 @app.route("/researchers/<int:id>/delete", methods=["POST"])
@@ -353,11 +403,13 @@ def researcher_delete(id):
 
 # ── Projects ──────────────────────────────────────────────────────────────────
 
+
 @app.route("/projects/new", methods=["GET", "POST"])
 def project_new():
     researchers = (
         Researcher.query.filter_by(trashed=False)
-        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
+        .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name)
         .all()
     )
@@ -373,23 +425,40 @@ def project_new():
         researcher_id = request.form.get("researcher_id", type=int)
         if not name or not researcher_id:
             flash("Name and researcher are required.", "danger")
-            return render_template("projects/form.html", project=None, researchers=researchers, preselected=preselected)
+            return render_template(
+                "projects/form.html",
+                project=None,
+                researchers=researchers,
+                preselected=preselected,
+            )
         published = "published" in request.form
         publication_url = request.form.get("publication_url", "").strip()
-        project = Project(name=name, description=description, researcher_id=researcher_id,
-                          published=published, publication_url=publication_url)
+        project = Project(
+            name=name,
+            description=description,
+            researcher_id=researcher_id,
+            published=published,
+            publication_url=publication_url,
+        )
         db.session.add(project)
         db.session.commit()
         flash(f'Project "{name}" created.', "success")
         return redirect(url_for("project_detail", id=project.id))
 
-    return render_template("projects/form.html", project=None, researchers=researchers, preselected=preselected)
+    return render_template(
+        "projects/form.html",
+        project=None,
+        researchers=researchers,
+        preselected=preselected,
+    )
 
 
 @app.route("/projects/<int:id>")
 def project_detail(id):
     project = db.get_or_404(Project, id)
-    return render_template("projects/detail.html", project=project, script_languages=SCRIPT_LANGUAGES)
+    return render_template(
+        "projects/detail.html", project=project, script_languages=SCRIPT_LANGUAGES
+    )
 
 
 @app.route("/projects/<int:id>/edit", methods=["GET", "POST"])
@@ -397,7 +466,8 @@ def project_edit(id):
     project = db.get_or_404(Project, id)
     researchers = (
         Researcher.query.filter_by(trashed=False)
-        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
+        .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name)
         .all()
     )
@@ -410,7 +480,12 @@ def project_edit(id):
         db.session.commit()
         flash("Project updated.", "success")
         return redirect(url_for("project_detail", id=id))
-    return render_template("projects/form.html", project=project, researchers=researchers, preselected=project.researcher_id)
+    return render_template(
+        "projects/form.html",
+        project=project,
+        researchers=researchers,
+        preselected=project.researcher_id,
+    )
 
 
 @app.route("/projects/<int:id>/delete", methods=["POST"])
@@ -424,12 +499,15 @@ def project_delete(id):
 
 # ── Workflow Runs ─────────────────────────────────────────────────────────────
 
+
 @app.route("/runs/new", methods=["GET", "POST"])
 def run_new():
     projects = (
         Project.query.filter_by(trashed=False)
-        .join(Researcher).filter(Researcher.trashed == False)
-        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
+        .join(Researcher)
+        .filter(Researcher.trashed == False)
+        .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name, Project.name)
         .all()
     )
@@ -455,7 +533,14 @@ def run_new():
 
         if not workflow_name or not project_id:
             flash("Workflow name and project are required.", "danger")
-            return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES, workflows=WORKFLOWS)
+            return render_template(
+                "runs/form.html",
+                run=None,
+                projects=projects,
+                preselected=preselected,
+                file_types=FILE_TYPES,
+                workflows=WORKFLOWS,
+            )
 
         run = WorkflowRun(
             project_id=project_id,
@@ -476,13 +561,22 @@ def run_new():
         flash(f'Workflow run "{workflow_name}" created.', "success")
         return redirect(url_for("run_detail", id=run.id))
 
-    return render_template("runs/form.html", run=None, projects=projects, preselected=preselected, file_types=FILE_TYPES, workflows=WORKFLOWS)
+    return render_template(
+        "runs/form.html",
+        run=None,
+        projects=projects,
+        preselected=preselected,
+        file_types=FILE_TYPES,
+        workflows=WORKFLOWS,
+    )
 
 
 @app.route("/runs/<int:id>")
 def run_detail(id):
     run = db.get_or_404(WorkflowRun, id)
-    return render_template("runs/detail.html", run=run, file_types=FILE_TYPES, workflows=WORKFLOWS)
+    return render_template(
+        "runs/detail.html", run=run, file_types=FILE_TYPES, workflows=WORKFLOWS
+    )
 
 
 @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
@@ -490,8 +584,10 @@ def run_edit(id):
     run = db.get_or_404(WorkflowRun, id)
     projects = (
         Project.query.filter_by(trashed=False)
-        .join(Researcher).filter(Researcher.trashed == False)
-        .join(ResearchGroup).filter(ResearchGroup.trashed == False)
+        .join(Researcher)
+        .filter(Researcher.trashed == False)
+        .join(ResearchGroup)
+        .filter(ResearchGroup.trashed == False)
         .order_by(ResearchGroup.name, Researcher.name, Project.name)
         .all()
     )
@@ -510,7 +606,14 @@ def run_edit(id):
         db.session.commit()
         flash("Workflow run updated.", "success")
         return redirect(url_for("run_detail", id=id))
-    return render_template("runs/form.html", run=run, projects=projects, preselected=run.project_id, file_types=FILE_TYPES, workflows=WORKFLOWS)
+    return render_template(
+        "runs/form.html",
+        run=run,
+        projects=projects,
+        preselected=run.project_id,
+        file_types=FILE_TYPES,
+        workflows=WORKFLOWS,
+    )
 
 
 @app.route("/runs/<int:id>/delete", methods=["POST"])
@@ -523,6 +626,7 @@ def run_delete(id):
 
 
 # ── File Attachments ──────────────────────────────────────────────────────────
+
 
 @app.route("/runs/<int:id>/upload", methods=["POST"])
 def run_upload(id):
@@ -544,7 +648,9 @@ def run_upload(id):
     stored_path = run_dir / stored_name
     file.save(str(stored_path))
 
-    parsed_config = _parse_snakemake_config(stored_path) if file_type == "config" else None
+    parsed_config = (
+        _parse_snakemake_config(stored_path) if file_type == "config" else None
+    )
 
     attached = AttachedFile(
         workflow_run_id=id,
@@ -582,6 +688,7 @@ def file_delete(id):
 
 # ── Project Scripts ───────────────────────────────────────────────────────────
 
+
 @app.route("/projects/<int:id>/scripts/upload", methods=["POST"])
 def script_upload(id):
     project = db.get_or_404(Project, id)
@@ -595,7 +702,11 @@ def script_upload(id):
 
     original_name = secure_filename(file.filename)
     ext = Path(original_name).suffix.lower()
-    language = SCRIPT_LANGUAGES.get(ext) or SCRIPT_LANGUAGES.get(Path(original_name).suffix) or "Other"
+    language = (
+        SCRIPT_LANGUAGES.get(ext)
+        or SCRIPT_LANGUAGES.get(Path(original_name).suffix)
+        or "Other"
+    )
 
     script_dir = get_storage_path() / "projects" / str(id) / "scripts"
     script_dir.mkdir(parents=True, exist_ok=True)
@@ -623,7 +734,9 @@ def script_download(id):
     stored = Path(script.stored_path)
     if not stored.exists():
         abort(404)
-    return send_file(str(stored), as_attachment=True, download_name=script.original_filename)
+    return send_file(
+        str(stored), as_attachment=True, download_name=script.original_filename
+    )
 
 
 @app.route("/scripts/<int:id>")
@@ -653,7 +766,14 @@ def script_output_upload(id):
     description = request.form.get("description", "").strip()
     original_name = secure_filename(file.filename)
 
-    out_dir = get_storage_path() / "projects" / str(script.project_id) / "scripts" / str(id) / "outputs"
+    out_dir = (
+        get_storage_path()
+        / "projects"
+        / str(script.project_id)
+        / "scripts"
+        / str(id)
+        / "outputs"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     stored_name = f"{uuid.uuid4().hex}_{original_name}"
@@ -678,7 +798,9 @@ def script_output_download(id):
     stored = Path(out.stored_path)
     if not stored.exists():
         abort(404)
-    return send_file(str(stored), as_attachment=True, download_name=out.original_filename)
+    return send_file(
+        str(stored), as_attachment=True, download_name=out.original_filename
+    )
 
 
 @app.route("/script-outputs/<int:id>/edit", methods=["POST"])
@@ -704,22 +826,30 @@ def script_output_delete(id):
 # ── Trash ─────────────────────────────────────────────────────────────────────
 
 _TRASH_MODELS = {
-    "group":      ResearchGroup,
+    "group": ResearchGroup,
     "researcher": Researcher,
-    "project":    Project,
-    "run":        WorkflowRun,
-    "script":     ProjectScript,
+    "project": Project,
+    "run": WorkflowRun,
+    "script": ProjectScript,
 }
 
 
 @app.route("/trash")
 def trash():
     items = {
-        "groups":      ResearchGroup.query.filter_by(trashed=True).order_by(ResearchGroup.name).all(),
-        "researchers": Researcher.query.filter_by(trashed=True).order_by(Researcher.name).all(),
-        "projects":    Project.query.filter_by(trashed=True).order_by(Project.name).all(),
-        "runs":        WorkflowRun.query.filter_by(trashed=True).order_by(WorkflowRun.run_date.desc()).all(),
-        "scripts":     ProjectScript.query.filter_by(trashed=True).order_by(ProjectScript.original_filename).all(),
+        "groups": ResearchGroup.query.filter_by(trashed=True)
+        .order_by(ResearchGroup.name)
+        .all(),
+        "researchers": Researcher.query.filter_by(trashed=True)
+        .order_by(Researcher.name)
+        .all(),
+        "projects": Project.query.filter_by(trashed=True).order_by(Project.name).all(),
+        "runs": WorkflowRun.query.filter_by(trashed=True)
+        .order_by(WorkflowRun.run_date.desc())
+        .all(),
+        "scripts": ProjectScript.query.filter_by(trashed=True)
+        .order_by(ProjectScript.original_filename)
+        .all(),
     }
     total = sum(len(v) for v in items.values())
     return render_template("trash.html", items=items, total=total)
@@ -786,6 +916,7 @@ def _trash_hard_delete(type_key: str, record) -> None:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _parse_snakemake_config(path: Path) -> str | None:
     """Parse a Snakemake YAML config, drop the 'resources' section, return as JSON."""
