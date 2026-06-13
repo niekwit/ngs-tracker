@@ -82,6 +82,13 @@ class Project(db.Model):
         lazy=True,
         cascade="all, delete-orphan",
     )
+    samples = db.relationship(
+        "Sample",
+        backref="project",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="Sample.name",
+    )
     scripts = db.relationship(
         "ProjectScript",
         backref="project",
@@ -204,6 +211,11 @@ class WorkflowRun(db.Model):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    run_samples = db.relationship(
+        "RunSample",
+        back_populates="run",
+        cascade="all, delete-orphan",
+    )
     attached_files = db.relationship(
         "AttachedFile",
         backref="run",
@@ -302,3 +314,34 @@ class AttachedFile(db.Model):
 
             return json.loads(self.parsed_config)
         return None
+
+
+class Sample(db.Model):
+    __tablename__ = "sample"
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500), default="")
+    created_at = db.Column(db.DateTime, default=_now)
+    run_samples = db.relationship(
+        "RunSample",
+        back_populates="sample",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def sorted_runs(self):
+        return sorted(
+            self.run_samples,
+            key=lambda rs: rs.run.run_date,
+            reverse=True,
+        )
+
+
+class RunSample(db.Model):
+    __tablename__ = "run_sample"
+    id = db.Column(db.Integer, primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey("workflow_run.id"), nullable=False)
+    sample_id = db.Column(db.Integer, db.ForeignKey("sample.id"), nullable=False)
+    run = db.relationship("WorkflowRun", back_populates="run_samples")
+    sample = db.relationship("Sample", back_populates="run_samples")

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Confirm Samples — {{ run.workflow_name }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('project_detail', id=run.project_id) }}">{{ run.project.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('run_detail', id=run.id) }}">{{ run.workflow_name }}</a>
+    </li>
+    <li class="breadcrumb-item active">Confirm Samples</li>
+  </ol>
+</nav>
+
+<h4 class="fw-bold mb-1"><i class="bi bi-person-badge me-1"></i> Confirm Sample Tracking</h4>
+<p class="text-muted mb-3">
+  Select the column that contains sample identifiers. Uncheck any samples you don't want to
+  track, and rename them if needed. New samples will be created under
+  <strong>{{ run.project.name }}</strong>; existing ones will just be linked.
+</p>
+
+<!-- Column selector -->
+<form method="GET" class="mb-3 d-flex align-items-center gap-2">
+  <label class="form-label fw-semibold mb-0 text-nowrap">Sample name column:</label>
+  <select class="form-select form-select-sm w-auto" name="col" onchange="this.form.submit()">
+    {% for i in range(headers|length) %}
+    <option value="{{ i }}" {% if i == col %}selected{% endif %}>
+      {{ headers[i] }}{% if i == 0 %} (default){% endif %}
+    </option>
+    {% endfor %}
+  </select>
+  <span class="text-muted small">{{ extracted|length }} unique value{{ 's' if extracted|length != 1 }}</span>
+</form>
+
+<form method="POST">
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-table me-1"></i> Extracted Samples</span>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-xs btn-outline-secondary" id="check-all">Check all</button>
+        <button type="button" class="btn btn-xs btn-outline-secondary" id="uncheck-all">Uncheck all</button>
+      </div>
+    </div>
+
+    {% if extracted %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:2.5rem;"></th>
+            <th>Sample name in sheet</th>
+            <th>Track as</th>
+            <th style="width:8rem;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for name in extracted %}
+          {% set is_existing = name in project_samples %}
+          {% set is_linked = name in already_linked %}
+          <tr>
+            <td class="text-center">
+              <input class="form-check-input sample-cb" type="checkbox"
+                     name="include_{{ loop.index0 }}" value="1"
+                     {% if is_existing or is_linked %}checked{% else %}checked{% endif %}>
+            </td>
+            <td class="text-muted small font-monospace">{{ name }}</td>
+            <td>
+              <input type="text" class="form-control form-control-sm"
+                     name="name_{{ loop.index0 }}"
+                     value="{{ name }}">
+            </td>
+            <td>
+              {% if is_linked %}
+              <span class="badge bg-primary">already linked</span>
+              {% elif is_existing %}
+              <span class="badge bg-success">existing</span>
+              {% else %}
+              <span class="badge bg-light text-dark border">new</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center py-4 text-muted">
+      <p class="mb-0">No values found in column <strong>{{ headers[col] }}</strong>. Try a different column.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="d-flex gap-2">
+    {% if extracted %}
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg me-1"></i> Confirm &amp; Link Samples
+    </button>
+    {% endif %}
+    <a href="{{ url_for('run_detail', id=run.id) }}" class="btn btn-outline-secondary">
+      Skip for now
+    </a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('check-all').addEventListener('click', function() {
+  document.querySelectorAll('.sample-cb').forEach(cb => cb.checked = true);
+});
+document.getElementById('uncheck-all').addEventListener('click', function() {
+  document.querySelectorAll('.sample-cb').forEach(cb => cb.checked = false);
+});
+</script>
+{% endblock %}

@@ -125,8 +125,11 @@ def register(app):
         db.session.add(sheet)
         db.session.commit()
         db_log("CREATE", "SampleSheet", sheet.id, f"{original_name} on run id={id}")
-        flash(f'Sample sheet "{original_name}" uploaded.', "success")
-        return redirect(url_for("run_detail", id=id))
+        flash(
+            f'Sample sheet "{original_name}" uploaded — confirm samples below.',
+            "success",
+        )
+        return redirect(url_for("sample_confirm", id=id))
 
     @app.route("/runs/<int:id>/samples/download")
     def sample_download(id):
@@ -143,7 +146,7 @@ def register(app):
         )
 
     @app.route("/runs/<int:id>/samples/delete", methods=["POST"])
-    def sample_delete(id):
+    def sample_sheet_delete(id):
         run = db.get_or_404(WorkflowRun, id)
         if run.sample_sheet:
             sheet_id = run.sample_sheet.id

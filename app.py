@@ -19,6 +19,7 @@ import routes.groups
 import routes.projects
 import routes.researchers
 import routes.runs
+import routes.samples
 import routes.scripts
 import routes.system
 import routes.trash
@@ -94,6 +95,7 @@ routes.researchers.register(app)
 routes.projects.register(app)
 routes.runs.register(app)
 routes.files.register(app)
+routes.samples.register(app)
 routes.scripts.register(app)
 routes.trash.register(app)
 routes.system.register(app)
