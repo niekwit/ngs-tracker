@@ -4,3 +4,4 @@ uploads/
 __pycache__/
 *.pyc
 .env
+docs/_build/

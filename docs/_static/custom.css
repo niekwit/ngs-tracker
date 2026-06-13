@@ -1,0 +1,63 @@
+/* ── Logo sizing ──────────────────────────────────────────────────────────── */
+.sidebar-brand img {
+    max-height: 56px;
+    width: auto;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+/* Slightly bolder sidebar links for readability */
+.sidebar-tree .reference {
+    font-weight: 450;
+}
+
+/* ── Code blocks ──────────────────────────────────────────────────────────── */
+/* Match Bootstrap monospace stack */
+pre, code {
+    font-size: 0.875em;
+}
+
+/* ── Admonition tweaks ────────────────────────────────────────────────────── */
+.admonition.note > .admonition-title {
+    background-color: rgba(13, 110, 253, 0.12);
+}
+
+.admonition.tip > .admonition-title {
+    background-color: rgba(25, 135, 84, 0.12);
+}
+
+.admonition.warning > .admonition-title {
+    background-color: rgba(255, 193, 7, 0.2);
+}
+
+/* ── Table styling — match Bootstrap table-bordered ──────────────────────── */
+table.docutils {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9em;
+}
+
+table.docutils th,
+table.docutils td {
+    border: 1px solid var(--color-background-border);
+    padding: 0.45rem 0.75rem;
+    vertical-align: top;
+}
+
+table.docutils thead th {
+    background-color: var(--color-background-secondary);
+    font-weight: 600;
+}
+
+/* ── Dark mode overrides ──────────────────────────────────────────────────── */
+[data-theme="dark"] .sidebar-brand {
+    background-color: #1a1d20;
+}
+
+[data-theme="dark"] table.docutils thead th {
+    background-color: #2b3035;
+}
+
+/* ── Content width ────────────────────────────────────────────────────────── */
+.content {
+    max-width: 860px;
+}

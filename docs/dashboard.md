@@ -1,0 +1,66 @@
+# Dashboard, search & trash
+
+## Dashboard
+
+The dashboard (`/`) is the home page. It provides a live overview of the entire database.
+
+### Stats row
+
+Five summary cards at the top show total counts for Groups, Researchers, Projects, Runs, and Files. Clicking the **Files** card opens a pie chart broken down by file type (Config, QC, Results, etc.).
+
+### Groups panel
+
+A quick-reference list of all research groups with researcher and project counts, linking directly to each group's detail page.
+
+### Recent runs
+
+The eight most recently added workflow runs, with links to the run and its parent project.
+
+### Status breakdown
+
+A donut chart showing run counts by status:
+
+| Segment | Colour |
+|---|---|
+| Completed | Green |
+| Running | Yellow |
+| Pending | Grey |
+| Failed | Red |
+
+### Backup coverage
+
+A progress bar showing the percentage of runs with at least one backup location recorded, followed by a per-location breakdown using your configured backup locations.
+
+### Runs per month
+
+A bar chart of workflow run activity over the last 12 calendar months.
+
+---
+
+## Search
+
+The search box in the navbar searches all record types simultaneously:
+
+- Research Groups (name, description)
+- Researchers (name, email)
+- Projects (name, description)
+- Workflow Runs (workflow name, description, notes)
+- Scripts (filename, description)
+
+Results are grouped by type and link directly to each record.
+
+---
+
+## Trash
+
+Clicking **Delete** on any record moves it to the trash rather than permanently removing it. Access the trash via the **Trash** link in the sidebar.
+
+From the trash you can:
+
+- **Restore** — return the record to its normal location
+- **Delete** — permanently remove the record and all its associated files from disk
+- **Empty Trash** — permanently remove everything in the trash at once
+
+```{warning}
+Permanent deletion removes files from disk and cannot be undone.
+```
