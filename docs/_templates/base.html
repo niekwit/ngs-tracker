@@ -1,0 +1,6 @@
+{%- extends "!base.html" -%}
+{%- block body %}
+<script>
+  document.body.dataset.theme = localStorage.getItem("theme") || "light";
+</script>
+{%- endblock %}
