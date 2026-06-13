@@ -1,8 +1,11 @@
+import json
+
 from flask import flash, redirect, render_template, request, url_for
 
 from config import (
     add_default_tag,
     db_log,
+    get_backup_locations,
     get_current_user,
     get_default_tags,
     load_run_templates,
@@ -89,6 +92,7 @@ def register(app):
             file_types=FILE_TYPES,
             wf_urls=wf_urls,
             compare_runs=compare_runs,
+            backup_locations=get_backup_locations(),
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
@@ -121,12 +125,15 @@ def register(app):
             notes = request.form.get("notes", "").strip()
             status = request.form.get("status", "completed")
             run_date = _parse_datetime(request.form.get("run_date", ""))
-            backup_local = "backup_local" in request.form
-            backup_rcs = "backup_rcs" in request.form
-            backup_rfs = "backup_rfs" in request.form
-            backup_local_path = request.form.get("backup_local_path", "").strip()
-            backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
-            backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
+            selected_locs = set(request.form.getlist("backup_loc"))
+            backups = [
+                {
+                    "location": loc,
+                    "path": request.form.get(f"backup_path_{loc}", "").strip(),
+                }
+                for loc in get_backup_locations()
+                if loc in selected_locs
+            ]
 
             # Persist any newly created tags to the defaults list
             for t in request.form.get("new_tags", "").split(","):
@@ -147,6 +154,9 @@ def register(app):
                     run_statuses=RUN_STATUSES,
                     default_tags=default_tags,
                     extra_tags=[],
+                    backup_locations=get_backup_locations(),
+                    prefill=prefill,
+                    templates=load_run_templates(),
                 )
 
             run = WorkflowRun(
@@ -158,12 +168,7 @@ def register(app):
                 run_date=run_date,
                 notes=notes,
                 status=status,
-                backup_local=backup_local,
-                backup_local_path=backup_local_path,
-                backup_rcs=backup_rcs,
-                backup_rcs_path=backup_rcs_path,
-                backup_rfs=backup_rfs,
-                backup_rfs_path=backup_rfs_path,
+                backups=json.dumps(backups),
                 created_by=get_current_user(),
             )
             db.session.add(run)
@@ -188,6 +193,7 @@ def register(app):
             run_statuses=RUN_STATUSES,
             default_tags=default_tags,
             extra_tags=[],
+            backup_locations=get_backup_locations(),
             prefill=prefill,
             templates=load_run_templates(),
         )
@@ -211,12 +217,17 @@ def register(app):
             run.notes = request.form.get("notes", "").strip()
             run.status = request.form.get("status", "completed")
             run.run_date = _parse_datetime(request.form.get("run_date", ""))
-            run.backup_local = "backup_local" in request.form
-            run.backup_local_path = request.form.get("backup_local_path", "").strip()
-            run.backup_rcs = "backup_rcs" in request.form
-            run.backup_rcs_path = request.form.get("backup_rcs_path", "").strip()
-            run.backup_rfs = "backup_rfs" in request.form
-            run.backup_rfs_path = request.form.get("backup_rfs_path", "").strip()
+            selected_locs = set(request.form.getlist("backup_loc"))
+            run.backups = json.dumps(
+                [
+                    {
+                        "location": loc,
+                        "path": request.form.get(f"backup_path_{loc}", "").strip(),
+                    }
+                    for loc in get_backup_locations()
+                    if loc in selected_locs
+                ]
+            )
             for t in request.form.get("new_tags", "").split(","):
                 add_default_tag(t.strip())
             selected_tags = request.form.getlist("tags")
@@ -239,6 +250,9 @@ def register(app):
             run_statuses=RUN_STATUSES,
             default_tags=default_tags,
             extra_tags=extra_tags,
+            backup_locations=get_backup_locations(),
+            prefill=None,
+            templates=[],
         )
 
     @app.route("/runs/<int:id>/clone", methods=["POST"])
@@ -252,12 +266,7 @@ def register(app):
             tags=src.tags,
             notes=src.notes,
             status="pending",
-            backup_local=src.backup_local,
-            backup_local_path=src.backup_local_path,
-            backup_rcs=src.backup_rcs,
-            backup_rcs_path=src.backup_rcs_path,
-            backup_rfs=src.backup_rfs,
-            backup_rfs_path=src.backup_rfs_path,
+            backups=json.dumps(src.backups_list),
         )
         db.session.add(clone)
         db.session.commit()

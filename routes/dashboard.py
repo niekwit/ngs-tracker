@@ -8,15 +8,18 @@ from flask import flash, redirect, render_template, request, url_for
 from config import (
     DEFAULT_DB,
     SETTINGS_FILE,
+    add_backup_location,
     add_default_tag,
     add_user,
     db_log,
+    get_backup_locations,
     get_current_user,
     get_default_tags,
     get_storage_path,
     get_users,
     is_configured,
     load_settings,
+    remove_backup_location,
     remove_default_tag,
     remove_user,
     save_settings,
@@ -71,15 +74,13 @@ def register(app):
         }
 
         n_runs = len(all_runs)
-        n_backup = sum(
-            1 for r in all_runs if r.backup_local or r.backup_rcs or r.backup_rfs
-        )
+        n_backup = sum(1 for r in all_runs if r.backups_list)
         backup_pct = round(n_backup / n_runs * 100) if n_runs else 0
-        backup_by_loc = {
-            "Local": sum(1 for r in all_runs if r.backup_local),
-            "RCS": sum(1 for r in all_runs if r.backup_rcs),
-            "RFS": sum(1 for r in all_runs if r.backup_rfs),
-        }
+        backup_by_loc = defaultdict(int)
+        for r in all_runs:
+            for b in r.backups_list:
+                backup_by_loc[b["location"]] += 1
+        backup_locations = get_backup_locations()
 
         # Timeline: runs per month for the last 12 months
         now = datetime.utcnow()
@@ -117,6 +118,7 @@ def register(app):
             status_data=json.dumps(status_data),
             backup_pct=backup_pct,
             backup_by_loc=backup_by_loc,
+            backup_locations=backup_locations,
             n_backup=n_backup,
             n_runs=n_runs,
         )
@@ -167,6 +169,23 @@ def register(app):
                 flash(f'Tag "{name}" removed from defaults.', "success")
                 return redirect(url_for("setup"))
 
+            if action == "add_backup_loc":
+                name = request.form.get("loc_name", "").strip()
+                if not name:
+                    flash("Location name is required.", "danger")
+                elif name in get_backup_locations():
+                    flash(f'"{name}" already exists.', "warning")
+                else:
+                    add_backup_location(name)
+                    flash(f'Backup location "{name}" added.', "success")
+                return redirect(url_for("setup"))
+
+            if action == "remove_backup_loc":
+                name = request.form.get("loc_name", "")
+                remove_backup_location(name)
+                flash(f'Backup location "{name}" removed.', "success")
+                return redirect(url_for("setup"))
+
             # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
@@ -198,4 +217,5 @@ def register(app):
             users=get_users(),
             current_user=get_current_user(),
             default_tags=get_default_tags(),
+            backup_locations=get_backup_locations(),
         )

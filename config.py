@@ -189,6 +189,37 @@ def remove_default_tag(name: str) -> None:
     save_settings(s)
 
 
+# ── Backup locations ──────────────────────────────────────────────────────────
+
+_DEFAULT_BACKUP_LOCATIONS = ["Local", "RCS", "RFS"]
+
+
+def get_backup_locations() -> list[str]:
+    s = load_settings()
+    if "backup_locations" not in s:
+        s["backup_locations"] = _DEFAULT_BACKUP_LOCATIONS[:]
+        save_settings(s)
+    return s["backup_locations"]
+
+
+def add_backup_location(name: str) -> None:
+    name = name.strip()
+    if not name:
+        return
+    s = load_settings()
+    locs = s.get("backup_locations", _DEFAULT_BACKUP_LOCATIONS[:])
+    if name not in locs:
+        locs.append(name)
+        s["backup_locations"] = locs
+        save_settings(s)
+
+
+def remove_backup_location(name: str) -> None:
+    s = load_settings()
+    s["backup_locations"] = [l for l in s.get("backup_locations", []) if l != name]
+    save_settings(s)
+
+
 # ── Workflows ─────────────────────────────────────────────────────────────────
 
 

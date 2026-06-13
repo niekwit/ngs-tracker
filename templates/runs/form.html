@@ -177,30 +177,37 @@
 
           <div class="mb-4">
             <label class="form-label fw-semibold d-block">Backup status</label>
-            {% set locs = [
-              ('backup_local', 'Local', 'bi-hdd',   'text-success', run.backup_local_path if run else ''),
-              ('backup_rcs',   'RCS',   'bi-cloud',  'text-primary', run.backup_rcs_path  if run else ''),
-              ('backup_rfs',   'RFS',   'bi-cloud',  'text-info',    run.backup_rfs_path  if run else ''),
-            ] %}
+            {% set run_backup_map = {} %}
+            {% if run %}
+              {% for b in run.backups_list %}
+                {% if run_backup_map.update({b.location: b.path}) %}{% endif %}
+              {% endfor %}
+            {% endif %}
             <div class="d-flex flex-column gap-2">
-              {% for name, label, icon, color, path_val in locs %}
+              {% for loc in backup_locations %}
+              {% set checked = loc in run_backup_map %}
+              {% set path_val = run_backup_map.get(loc, '') %}
               <div class="d-flex align-items-center gap-2">
-                <div class="form-check mb-0" style="min-width:90px;">
+                <div class="form-check mb-0" style="min-width:120px;">
                   <input class="form-check-input backup-cb" type="checkbox"
-                         name="{{ name }}" id="{{ name }}"
-                         data-path-id="{{ name }}_path"
-                         {% if run and run[name] %}checked{% endif %}>
-                  <label class="form-check-label" for="{{ name }}">
-                    <i class="bi {{ icon }} me-1 {{ color }}"></i> {{ label }}
+                         name="backup_loc" id="backup_cb_{{ loop.index }}"
+                         value="{{ loc }}"
+                         data-path-id="backup_path_{{ loop.index }}"
+                         {% if checked %}checked{% endif %}>
+                  <label class="form-check-label" for="backup_cb_{{ loop.index }}">
+                    <i class="bi bi-hdd me-1 text-success"></i> {{ loc }}
                   </label>
                 </div>
                 <input type="text" class="form-control form-control-sm"
-                       name="{{ name }}_path" id="{{ name }}_path"
+                       name="backup_path_{{ loc }}" id="backup_path_{{ loop.index }}"
                        value="{{ path_val }}"
                        placeholder="Storage path…"
-                       {% if not (run and run[name]) %}style="opacity:.45;"{% endif %}>
+                       {% if not checked %}style="opacity:.45;"{% endif %}>
               </div>
               {% endfor %}
+              {% if not backup_locations %}
+              <p class="text-muted small mb-0">No backup locations configured — add some in <a href="{{ url_for('setup') }}">Settings</a>.</p>
+              {% endif %}
             </div>
           </div>
 

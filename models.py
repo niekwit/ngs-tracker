@@ -1,3 +1,5 @@
+import json
+
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -204,6 +206,7 @@ class WorkflowRun(db.Model):
     backup_rcs_path = db.Column(db.String(500), default="")
     backup_rfs = db.Column(db.Boolean, default=False)
     backup_rfs_path = db.Column(db.String(500), default="")
+    backups = db.Column(db.Text, nullable=True)  # JSON list of {location, path}
     tags = db.Column(db.String(500), default="")
     sample_sheet = db.relationship(
         "SampleSheet",
@@ -239,15 +242,22 @@ class WorkflowRun(db.Model):
         )
 
     @property
-    def backup_labels(self):
-        labels = []
+    def backups_list(self) -> list[dict]:
+        if self.backups is not None:
+            return json.loads(self.backups) if self.backups else []
+        # Fall back to legacy columns for records not yet migrated
+        result = []
         if self.backup_local:
-            labels.append("Local")
+            result.append({"location": "Local", "path": self.backup_local_path or ""})
         if self.backup_rcs:
-            labels.append("RCS")
+            result.append({"location": "RCS", "path": self.backup_rcs_path or ""})
         if self.backup_rfs:
-            labels.append("RFS")
-        return labels
+            result.append({"location": "RFS", "path": self.backup_rfs_path or ""})
+        return result
+
+    @property
+    def backup_labels(self) -> list[str]:
+        return [b["location"] for b in self.backups_list]
 
 
 class SampleSheet(db.Model):

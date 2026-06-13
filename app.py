@@ -60,12 +60,29 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
             "ALTER TABLE project_script ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN tags VARCHAR(500) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN backups TEXT",
         ]:
             try:
                 db.session.execute(db.text(stmt))
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        # One-time migration: copy legacy backup columns into the JSON field
+        from models import WorkflowRun
+
+        unmigrated = WorkflowRun.query.filter(WorkflowRun.backups.is_(None)).all()
+        for run in unmigrated:
+            blist = []
+            if run.backup_local:
+                blist.append({"location": "Local", "path": run.backup_local_path or ""})
+            if run.backup_rcs:
+                blist.append({"location": "RCS", "path": run.backup_rcs_path or ""})
+            if run.backup_rfs:
+                blist.append({"location": "RFS", "path": run.backup_rfs_path or ""})
+            run.backups = json.dumps(blist)
+        if unmigrated:
+            db.session.commit()
 
     return app
 
