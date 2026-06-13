@@ -18,13 +18,14 @@ and publication tracking.
 ## Features
 
 - Hierarchical records: Research Groups → Researchers → Projects → Workflow Runs
-- Attach Snakemake config files (YAML) — parsed and shown as a **collapsible tree** with expand/collapse all
-- **Config diff** — side-by-side comparison of two Snakemake configs with colour-coded changes
+- **Multi-system workflow support** — Snakemake, Nextflow, CWL, and Other; each workflow carries a coloured system badge throughout the UI
+- Attach config / params files — YAML/JSON files are parsed and shown as a **collapsible tree** with expand/collapse all
+- **Config diff** — side-by-side comparison of two parsed configs with colour-coded changes
 - Upload a sample sheet (CSV) per run with a **confirmation step** to link named samples to the run
 - **Sample-level tracking** — build a per-sample history across runs (raw → QC → alignment → variant calling)
-- User-configurable workflow list with per-workflow GitHub URLs (any account or organisation)
+- User-configurable workflow list with per-workflow GitHub URLs and **workflow system** (Snakemake / Nextflow / CWL / Other)
 - **Workflow run templates** — save a run's workflow + tag + description as a reusable template
-- Track backup status per run (Local / RCS / RFS) with storage paths
+- Track backup status per run with configurable locations and **local / remote type tags**
 - Run status tracking: Completed / Running / Pending / Failed
 - **Tags on runs** — pick from a configurable default list; new tags are saved to the list automatically
 - Clone a workflow run — copies all settings to a new run for quick re-use
@@ -116,22 +117,23 @@ Research Group
 
 ### Workflow Runs
 
-- Select a workflow from the configurable list; release tags are fetched live from GitHub
+- Select a workflow from the configurable list; a **coloured system badge** (Snakemake / Nextflow / CWL / Other) appears immediately when a workflow is chosen
+- Release tags are fetched live from GitHub and shown as a linked badge on the detail page
 - Optionally **load a saved template** to pre-fill workflow, tag, and description for recurring run types
-- Upload a Snakemake YAML config — settings are displayed as a **collapsible tree** (top-level keys open by default); a "Collapse/Expand all" button controls the whole tree
+- Upload a config or params file — YAML/JSON files are parsed and displayed as a **collapsible tree** (top-level keys open by default) with a "Collapse/Expand all" button; files that don't parse (e.g. Nextflow Groovy configs) are stored for download only
 - Upload a sample sheet (CSV) — rendered as a full scrollable table with sticky header; after upload a confirmation step lets you choose which CSV column contains sample names, rename entries, and link them to the run
-- Attach multiple files at once — choose a type (Snakemake Config, Sample Info, QC, Results, Other) and optional description for the whole batch
+- Attach multiple files at once — choose a type (Config, Sample Info, QC, Results, Other) and optional description for the whole batch
 - Image files (PNG, JPG, SVG, WEBP, …) and PDFs can be previewed inline without downloading
 - Track run status: **Completed**, **Running**, **Pending**, or **Failed**
 - **Tags** — tick any combination from the default list; type a new tag to add it to the defaults automatically; tags link to a filtered runs list
 - Clone a run to copy all its settings into a new run (status resets to Pending)
 - **Save as Template** — store the run's workflow + tag + description for reuse on future runs
-- Record backup locations (Local, RCS, RFS) with storage paths
+- Record backup locations with paths; each location is marked **local** or **remote** in Settings and shown with a distinct icon (HDD vs server)
 - Run notes support **Markdown** formatting (headings, lists, code blocks, links, tables)
 
 ### Config diff
 
-When a run has a parsed Snakemake config, a **Compare Config** button appears on the detail page. Select any other run that also has a config, and the comparison page shows a three-column table (key · value A · value B) with colour-coded rows:
+When a run has a parsed config file (YAML/JSON — works for any workflow system), a **Compare Config** button appears on the detail page. Select any other run that also has a parsed config, and the comparison page shows a three-column table (key · value A · value B) with colour-coded rows:
 
 | Colour | Meaning |
 |---|---|
@@ -162,16 +164,23 @@ An **Export** dropdown on every project, researcher, and group detail page gener
 
 ### Workflow management
 
-Workflows are stored in `~/.ngs-tracker/workflows.yaml` and created from a built-in default list on first run. Each entry has a **name** and the full **GitHub URL** of the repository:
+Workflows are stored in `~/.ngs-tracker/workflows.yaml` and created from a built-in default list on first run. Each entry has a **name**, the full **GitHub URL** of the repository, and a **system** tag:
 
 ```yaml
 - name: rna-seq-star-deseq2
   url: https://github.com/niekwit/rna-seq-star-deseq2
-- name: my-custom-workflow
-  url: https://github.com/some-other-org/my-custom-workflow
+  system: snakemake
+- name: my-nf-pipeline
+  url: https://github.com/some-org/my-nf-pipeline
+  system: nextflow
+- name: variant-calling-cwl
+  url: https://github.com/some-org/variant-calling-cwl
+  system: cwl
 ```
 
-Manage workflows via the **Workflows** page in the sidebar (add / remove) or by editing the YAML file directly. Any GitHub account or organisation is supported.
+Supported systems: `snakemake`, `nextflow`, `cwl`, `other`. Old entries without a `system` field are automatically migrated to `snakemake`.
+
+Manage workflows via the **Workflows** page in the sidebar (add / remove, with a system dropdown) or by editing the YAML file directly. Any GitHub account or organisation is supported. A coloured badge for the system is shown in the workflow list and throughout the run UI.
 
 ### Run templates
 
@@ -213,7 +222,7 @@ The dashboard shows:
 - **Groups panel** — quick overview of all research groups with researcher and project counts
 - **Recent runs** — the 8 most recently added workflow runs
 - **Status breakdown** — donut chart of run counts by status (Completed / Running / Pending / Failed)
-- **Backup coverage** — percentage of runs with at least one backup, a progress bar, and per-location counts (Local / RCS / RFS)
+- **Backup coverage** — percentage of runs with at least one backup, a progress bar, and per-location counts (reflects your configured backup locations)
 - **Runs per month** — bar chart of workflow run activity over the last 12 calendar months
 
 ---
