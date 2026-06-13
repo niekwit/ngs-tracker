@@ -1,5 +1,6 @@
 import gzip
 import json
+import os
 import shutil
 import subprocess
 import yaml
@@ -138,10 +139,16 @@ def load_settings() -> dict:
         SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
         shutil.copy2(_LEGACY_SETTINGS, SETTINGS_FILE)
         _LEGACY_SETTINGS.unlink(missing_ok=True)
+    settings: dict = {}
     if SETTINGS_FILE.exists():
         with open(SETTINGS_FILE) as f:
-            return json.load(f)
-    return {}
+            settings = json.load(f)
+    # Env var overrides — used by demo mode so the real settings.json is never touched
+    if os.environ.get("NGS_DB_PATH"):
+        settings["db_path"] = os.environ["NGS_DB_PATH"]
+    if os.environ.get("NGS_STORAGE_PATH"):
+        settings["storage_path"] = os.environ["NGS_STORAGE_PATH"]
+    return settings
 
 
 def save_settings(settings: dict) -> None:
