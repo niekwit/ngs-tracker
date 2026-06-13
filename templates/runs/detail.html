@@ -117,7 +117,7 @@
       <div class="card-header"><i class="bi bi-journal-text me-1"></i> Notes</div>
       <div class="card-body">
         {% if run.notes %}
-        <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; font-size: 0.875rem;">{{ run.notes }}</pre>
+        <div class="md-content">{{ run.notes }}</div>
         {% else %}
         <span class="text-muted">No notes recorded.</span>
         {% endif %}
