@@ -5,6 +5,9 @@
   </picture>
 </p>
 
+[![DOI](https://zenodo.org/badge/1266199288.svg)](https://doi.org/10.5281/zenodo.20677413)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 A browser-based web app for tracking bioinformatics projects and analyses.
 Data is organised as **Research Group → Researcher → Project → Workflow Run**,
 with support for custom analysis scripts, file attachments, backup status,
