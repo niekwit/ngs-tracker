@@ -86,13 +86,16 @@ def register(app):
             .all()
         )
 
+        backup_locations = get_backup_locations()
+        backed_up = {b["location"]: b["path"] for b in run.backups_list}
         return render_template(
             "runs/detail.html",
             run=run,
             file_types=FILE_TYPES,
             wf_urls=wf_urls,
             compare_runs=compare_runs,
-            backup_locations=get_backup_locations(),
+            backup_locations=backup_locations,
+            backed_up=backed_up,
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])

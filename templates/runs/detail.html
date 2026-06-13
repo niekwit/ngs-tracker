@@ -87,7 +87,6 @@
     <div class="card h-100">
       <div class="card-header"><i class="bi bi-shield-check me-1"></i> Backup Status</div>
       <div class="card-body">
-        {% set backed_up = {b.location: b.path for b in run.backups_list} %}
         <div class="d-flex flex-column gap-2">
           {% for loc in backup_locations %}
           <div>
