@@ -58,6 +58,29 @@ def register(app):
         file_type_counts["Script Outputs"] = ScriptOutputFile.query.count()
         file_type_counts = {k: v for k, v in file_type_counts.items() if v > 0}
 
+        # Status breakdown + backup coverage
+        all_runs = WorkflowRun.query.filter_by(trashed=False).all()
+        status_counts = defaultdict(int)
+        for r in all_runs:
+            status_counts[r.status] += 1
+        status_data = {
+            "Completed": status_counts.get("completed", 0),
+            "Running": status_counts.get("running", 0),
+            "Pending": status_counts.get("pending", 0),
+            "Failed": status_counts.get("failed", 0),
+        }
+
+        n_runs = len(all_runs)
+        n_backup = sum(
+            1 for r in all_runs if r.backup_local or r.backup_rcs or r.backup_rfs
+        )
+        backup_pct = round(n_backup / n_runs * 100) if n_runs else 0
+        backup_by_loc = {
+            "Local": sum(1 for r in all_runs if r.backup_local),
+            "RCS": sum(1 for r in all_runs if r.backup_rcs),
+            "RFS": sum(1 for r in all_runs if r.backup_rfs),
+        }
+
         # Timeline: runs per month for the last 12 months
         now = datetime.utcnow()
         months = []
@@ -91,6 +114,11 @@ def register(app):
             stats=stats,
             file_type_counts=json.dumps(file_type_counts),
             timeline_data=json.dumps(timeline_data),
+            status_data=json.dumps(status_data),
+            backup_pct=backup_pct,
+            backup_by_loc=backup_by_loc,
+            n_backup=n_backup,
+            n_runs=n_runs,
         )
 
     @app.route("/setup", methods=["GET", "POST"])
