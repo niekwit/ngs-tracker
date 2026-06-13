@@ -21,6 +21,12 @@
   <div>
     <h4 class="fw-bold mb-0">
       <i class="bi bi-play-circle-fill text-danger me-1"></i> {{ run.workflow_name }}
+      {% set sys_key = run.workflow_system or 'snakemake' %}
+      {% set sys = WORKFLOW_SYSTEMS.get(sys_key, WORKFLOW_SYSTEMS.other) %}
+      <span class="badge rounded-pill ms-1"
+            style="background:{{ sys.color }}; font-size:.72rem; font-weight:500; vertical-align:middle;">
+        {{ sys.label }}
+      </span>
       {% if run.workflow_tag %}
         {% set wf_url = wf_urls.get(run.workflow_name) %}
         {% if wf_url %}
@@ -274,7 +280,7 @@
 <div class="card mb-3">
   <div class="card-header d-flex align-items-center gap-2">
     <i class="bi bi-sliders text-primary"></i>
-    <span>Workflow Configuration</span>
+    <span>Configuration</span>
     <span class="text-muted small ms-1">— {{ cf.original_filename }}</span>
     <div class="ms-auto d-flex gap-2">
       <button class="btn btn-xs btn-outline-secondary" onclick="toggleCfg(this)">

@@ -9,6 +9,8 @@ from flask import flash, redirect, render_template, request, url_for
 from config import (
     LOG_FILE,
     SETTINGS_DIR,
+    WORKFLOW_SYSTEMS,
+    WORKFLOWS_FILE,
     add_run_template,
     delete_run_template,
     db_log,
@@ -29,12 +31,15 @@ def register(app):
             if action == "add":
                 name = request.form.get("name", "").strip()
                 url = request.form.get("url", "").strip()
+                system = request.form.get("system", "snakemake")
+                if system not in WORKFLOW_SYSTEMS:
+                    system = "other"
                 if not name or not url:
                     flash("Name and URL are required.", "danger")
                 elif any(w["name"] == name for w in workflows):
                     flash(f'Workflow "{name}" already exists.', "warning")
                 else:
-                    workflows.append({"name": name, "url": url})
+                    workflows.append({"name": name, "url": url, "system": system})
                     workflows.sort(key=lambda w: w["name"].lower())
                     save_workflows(workflows)
                     flash(f'Workflow "{name}" added.', "success")
@@ -49,6 +54,8 @@ def register(app):
             "workflows/manage.html",
             workflows=load_workflows(),
             templates=load_run_templates(),
+            workflow_systems=WORKFLOW_SYSTEMS,
+            workflows_file=str(WORKFLOWS_FILE),
         )
 
     @app.route("/templates/save", methods=["POST"])

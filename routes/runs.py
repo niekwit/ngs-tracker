@@ -139,6 +139,9 @@ def register(app):
                 for loc in get_backup_locations()
                 if loc["name"] in selected_locs
             ]
+            wf_list = load_workflows()
+            wf_systems = {w["name"]: w.get("system", "snakemake") for w in wf_list}
+            workflow_system = wf_systems.get(workflow_name, "other")
 
             # Persist any newly created tags to the defaults list
             for t in request.form.get("new_tags", "").split(","):
@@ -155,13 +158,14 @@ def register(app):
                     projects=projects,
                     preselected=preselected,
                     file_types=FILE_TYPES,
-                    workflows=load_workflows(),
+                    workflows=wf_list,
                     run_statuses=RUN_STATUSES,
                     default_tags=default_tags,
                     extra_tags=[],
                     backup_locations=get_backup_locations(),
                     prefill=prefill,
                     templates=load_run_templates(),
+                    wf_systems_json=json.dumps(wf_systems),
                 )
 
             run = WorkflowRun(
@@ -174,6 +178,7 @@ def register(app):
                 notes=notes,
                 status=status,
                 backups=json.dumps(backups),
+                workflow_system=workflow_system,
                 created_by=get_current_user(),
             )
             db.session.add(run)
@@ -188,19 +193,23 @@ def register(app):
             return redirect(url_for("run_detail", id=run.id))
 
         default_tags = get_default_tags()
+        wf_list = load_workflows()
         return render_template(
             "runs/form.html",
             run=None,
             projects=projects,
             preselected=preselected,
             file_types=FILE_TYPES,
-            workflows=load_workflows(),
+            workflows=wf_list,
             run_statuses=RUN_STATUSES,
             default_tags=default_tags,
             extra_tags=[],
             backup_locations=get_backup_locations(),
             prefill=prefill,
             templates=load_run_templates(),
+            wf_systems_json=json.dumps(
+                {w["name"]: w.get("system", "snakemake") for w in wf_list}
+            ),
         )
 
     @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
@@ -235,6 +244,10 @@ def register(app):
                     if loc["name"] in selected_locs
                 ]
             )
+            wf_systems = {
+                w["name"]: w.get("system", "snakemake") for w in load_workflows()
+            }
+            run.workflow_system = wf_systems.get(run.workflow_name, "other")
             for t in request.form.get("new_tags", "").split(","):
                 add_default_tag(t.strip())
             selected_tags = request.form.getlist("tags")
@@ -247,19 +260,23 @@ def register(app):
             return redirect(url_for("run_detail", id=id))
         default_tags = get_default_tags()
         extra_tags = [t for t in run.tag_list if t not in default_tags]
+        wf_list = load_workflows()
         return render_template(
             "runs/form.html",
             run=run,
             projects=projects,
             preselected=run.project_id,
             file_types=FILE_TYPES,
-            workflows=load_workflows(),
+            workflows=wf_list,
             run_statuses=RUN_STATUSES,
             default_tags=default_tags,
             extra_tags=extra_tags,
             backup_locations=get_backup_locations(),
             prefill=None,
             templates=[],
+            wf_systems_json=json.dumps(
+                {w["name"]: w.get("system", "snakemake") for w in wf_list}
+            ),
         )
 
     @app.route("/runs/<int:id>/clone", methods=["POST"])
@@ -274,6 +291,7 @@ def register(app):
             notes=src.notes,
             status="pending",
             backups=json.dumps(src.backups_list),
+            workflow_system=src.workflow_system or "snakemake",
         )
         db.session.add(clone)
         db.session.commit()

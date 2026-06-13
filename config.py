@@ -14,31 +14,85 @@ _LOG_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 _LEGACY_SETTINGS = Path(__file__).parent / "settings.json"
 DEFAULT_DB = SETTINGS_DIR / "ngs_tracker.db"
 
+WORKFLOW_SYSTEMS = {
+    "snakemake": {"label": "Snakemake", "color": "#2e8b57"},
+    "nextflow": {"label": "Nextflow", "color": "#ef5b25"},
+    "cwl": {"label": "CWL", "color": "#4a86e8"},
+    "other": {"label": "Other", "color": "#6c757d"},
+}
+
 _DEFAULT_WORKFLOWS = [
-    {"name": "atac-seq", "url": "https://github.com/niekwit/atac-seq"},
-    {"name": "chip-seq", "url": "https://github.com/niekwit/chip-seq"},
-    {"name": "crispr-screens", "url": "https://github.com/niekwit/crispr-screens"},
-    {"name": "cut_and_run", "url": "https://github.com/niekwit/cut_and_run"},
-    {"name": "damid-seq", "url": "https://github.com/niekwit/damid-seq"},
-    {"name": "eCLIP", "url": "https://github.com/niekwit/eCLIP"},
-    {"name": "gps-orfeome", "url": "https://github.com/niekwit/gps-orfeome"},
-    {"name": "methyl-seq", "url": "https://github.com/niekwit/methyl-seq"},
-    {"name": "remora", "url": "https://github.com/niekwit/remora"},
-    {"name": "rip-seq", "url": "https://github.com/niekwit/rip-seq"},
+    {
+        "name": "atac-seq",
+        "url": "https://github.com/niekwit/atac-seq",
+        "system": "snakemake",
+    },
+    {
+        "name": "chip-seq",
+        "url": "https://github.com/niekwit/chip-seq",
+        "system": "snakemake",
+    },
+    {
+        "name": "crispr-screens",
+        "url": "https://github.com/niekwit/crispr-screens",
+        "system": "snakemake",
+    },
+    {
+        "name": "cut_and_run",
+        "url": "https://github.com/niekwit/cut_and_run",
+        "system": "snakemake",
+    },
+    {
+        "name": "damid-seq",
+        "url": "https://github.com/niekwit/damid-seq",
+        "system": "snakemake",
+    },
+    {"name": "eCLIP", "url": "https://github.com/niekwit/eCLIP", "system": "snakemake"},
+    {
+        "name": "gps-orfeome",
+        "url": "https://github.com/niekwit/gps-orfeome",
+        "system": "snakemake",
+    },
+    {
+        "name": "methyl-seq",
+        "url": "https://github.com/niekwit/methyl-seq",
+        "system": "snakemake",
+    },
+    {
+        "name": "remora",
+        "url": "https://github.com/niekwit/remora",
+        "system": "snakemake",
+    },
+    {
+        "name": "rip-seq",
+        "url": "https://github.com/niekwit/rip-seq",
+        "system": "snakemake",
+    },
     {
         "name": "rna-seq-salmon-deseq2",
         "url": "https://github.com/niekwit/rna-seq-salmon-deseq2",
+        "system": "snakemake",
     },
     {
         "name": "rna-seq-star-deseq2",
         "url": "https://github.com/niekwit/rna-seq-star-deseq2",
+        "system": "snakemake",
     },
     {
         "name": "rna-seq-star-tetranscripts",
         "url": "https://github.com/niekwit/rna-seq-star-tetranscripts",
+        "system": "snakemake",
     },
-    {"name": "smallRNA-seq", "url": "https://github.com/niekwit/smallRNA-seq"},
-    {"name": "tt-seq", "url": "https://github.com/niekwit/tt-seq"},
+    {
+        "name": "smallRNA-seq",
+        "url": "https://github.com/niekwit/smallRNA-seq",
+        "system": "snakemake",
+    },
+    {
+        "name": "tt-seq",
+        "url": "https://github.com/niekwit/tt-seq",
+        "system": "snakemake",
+    },
 ]
 
 
@@ -246,7 +300,16 @@ def load_workflows() -> list:
         with open(WORKFLOWS_FILE, "w") as f:
             yaml.dump(_DEFAULT_WORKFLOWS, f, default_flow_style=False, sort_keys=False)
     with open(WORKFLOWS_FILE) as f:
-        return yaml.safe_load(f) or []
+        workflows = yaml.safe_load(f) or []
+    # Migrate old entries that predate the system field
+    changed = False
+    for wf in workflows:
+        if "system" not in wf:
+            wf["system"] = "snakemake"
+            changed = True
+    if changed:
+        save_workflows(workflows)
+    return workflows
 
 
 def save_workflows(workflows: list) -> None:

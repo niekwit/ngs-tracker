@@ -6,6 +6,7 @@ from flask import request as flask_request
 
 from config import (
     DEFAULT_DB,
+    WORKFLOW_SYSTEMS,
     get_current_user,
     get_version,
     is_configured,
@@ -61,6 +62,7 @@ def create_app() -> Flask:
             "ALTER TABLE project_script ADD COLUMN created_by VARCHAR(100) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN tags VARCHAR(500) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN backups TEXT",
+            "ALTER TABLE workflow_run ADD COLUMN workflow_system VARCHAR(20) DEFAULT 'snakemake'",
         ]:
             try:
                 db.session.execute(db.text(stmt))
@@ -91,6 +93,7 @@ app = create_app()
 app.jinja_env.filters["from_json"] = json.loads
 app.jinja_env.globals["app_version"] = get_version()
 app.jinja_env.globals["github_url"] = "https://github.com/niekwit/ngs-tracker"
+app.jinja_env.globals["WORKFLOW_SYSTEMS"] = WORKFLOW_SYSTEMS
 
 
 @app.context_processor

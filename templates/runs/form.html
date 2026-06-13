@@ -107,12 +107,15 @@
               <select class="form-select" name="workflow_name" id="workflow_name" required>
                 <option value="">— select workflow —</option>
                 {% for wf in workflows %}
-                <option value="{{ wf.name }}" data-url="{{ wf.url }}"
+                <option value="{{ wf.name }}"
+                        data-url="{{ wf.url }}"
+                        data-system="{{ wf.get('system', 'snakemake') }}"
                   {% if (run and run.workflow_name == wf.name) or (not run and prefill and prefill.workflow_name == wf.name) %}selected{% endif %}>
                   {{ wf.name }}
                 </option>
                 {% endfor %}
               </select>
+              <div id="wf-system-badge" class="mt-1"></div>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold d-flex align-items-center gap-2">
@@ -232,10 +235,25 @@
 {% block scripts %}
 <script>
 (function () {
+  const WF_SYSTEMS = {{ wf_systems_json | safe }};
+  const SYSTEM_META = {{ WORKFLOW_SYSTEMS | tojson }};
+
+  function updateSystemBadge(wfName) {
+    var badge = document.getElementById('wf-system-badge');
+    if (!wfName) { badge.innerHTML = ''; return; }
+    var sys = WF_SYSTEMS[wfName] || 'other';
+    var meta = SYSTEM_META[sys] || SYSTEM_META['other'];
+    badge.innerHTML = '<span class="badge rounded-pill" style="background:' + meta.color +
+      '; font-size:.75rem;">' + meta.label + '</span>';
+  }
+
   const wfSelect  = document.getElementById('workflow_name');
   const tagSelect = document.getElementById('workflow_tag');
   const spinner   = document.getElementById('tag-spinner');
   const hint      = document.getElementById('tag-hint');
+
+  // Show badge on initial load (edit page)
+  updateSystemBadge(wfSelect.value);
 
   function repoFromUrl(repoUrl) {
     // Extract "owner/repo" from any GitHub URL
@@ -300,6 +318,7 @@
   }
 
   wfSelect.addEventListener('change', function () {
+    updateSystemBadge(this.value);
     const url = this.options[this.selectedIndex]?.dataset.url || '';
     if (url) {
       fetchTags(url);

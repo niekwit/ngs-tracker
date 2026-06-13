@@ -18,15 +18,23 @@
   <div class="card-body">
     <form method="POST" class="row g-2 align-items-end">
       <input type="hidden" name="action" value="add">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label fw-semibold mb-1">Name <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-sm" name="name"
                placeholder="e.g. rna-seq-star-deseq2" required>
       </div>
-      <div class="col-md-6">
-        <label class="form-label fw-semibold mb-1">GitHub URL <span class="text-danger">*</span></label>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold mb-1">GitHub / Repository URL <span class="text-danger">*</span></label>
         <input type="url" class="form-control form-control-sm" name="url"
                placeholder="https://github.com/owner/repo" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">Workflow system</label>
+        <select class="form-select form-select-sm" name="system">
+          {% for key, meta in workflow_systems.items() %}
+          <option value="{{ key }}">{{ meta.label }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="col-md-2">
         <button type="submit" class="btn btn-success btn-sm w-100">
@@ -49,14 +57,22 @@
       <thead class="table-light">
         <tr>
           <th>Name</th>
+          <th>System</th>
           <th>Repository URL</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for wf in workflows %}
+        {% set sys = WORKFLOW_SYSTEMS.get(wf.get('system', 'snakemake'), WORKFLOW_SYSTEMS.other) %}
         <tr>
           <td class="fw-semibold align-middle">{{ wf.name }}</td>
+          <td class="align-middle">
+            <span class="badge rounded-pill"
+                  style="background:{{ sys.color }}; font-size:.75rem;">
+              {{ sys.label }}
+            </span>
+          </td>
           <td class="align-middle">
             <a href="{{ wf.url }}" target="_blank" rel="noopener"
                class="text-decoration-none text-muted small">

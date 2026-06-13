@@ -170,7 +170,7 @@ class ScriptOutputFile(db.Model):
 
 
 FILE_TYPES = {
-    "config": ("Snakemake Config", "primary"),
+    "config": ("Config", "primary"),
     "sample_info": ("Sample Info", "success"),
     "qc": ("QC", "info"),
     "results": ("Results", "purple"),
@@ -207,6 +207,7 @@ class WorkflowRun(db.Model):
     backup_rfs = db.Column(db.Boolean, default=False)
     backup_rfs_path = db.Column(db.String(500), default="")
     backups = db.Column(db.Text, nullable=True)  # JSON list of {location, path}
+    workflow_system = db.Column(db.String(20), default="snakemake")
     tags = db.Column(db.String(500), default="")
     sample_sheet = db.relationship(
         "SampleSheet",
