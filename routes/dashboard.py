@@ -171,12 +171,13 @@ def register(app):
 
             if action == "add_backup_loc":
                 name = request.form.get("loc_name", "").strip()
+                loc_type = request.form.get("loc_type", "remote")
                 if not name:
                     flash("Location name is required.", "danger")
-                elif name in get_backup_locations():
+                elif name in [l["name"] for l in get_backup_locations()]:
                     flash(f'"{name}" already exists.', "warning")
                 else:
-                    add_backup_location(name)
+                    add_backup_location(name, loc_type)
                     flash(f'Backup location "{name}" added.', "success")
                 return redirect(url_for("setup"))
 

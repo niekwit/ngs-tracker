@@ -119,11 +119,13 @@
         {% if backup_locations %}
         <div class="d-flex flex-wrap gap-2 mb-3">
           {% for loc in backup_locations %}
-          <form method="POST" class="d-inline" onsubmit="return confirm('Remove backup location &quot;{{ loc }}&quot;?')">
+          <form method="POST" class="d-inline" onsubmit="return confirm('Remove backup location &quot;{{ loc.name }}&quot;?')">
             <input type="hidden" name="action" value="remove_backup_loc">
-            <input type="hidden" name="loc_name" value="{{ loc }}">
-            <span class="badge bg-success text-dark d-inline-flex align-items-center gap-1" style="font-size:.82rem; color:#fff !important;">
-              <i class="bi bi-hdd"></i>{{ loc }}
+            <input type="hidden" name="loc_name" value="{{ loc.name }}">
+            <span class="badge bg-success d-inline-flex align-items-center gap-1" style="font-size:.82rem;">
+              <i class="bi {% if loc.type == 'local' %}bi-hdd{% else %}bi-server{% endif %}"></i>
+              {{ loc.name }}
+              <span class="badge bg-light text-secondary ms-1" style="font-size:.7rem; font-weight:400;">{{ loc.type }}</span>
               <button type="submit" class="btn-close btn-close-white ms-1" style="font-size:.55rem;" title="Remove"></button>
             </span>
           </form>
@@ -133,10 +135,26 @@
         <p class="text-muted small mb-3">No backup locations configured yet.</p>
         {% endif %}
 
-        <form method="POST" class="d-flex gap-2">
+        <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
           <input type="hidden" name="action" value="add_backup_loc">
           <input type="text" class="form-control form-control-sm" name="loc_name"
                  placeholder="e.g. HPC, NAS, External Drive" required style="max-width:220px;">
+          <div class="d-flex gap-3">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="radio" name="loc_type" id="loc_type_remote"
+                     value="remote" checked>
+              <label class="form-check-label small" for="loc_type_remote">
+                <i class="bi bi-server me-1"></i>Remote
+              </label>
+            </div>
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="radio" name="loc_type" id="loc_type_local"
+                     value="local">
+              <label class="form-check-label small" for="loc_type_local">
+                <i class="bi bi-hdd me-1"></i>Local
+              </label>
+            </div>
+          </div>
           <button type="submit" class="btn btn-sm btn-success text-nowrap">
             <i class="bi bi-plus-lg me-1"></i>Add
           </button>

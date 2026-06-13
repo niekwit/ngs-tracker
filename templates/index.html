@@ -148,10 +148,10 @@
         </div>
         <div class="d-flex gap-4 flex-wrap">
           {% for loc in backup_locations %}
-          {% set cnt = backup_by_loc.get(loc, 0) %}
+          {% set cnt = backup_by_loc.get(loc.name, 0) %}
           <div>
             <div class="fw-semibold" style="font-size:.85rem;">
-              <i class="bi bi-hdd me-1 text-success"></i>{{ loc }}
+              <i class="bi {% if loc.type == 'local' %}bi-hdd{% else %}bi-server{% endif %} me-1 text-success"></i>{{ loc.name }}
             </div>
             <div class="text-muted small">{{ cnt }} run{{ 's' if cnt != 1 }}</div>
           </div>

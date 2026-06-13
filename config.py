@@ -191,32 +191,49 @@ def remove_default_tag(name: str) -> None:
 
 # ── Backup locations ──────────────────────────────────────────────────────────
 
-_DEFAULT_BACKUP_LOCATIONS = ["Local", "RCS", "RFS"]
+_DEFAULT_BACKUP_LOCATIONS = [
+    {"name": "Local", "type": "local"},
+    {"name": "RCS", "type": "remote"},
+    {"name": "RFS", "type": "remote"},
+]
 
 
-def get_backup_locations() -> list[str]:
+def _migrate_backup_locs(locs: list) -> list[dict]:
+    """Upgrade old list[str] format to list[dict]."""
+    if locs and isinstance(locs[0], str):
+        return [{"name": l, "type": "remote"} for l in locs]
+    return locs
+
+
+def get_backup_locations() -> list[dict]:
     s = load_settings()
     if "backup_locations" not in s:
         s["backup_locations"] = _DEFAULT_BACKUP_LOCATIONS[:]
         save_settings(s)
-    return s["backup_locations"]
+        return _DEFAULT_BACKUP_LOCATIONS[:]
+    locs = _migrate_backup_locs(s["backup_locations"])
+    if locs != s["backup_locations"]:
+        s["backup_locations"] = locs
+        save_settings(s)
+    return locs
 
 
-def add_backup_location(name: str) -> None:
+def add_backup_location(name: str, loc_type: str = "remote") -> None:
     name = name.strip()
     if not name:
         return
     s = load_settings()
-    locs = s.get("backup_locations", _DEFAULT_BACKUP_LOCATIONS[:])
-    if name not in locs:
-        locs.append(name)
+    locs = _migrate_backup_locs(s.get("backup_locations", _DEFAULT_BACKUP_LOCATIONS[:]))
+    if name not in [l["name"] for l in locs]:
+        locs.append({"name": name, "type": loc_type})
         s["backup_locations"] = locs
         save_settings(s)
 
 
 def remove_backup_location(name: str) -> None:
     s = load_settings()
-    s["backup_locations"] = [l for l in s.get("backup_locations", []) if l != name]
+    locs = _migrate_backup_locs(s.get("backup_locations", []))
+    s["backup_locations"] = [l for l in locs if l["name"] != name]
     save_settings(s)
 
 

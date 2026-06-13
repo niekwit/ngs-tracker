@@ -88,6 +88,7 @@ def register(app):
 
         backup_locations = get_backup_locations()
         backed_up = {b["location"]: b["path"] for b in run.backups_list}
+        loc_names = [l["name"] for l in backup_locations]
         return render_template(
             "runs/detail.html",
             run=run,
@@ -96,6 +97,7 @@ def register(app):
             compare_runs=compare_runs,
             backup_locations=backup_locations,
             backed_up=backed_up,
+            loc_names=loc_names,
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
@@ -131,11 +133,11 @@ def register(app):
             selected_locs = set(request.form.getlist("backup_loc"))
             backups = [
                 {
-                    "location": loc,
-                    "path": request.form.get(f"backup_path_{loc}", "").strip(),
+                    "location": loc["name"],
+                    "path": request.form.get(f"backup_path_{loc['name']}", "").strip(),
                 }
                 for loc in get_backup_locations()
-                if loc in selected_locs
+                if loc["name"] in selected_locs
             ]
 
             # Persist any newly created tags to the defaults list
@@ -224,11 +226,13 @@ def register(app):
             run.backups = json.dumps(
                 [
                     {
-                        "location": loc,
-                        "path": request.form.get(f"backup_path_{loc}", "").strip(),
+                        "location": loc["name"],
+                        "path": request.form.get(
+                            f"backup_path_{loc['name']}", ""
+                        ).strip(),
                     }
                     for loc in get_backup_locations()
-                    if loc in selected_locs
+                    if loc["name"] in selected_locs
                 ]
             )
             for t in request.form.get("new_tags", "").split(","):
