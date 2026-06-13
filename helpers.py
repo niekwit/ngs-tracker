@@ -93,6 +93,32 @@ def _compare_configs(a: dict, b: dict) -> list[dict]:
     return rows
 
 
+def _project_disk_bytes(project) -> int:
+    total = 0
+    for run in project.workflow_runs:
+        for f in run.attached_files:
+            try:
+                total += Path(f.stored_path).stat().st_size
+            except OSError:
+                pass
+        if run.sample_sheet:
+            try:
+                total += Path(run.sample_sheet.stored_path).stat().st_size
+            except OSError:
+                pass
+    for script in project.scripts:
+        try:
+            total += Path(script.stored_path).stat().st_size
+        except OSError:
+            pass
+        for of in script.output_files:
+            try:
+                total += Path(of.stored_path).stat().st_size
+            except OSError:
+                pass
+    return total
+
+
 def _total_file_size() -> int:
     total = 0
     for model in (AttachedFile, ProjectScript, ScriptOutputFile):

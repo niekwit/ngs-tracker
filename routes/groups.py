@@ -1,7 +1,7 @@
 from flask import flash, redirect, render_template, request, url_for
 
 from config import db_log
-from helpers import _delete_group_files
+from helpers import _delete_group_files, _format_file_size, _project_disk_bytes
 from models import ResearchGroup, db
 
 
@@ -18,7 +18,14 @@ def register(app):
     @app.route("/groups/<int:id>")
     def group_detail(id):
         group = db.get_or_404(ResearchGroup, id)
-        return render_template("groups/detail.html", group=group)
+        researcher_sizes = {}
+        for r in group.researchers:
+            if not r.trashed:
+                total = sum(_project_disk_bytes(p) for p in r.projects if not p.trashed)
+                researcher_sizes[r.id] = _format_file_size(total)
+        return render_template(
+            "groups/detail.html", group=group, researcher_sizes=researcher_sizes
+        )
 
     @app.route("/groups/new", methods=["GET", "POST"])
     def group_new():

@@ -1,6 +1,7 @@
 from flask import flash, redirect, render_template, request, url_for
 
 from config import db_log
+from helpers import _format_file_size, _project_disk_bytes
 from models import SCRIPT_LANGUAGES, Project, ResearchGroup, Researcher, db
 
 
@@ -36,8 +37,12 @@ def register(app):
     @app.route("/projects/<int:id>")
     def project_detail(id):
         project = db.get_or_404(Project, id)
+        disk_usage = _format_file_size(_project_disk_bytes(project))
         return render_template(
-            "projects/detail.html", project=project, script_languages=SCRIPT_LANGUAGES
+            "projects/detail.html",
+            project=project,
+            script_languages=SCRIPT_LANGUAGES,
+            disk_usage=disk_usage,
         )
 
     @app.route("/projects/new", methods=["GET", "POST"])

@@ -68,6 +68,9 @@
           <span class="text-muted small">
             <i class="bi bi-play-circle me-1"></i>{{ active_runs|length }} run{{ 's' if active_runs|length != 1 }}
           </span>
+          <span class="text-muted small">
+            <i class="bi bi-hdd me-1"></i>{{ project_sizes.get(project.id, '0 B') }}
+          </span>
           {% if project.published %}
           <span class="badge bg-success" style="font-size:.65rem;">Published</span>
           {% endif %}

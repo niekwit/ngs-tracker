@@ -1,6 +1,7 @@
 from flask import flash, redirect, render_template, request, url_for
 
 from config import db_log
+from helpers import _format_file_size, _project_disk_bytes
 from models import ResearchGroup, Researcher, db
 
 
@@ -19,7 +20,16 @@ def register(app):
     @app.route("/researchers/<int:id>")
     def researcher_detail(id):
         researcher = db.get_or_404(Researcher, id)
-        return render_template("researchers/detail.html", researcher=researcher)
+        project_sizes = {
+            p.id: _format_file_size(_project_disk_bytes(p))
+            for p in researcher.projects
+            if not p.trashed
+        }
+        return render_template(
+            "researchers/detail.html",
+            researcher=researcher,
+            project_sizes=project_sizes,
+        )
 
     @app.route("/researchers/new", methods=["GET", "POST"])
     def researcher_new():
