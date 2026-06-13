@@ -14,6 +14,7 @@ from config import (
 from models import db
 
 import routes.dashboard
+import routes.export
 import routes.files
 import routes.groups
 import routes.projects
@@ -90,6 +91,7 @@ def require_setup():
 
 # Register all route modules
 routes.dashboard.register(app)
+routes.export.register(app)
 routes.groups.register(app)
 routes.researchers.register(app)
 routes.projects.register(app)

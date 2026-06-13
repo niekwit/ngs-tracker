@@ -22,6 +22,19 @@
     <a href="{{ url_for('researcher_new') }}?group_id={{ group.id }}" class="btn btn-primary btn-sm">
       <i class="bi bi-plus-lg me-1"></i> Add Researcher
     </a>
+    <div class="btn-group">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-download me-1"></i> Export
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{{ url_for('group_export', id=group.id, fmt='csv') }}">
+          <i class="bi bi-filetype-csv me-1"></i> CSV
+        </a></li>
+        <li><a class="dropdown-item" href="{{ url_for('group_export', id=group.id, fmt='md') }}">
+          <i class="bi bi-markdown me-1"></i> Markdown
+        </a></li>
+      </ul>
+    </div>
     <a href="{{ url_for('group_edit', id=group.id) }}" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-pencil me-1"></i> Edit
     </a>
