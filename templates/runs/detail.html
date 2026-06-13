@@ -225,25 +225,36 @@
 <!-- Workflow configuration (parsed from uploaded config files) -->
 {% set config_files = run.attached_files | selectattr('file_type', 'eq', 'config') | selectattr('config_dict') | list %}
 {% if config_files %}
-{% macro render_value(v) %}
-  {%- if v is mapping -%}
-    <table class="table table-sm table-bordered mb-0 config-nested">
-      {%- for ck, cv in v.items() -%}
-      <tr>
-        <td class="config-key text-nowrap">{{ ck }}</td>
-        <td>{{ render_value(cv) }}</td>
-      </tr>
-      {%- endfor -%}
-    </table>
-  {%- elif v is iterable and v is not string -%}
-    {%- for item in v -%}<div>{{ render_value(item) }}</div>{%- endfor -%}
-  {%- elif v is none -%}
-    <span class="text-muted fst-italic">null</span>
-  {%- elif v == "" -%}
-    <span class="text-muted fst-italic">""</span>
-  {%- else -%}
-    <code>{{ v }}</code>
-  {%- endif -%}
+{% macro render_cfg(d, depth) %}
+  {% for key, val in d.items() %}
+    {% if val is mapping %}
+    <details class="cfg-section mb-1" {% if depth == 0 %}open{% endif %}>
+      <summary class="cfg-summary">
+        <i class="bi bi-chevron-right cfg-arrow me-1"></i>
+        <span class="fw-semibold">{{ key }}</span>
+        <span class="text-muted ms-1" style="font-weight:normal;">({{ val|length }} key{{ 's' if val|length != 1 }})</span>
+      </summary>
+      <div class="ps-3 border-start border-secondary-subtle mt-1">
+        {{ render_cfg(val, depth + 1) }}
+      </div>
+    </details>
+    {% elif val is iterable and val is not string %}
+    <div class="cfg-row">
+      <span class="cfg-key">{{ key }}:</span>
+      {% if val %}
+        {% for item in val %}<code class="me-1">{{ item }}</code>{% endfor %}
+      {% else %}
+        <span class="text-muted fst-italic">[]</span>
+      {% endif %}
+    </div>
+    {% elif val is none %}
+    <div class="cfg-row"><span class="cfg-key">{{ key }}:</span> <span class="text-muted fst-italic">null</span></div>
+    {% elif val == "" %}
+    <div class="cfg-row"><span class="cfg-key">{{ key }}:</span> <span class="text-muted fst-italic">""</span></div>
+    {% else %}
+    <div class="cfg-row"><span class="cfg-key">{{ key }}:</span> <code>{{ val }}</code></div>
+    {% endif %}
+  {% endfor %}
 {% endmacro %}
 
 {% for cf in config_files %}
@@ -252,19 +263,17 @@
     <i class="bi bi-sliders text-primary"></i>
     <span>Workflow Configuration</span>
     <span class="text-muted small ms-1">— {{ cf.original_filename }}</span>
-    <a href="{{ url_for('file_download', id=cf.id) }}" class="btn btn-xs btn-outline-secondary ms-auto">
-      <i class="bi bi-download me-1"></i>Download
-    </a>
+    <div class="ms-auto d-flex gap-2">
+      <button class="btn btn-xs btn-outline-secondary" onclick="toggleCfg(this)">
+        <i class="bi bi-arrows-collapse me-1"></i>Collapse all
+      </button>
+      <a href="{{ url_for('file_download', id=cf.id) }}" class="btn btn-xs btn-outline-secondary">
+        <i class="bi bi-download me-1"></i>Download
+      </a>
+    </div>
   </div>
-  <div class="card-body p-0">
-    <table class="table table-sm table-bordered mb-0 config-root">
-      {% for key, value in cf.config_dict.items() %}
-      <tr>
-        <td class="config-key fw-semibold text-nowrap">{{ key }}</td>
-        <td>{{ render_value(value) }}</td>
-      </tr>
-      {% endfor %}
-    </table>
+  <div class="card-body py-2">
+    {{ render_cfg(cf.config_dict, 0) }}
   </div>
 </div>
 {% endfor %}
@@ -444,6 +453,25 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+.cfg-summary { cursor: pointer; list-style: none; font-size: .85rem; padding: .1rem 0; }
+.cfg-summary::-webkit-details-marker { display: none; }
+.cfg-arrow { font-size: .65rem; transition: transform .15s; vertical-align: middle; }
+details[open] > summary .cfg-arrow { transform: rotate(90deg); }
+.cfg-row { font-size: .85rem; margin-bottom: .2rem; }
+.cfg-key { font-weight: 600; color: #495057; margin-right: .3rem; }
+</style>
+<script>
+function toggleCfg(btn) {
+  var card = btn.closest('.card');
+  var details = card.querySelectorAll('details.cfg-section');
+  var anyOpen = Array.from(details).some(function(d) { return d.open; });
+  details.forEach(function(d) { d.open = !anyOpen; });
+  btn.innerHTML = anyOpen
+    ? '<i class="bi bi-arrows-expand me-1"></i>Expand all'
+    : '<i class="bi bi-arrows-collapse me-1"></i>Collapse all';
+}
+</script>
 <script>
 var imgModal = document.getElementById('imgModal');
 imgModal.addEventListener('show.bs.modal', function(e) {
