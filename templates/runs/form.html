@@ -13,12 +13,43 @@
   </ol>
 </nav>
 
+{% if not run and templates %}
+<div class="card mb-3 border-secondary-subtle">
+  <div class="card-header text-muted py-2" style="font-size:.85rem;">
+    <i class="bi bi-bookmark me-1"></i> Load from template
+  </div>
+  <div class="card-body py-2">
+    <form method="GET" action="{{ url_for('run_new') }}" class="d-flex gap-2 align-items-end">
+      {% if preselected %}
+      <input type="hidden" name="project_id" value="{{ preselected }}">
+      {% endif %}
+      <select class="form-select form-select-sm" name="template_id" style="max-width:320px;">
+        <option value="">— choose template —</option>
+        {% for t in templates %}
+        <option value="{{ t.id }}" {% if prefill and prefill.id == t.id %}selected{% endif %}>
+          {{ t.name }} <span class="text-muted">({{ t.workflow_name }}{% if t.workflow_tag %} {{ t.workflow_tag }}{% endif %})</span>
+        </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-right-circle me-1"></i> Load
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 <div class="row">
   <div class="col-md-8">
     <div class="card">
       <div class="card-header">
         <i class="bi bi-play-circle me-1"></i>
         {{ 'Edit Workflow Run' if run else 'New Workflow Run' }}
+        {% if prefill %}
+        <span class="badge bg-secondary ms-2" style="font-size:.72rem;">
+          <i class="bi bi-bookmark me-1"></i>{{ prefill.name }}
+        </span>
+        {% endif %}
       </div>
       <div class="card-body">
         <form method="POST">
@@ -77,7 +108,7 @@
                 <option value="">— select workflow —</option>
                 {% for wf in workflows %}
                 <option value="{{ wf.name }}" data-url="{{ wf.url }}"
-                  {% if run and run.workflow_name == wf.name %}selected{% endif %}>
+                  {% if (run and run.workflow_name == wf.name) or (not run and prefill and prefill.workflow_name == wf.name) %}selected{% endif %}>
                   {{ wf.name }}
                 </option>
                 {% endfor %}
@@ -89,7 +120,7 @@
                 <span id="tag-spinner" class="spinner-border spinner-border-sm text-secondary d-none" role="status"></span>
               </label>
               <select class="form-select" name="workflow_tag" id="workflow_tag"
-                      data-preselected="{{ run.workflow_tag if run else '' }}"
+                      data-preselected="{{ run.workflow_tag if run else (prefill.workflow_tag if prefill else '') }}"
                       disabled>
                 <option value="">— select workflow first —</option>
               </select>
@@ -100,7 +131,7 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Short description</label>
             <input type="text" class="form-control" name="description"
-                   value="{{ run.description if run else '' }}"
+                   value="{{ run.description if run else (prefill.description if prefill else '') }}"
                    placeholder="Brief summary of what this run does">
           </div>
 

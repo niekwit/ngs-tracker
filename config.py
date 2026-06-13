@@ -205,3 +205,32 @@ def save_workflows(workflows: list) -> None:
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     with open(WORKFLOWS_FILE, "w") as f:
         yaml.dump(workflows, f, default_flow_style=False, sort_keys=False)
+
+
+# ── Run templates ─────────────────────────────────────────────────────────────
+
+TEMPLATES_FILE = SETTINGS_DIR / "run_templates.json"
+
+
+def load_run_templates() -> list:
+    if TEMPLATES_FILE.exists():
+        with open(TEMPLATES_FILE) as f:
+            return json.load(f)
+    return []
+
+
+def save_run_templates(templates: list) -> None:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(TEMPLATES_FILE, "w") as f:
+        json.dump(templates, f, indent=2)
+
+
+def add_run_template(template: dict) -> None:
+    templates = load_run_templates()
+    templates.append(template)
+    save_run_templates(templates)
+
+
+def delete_run_template(tid: str) -> None:
+    templates = [t for t in load_run_templates() if t.get("id") != tid]
+    save_run_templates(templates)

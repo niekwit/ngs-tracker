@@ -85,4 +85,63 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Run templates -->
+<div class="card mt-3">
+  <div class="card-header d-flex align-items-center">
+    <i class="bi bi-bookmark me-1"></i> Run Templates
+    <span class="badge bg-secondary ms-1">{{ templates|length }}</span>
+  </div>
+  {% if templates %}
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Workflow</th>
+          <th>Tag</th>
+          <th>Description</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td class="fw-semibold align-middle">{{ t.name }}</td>
+          <td class="align-middle text-muted small">{{ t.workflow_name }}</td>
+          <td class="align-middle">
+            {% if t.workflow_tag %}
+            <span class="badge bg-dark" style="font-size:.7rem;">{{ t.workflow_tag }}</span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td class="align-middle text-muted small">{{ t.description or '—' }}</td>
+          <td class="align-middle text-muted small">{{ t.created_at }}</td>
+          <td class="text-end align-middle">
+            <a href="{{ url_for('run_new', template_id=t.id) }}"
+               class="btn btn-xs btn-outline-primary">
+              <i class="bi bi-plus-lg me-1"></i>Use
+            </a>
+            <form method="POST" action="{{ url_for('template_delete', tid=t.id) }}"
+                  class="d-inline" onsubmit="return confirm('Delete template &quot;{{ t.name }}&quot;?')">
+              <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body text-center py-4 text-muted">
+    <i class="bi bi-bookmark fs-2 opacity-25"></i>
+    <p class="mt-2 mb-0 small">
+      No run templates yet. Open a run and click
+      <strong>Save as Template</strong> to create one.
+    </p>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

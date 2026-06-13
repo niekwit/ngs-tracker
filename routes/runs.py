@@ -5,6 +5,7 @@ from config import (
     db_log,
     get_current_user,
     get_default_tags,
+    load_run_templates,
     load_workflows,
 )
 from helpers import _compare_configs, _parse_datetime
@@ -106,6 +107,11 @@ def register(app):
             return redirect(url_for("project_new"))
 
         preselected = request.args.get("project_id", type=int)
+        template_id = request.args.get("template_id", "")
+        prefill = next(
+            (t for t in load_run_templates() if t.get("id") == template_id),
+            None,
+        )
 
         if request.method == "POST":
             project_id = request.form.get("project_id", type=int)
@@ -182,6 +188,8 @@ def register(app):
             run_statuses=RUN_STATUSES,
             default_tags=default_tags,
             extra_tags=[],
+            prefill=prefill,
+            templates=load_run_templates(),
         )
 
     @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])

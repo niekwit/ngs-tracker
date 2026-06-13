@@ -1,10 +1,21 @@
 import os
 import threading
 import time
+import uuid
+from datetime import datetime
 
 from flask import flash, redirect, render_template, request, url_for
 
-from config import LOG_FILE, SETTINGS_DIR, db_log, load_workflows, save_workflows
+from config import (
+    LOG_FILE,
+    SETTINGS_DIR,
+    add_run_template,
+    delete_run_template,
+    db_log,
+    load_run_templates,
+    load_workflows,
+    save_workflows,
+)
 from models import Project, ProjectScript, ResearchGroup, Researcher, WorkflowRun, db
 
 
@@ -34,7 +45,38 @@ def register(app):
                 save_workflows(workflows)
                 flash(f'Workflow "{name}" removed.', "success")
 
-        return render_template("workflows/manage.html", workflows=load_workflows())
+        return render_template(
+            "workflows/manage.html",
+            workflows=load_workflows(),
+            templates=load_run_templates(),
+        )
+
+    @app.route("/templates/save", methods=["POST"])
+    def template_save():
+        run_id = request.form.get("run_id", type=int)
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("Template name is required.", "danger")
+            return redirect(url_for("run_detail", id=run_id))
+        run = db.get_or_404(WorkflowRun, run_id)
+        add_run_template(
+            {
+                "id": uuid.uuid4().hex[:8],
+                "name": name,
+                "workflow_name": run.workflow_name,
+                "workflow_tag": run.workflow_tag or "",
+                "description": run.description or "",
+                "created_at": datetime.utcnow().strftime("%Y-%m-%d"),
+            }
+        )
+        flash(f'Template "{name}" saved.', "success")
+        return redirect(url_for("run_detail", id=run_id))
+
+    @app.route("/templates/<tid>/delete", methods=["POST"])
+    def template_delete(tid):
+        delete_run_template(tid)
+        flash("Template deleted.", "success")
+        return redirect(url_for("workflows_manage"))
 
     @app.route("/search")
     def search():
