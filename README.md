@@ -291,6 +291,137 @@ journalctl --user -u ngs-tracker -f     # live logs
 
 ---
 
+## Running at startup (macOS)
+
+A Launch Agent plist starts NGS Tracker automatically at login.
+
+**1. Find the full path to conda**
+
+```bash
+which conda   # e.g. /Users/you/miniforge3/condabin/conda
+```
+
+**2. Create the plist file**
+
+Create `~/Library/LaunchAgents/com.ngs-tracker.plist` (substitute your conda path and repo location):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ngs-tracker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/you/miniforge3/condabin/conda</string>
+    <string>run</string>
+    <string>-n</string>
+    <string>ngs-tracker</string>
+    <string>python</string>
+    <string>app.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/path/to/ngs-tracker</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/ngs-tracker.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/ngs-tracker.err</string>
+</dict>
+</plist>
+```
+
+**3. Load the agent**
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.ngs-tracker.plist
+```
+
+The agent loads automatically on every subsequent login.
+
+**Useful commands**
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.ngs-tracker.plist   # stop and disable
+launchctl load   ~/Library/LaunchAgents/com.ngs-tracker.plist   # re-enable
+tail -f /tmp/ngs-tracker.log                                     # live logs
+```
+
+> **Memory:** NGS Tracker uses roughly 40–80 MB RAM at idle — comparable to a terminal window.
+
+---
+
+## Running at startup (Windows)
+
+The simplest cross-version approach is a Task Scheduler task that runs at login.
+
+**1. Find the full path to conda**
+
+Open **Anaconda Prompt** (or any terminal where `conda` is available) and run:
+
+```bat
+where conda
+```
+
+Note the path, e.g. `C:\Users\you\miniforge3\condabin\conda.bat`.
+
+**2. Create a startup script**
+
+Create `C:\path\to\ngs-tracker\start.bat`:
+
+```bat
+@echo off
+"C:\Users\you\miniforge3\condabin\conda.bat" run -n ngs-tracker python app.py
+```
+
+**3. Register the Task Scheduler task**
+
+Open **PowerShell as Administrator** and run (substitute paths):
+
+```powershell
+$action  = New-ScheduledTaskAction `
+    -Execute "C:\path\to\ngs-tracker\start.bat"
+$trigger = New-ScheduledTaskTrigger -AtLogon
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimitPT0S
+Register-ScheduledTask `
+    -TaskName "NGS Tracker" `
+    -Action $action `
+    -Trigger $trigger `
+    -Settings $settings `
+    -RunLevel Highest `
+    -Force
+```
+
+**4. Start immediately (without logging out)**
+
+```powershell
+Start-ScheduledTask -TaskName "NGS Tracker"
+```
+
+**Useful commands**
+
+```powershell
+Stop-ScheduledTask    -TaskName "NGS Tracker"   # stop
+Start-ScheduledTask   -TaskName "NGS Tracker"   # start
+Unregister-ScheduledTask -TaskName "NGS Tracker" -Confirm:$false  # remove
+```
+
+Logs are written to the console of the batch window. To capture them, redirect output in `start.bat`:
+
+```bat
+@echo off
+"C:\Users\you\miniforge3\condabin\conda.bat" run -n ngs-tracker python app.py >> "%TEMP%\ngs-tracker.log" 2>&1
+```
+
+> **Memory:** NGS Tracker uses roughly 40–80 MB RAM at idle — comparable to a terminal window.
+
+---
+
 ## Updating
 
 ```bash
