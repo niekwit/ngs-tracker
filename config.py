@@ -309,11 +309,14 @@ def load_workflows() -> list:
             yaml.dump(_DEFAULT_WORKFLOWS, f, default_flow_style=False, sort_keys=False)
     with open(WORKFLOWS_FILE) as f:
         workflows = yaml.safe_load(f) or []
-    # Migrate old entries that predate the system field
+    # Migrate old entries missing new fields
     changed = False
     for wf in workflows:
         if "system" not in wf:
             wf["system"] = "snakemake"
+            changed = True
+        if "mapping_rate_cutoff" not in wf:
+            wf["mapping_rate_cutoff"] = 60.0
             changed = True
     if changed:
         save_workflows(workflows)

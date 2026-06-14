@@ -174,6 +174,7 @@ FILE_TYPES = {
     "sample_info": ("Sample Info", "success"),
     "qc": ("QC", "info"),
     "results": ("Results", "purple"),
+    "mapping_rates": ("Mapping Rates", "teal"),
     "other": ("Other", "secondary"),
 }
 

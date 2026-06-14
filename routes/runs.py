@@ -79,7 +79,10 @@ def register(app):
     @app.route("/runs/<int:id>")
     def run_detail(id):
         run = db.get_or_404(WorkflowRun, id)
-        wf_urls = {w["name"]: w["url"] for w in load_workflows()}
+        workflows = load_workflows()
+        wf_urls = {w["name"]: w["url"] for w in workflows}
+        wf_entry = next((w for w in workflows if w["name"] == run.workflow_name), {})
+        mapping_rate_cutoff = float(wf_entry.get("mapping_rate_cutoff", 60.0))
 
         # Runs with at least one parsed config, excluding this run, for the compare picker
         config_run_ids = (
@@ -113,6 +116,7 @@ def register(app):
             backup_locations=backup_locations,
             backed_up=backed_up,
             loc_names=loc_names,
+            mapping_rate_cutoff=mapping_rate_cutoff,
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])

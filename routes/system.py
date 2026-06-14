@@ -34,12 +34,24 @@ def register(app):
                 system = request.form.get("system", "snakemake")
                 if system not in WORKFLOW_SYSTEMS:
                     system = "other"
+                try:
+                    cutoff = float(request.form.get("mapping_rate_cutoff", "60"))
+                    cutoff = max(0.0, min(100.0, cutoff))
+                except ValueError:
+                    cutoff = 60.0
                 if not name or not url:
                     flash("Name and URL are required.", "danger")
                 elif any(w["name"] == name for w in workflows):
                     flash(f'Workflow "{name}" already exists.', "warning")
                 else:
-                    workflows.append({"name": name, "url": url, "system": system})
+                    workflows.append(
+                        {
+                            "name": name,
+                            "url": url,
+                            "system": system,
+                            "mapping_rate_cutoff": cutoff,
+                        }
+                    )
                     workflows.sort(key=lambda w: w["name"].lower())
                     save_workflows(workflows)
                     flash(f'Workflow "{name}" added.', "success")

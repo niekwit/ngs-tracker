@@ -5,7 +5,12 @@ from flask import abort, flash, redirect, render_template, request, send_file, u
 from werkzeug.utils import secure_filename
 
 from config import db_log, get_storage_path
-from helpers import _delete_file, _parse_csv, _parse_snakemake_config
+from helpers import (
+    _delete_file,
+    _parse_csv,
+    _parse_mapping_rates,
+    _parse_snakemake_config,
+)
 from models import FILE_TYPES, AttachedFile, SampleSheet, WorkflowRun, db
 
 
@@ -30,9 +35,12 @@ def register(app):
             stored_path = run_dir / f"{uuid.uuid4().hex}_{original_name}"
             file.save(str(stored_path))
 
-            parsed_config = (
-                _parse_snakemake_config(stored_path) if file_type == "config" else None
-            )
+            if file_type == "config":
+                parsed_config = _parse_snakemake_config(stored_path)
+            elif file_type == "mapping_rates":
+                parsed_config = _parse_mapping_rates(stored_path)
+            else:
+                parsed_config = None
 
             attached = AttachedFile(
                 workflow_run_id=id,

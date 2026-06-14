@@ -11,7 +11,9 @@ The output file defaults to demo.db in the repo root.
 
 import argparse
 import json
+import os
 import sys
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -871,6 +873,36 @@ with app.app_context():
     )
     db.session.add(run_meth2)
     db.session.flush()
+
+    # ── Mapping rates example (attached to run_rna1) ─────────────────────────
+
+    demo_storage = Path(
+        os.environ.get("NGS_STORAGE_PATH", demo_db.parent / "demo-files")
+    )
+    mr_run_dir = demo_storage / "runs" / str(run_rna1.id)
+    mr_run_dir.mkdir(parents=True, exist_ok=True)
+
+    mr_samples = [
+        f"MEK_inh_{t}h_rep{r}" for t in ["6", "24", "72"] for r in [1, 2, 3]
+    ] + [f"DMSO_ctrl_rep{r}" for r in [1, 2, 3]]
+    mr_rates = [78.3, 76.1, 45.2, 82.4, 83.7, 81.9, 79.8, 38.5, 80.2, 85.3, 87.1, 86.4]
+
+    mr_csv_lines = ["sample,mapping_rate"] + [
+        f"{s},{r}" for s, r in zip(mr_samples, mr_rates)
+    ]
+    mr_filename = f"{uuid.uuid4().hex}_mapping_rates.csv"
+    mr_path = mr_run_dir / mr_filename
+    mr_path.write_text("\n".join(mr_csv_lines))
+
+    mr_file = AttachedFile(
+        workflow_run_id=run_rna1.id,
+        original_filename="mapping_rates.csv",
+        stored_path=str(mr_path),
+        file_type="mapping_rates",
+        description="STAR alignment mapping rates",
+        parsed_config=json.dumps({"samples": mr_samples, "rates": mr_rates}),
+    )
+    db.session.add(mr_file)
 
     db.session.commit()
 

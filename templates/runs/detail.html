@@ -298,6 +298,117 @@
 {% endfor %}
 {% endif %}
 
+<!-- Mapping rates charts -->
+{% set mr_files = run.attached_files | selectattr('file_type', 'eq', 'mapping_rates') | selectattr('parsed_config') | list %}
+{% for mf in mr_files %}
+{% set mr = mf.parsed_config | from_json %}
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-bar-chart-fill" style="color:#20c997;"></i>
+    <span>Mapping Rates</span>
+    <span class="text-muted small ms-1">— {{ mf.original_filename }}</span>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <span class="text-muted small">
+        <i class="bi bi-slash-circle me-1" style="color:#dc3545;"></i>Cutoff: {{ mapping_rate_cutoff }}%
+      </span>
+      <a href="{{ url_for('file_download', id=mf.id) }}" class="btn btn-xs btn-outline-secondary">
+        <i class="bi bi-download me-1"></i>Download
+      </a>
+    </div>
+  </div>
+  <div class="card-body">
+    {% set failing = [] %}
+    {% for sample in mr.samples %}
+      {% if mr.rates[loop.index0] < mapping_rate_cutoff %}
+        {% if failing.append(sample) %}{% endif %}
+      {% endif %}
+    {% endfor %}
+    {% if failing %}
+    <div class="alert alert-warning py-2 mb-3">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      <strong>{{ failing|length }} sample{{ 's' if failing|length != 1 }} below {{ mapping_rate_cutoff }}% cutoff:</strong>
+      {{ failing | join(', ') }}
+    </div>
+    {% else %}
+    <div class="alert alert-success py-2 mb-3">
+      <i class="bi bi-check-circle-fill me-1"></i>
+      All {{ mr.samples|length }} samples meet the {{ mapping_rate_cutoff }}% mapping rate cutoff.
+    </div>
+    {% endif %}
+    <canvas id="mrChart{{ mf.id }}"></canvas>
+  </div>
+</div>
+<script>
+(function () {
+  var samples = {{ mr.samples | tojson }};
+  var rates   = {{ mr.rates   | tojson }};
+  var cutoff  = {{ mapping_rate_cutoff }};
+  var ctx = document.getElementById('mrChart{{ mf.id }}');
+  var cutoffPlugin = {
+    id: 'cutoffLine',
+    afterDraw: function (chart) {
+      var c = chart.ctx, y = chart.scales.y, x = chart.scales.x;
+      var py = y.getPixelForValue(cutoff);
+      c.save();
+      c.beginPath();
+      c.moveTo(x.left, py);
+      c.lineTo(x.right, py);
+      c.lineWidth = 2;
+      c.strokeStyle = 'rgba(220,53,69,0.85)';
+      c.setLineDash([6, 4]);
+      c.stroke();
+      c.fillStyle = 'rgba(220,53,69,0.85)';
+      c.font = 'bold 11px sans-serif';
+      c.fillText(cutoff + '%', x.right + 6, py + 4);
+      c.restore();
+    }
+  };
+  new Chart(ctx, {
+    type: 'bar',
+    plugins: [cutoffPlugin],
+    data: {
+      labels: samples,
+      datasets: [{
+        label: 'Mapping Rate (%)',
+        data: rates,
+        backgroundColor: rates.map(function (r) {
+          return r < cutoff ? 'rgba(220,53,69,0.75)' : 'rgba(32,201,151,0.75)';
+        }),
+        borderColor: rates.map(function (r) {
+          return r < cutoff ? 'rgb(220,53,69)' : 'rgb(32,201,151)';
+        }),
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      layout: { padding: { right: 48 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var v = ctx.parsed.y;
+              return v.toFixed(1) + '%' + (v < cutoff ? '  ⚠ below cutoff' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          title: { display: true, text: 'Mapping Rate (%)' },
+          ticks: { callback: function (v) { return v + '%'; } }
+        },
+        x: { ticks: { maxRotation: 45, minRotation: 30 } }
+      }
+    }
+  });
+})();
+</script>
+{% endfor %}
+
 <!-- Attached files -->
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -367,7 +478,9 @@
             </a>
           </td>
           <td>
-            {% set badge_class = 'badge-purple' if f.type_color == 'purple' else 'bg-' + f.type_color %}
+            {% if f.type_color == 'purple' %}{% set badge_class = 'badge-purple' %}
+            {% elif f.type_color == 'teal' %}{% set badge_class = 'badge-teal' %}
+            {% else %}{% set badge_class = 'bg-' + f.type_color %}{% endif %}
             <span class="badge {{ badge_class }}">{{ f.type_label }}</span>
           </td>
           <td class="text-muted small">{{ f.description or '—' }}</td>
@@ -510,6 +623,7 @@
 details[open] > summary .cfg-arrow { transform: rotate(90deg); }
 .cfg-row { font-size: .85rem; margin-bottom: .2rem; }
 .cfg-key { font-weight: 600; color: #495057; margin-right: .3rem; }
+.badge-teal { background-color: #20c997; color: #fff; }
 </style>
 <script>
 function toggleCfg(btn) {

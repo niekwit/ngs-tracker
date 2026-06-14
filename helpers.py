@@ -37,6 +37,45 @@ def _parse_csv(path: Path) -> str | None:
         return None
 
 
+def _parse_mapping_rates(path: Path) -> str | None:
+    """Parse a two-column CSV (sample, mapping_rate%) into JSON for chart rendering."""
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            sample_text = f.read(4096)
+        import io
+
+        dialect = csv.Sniffer().sniff(sample_text, delimiters=",\t;")
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.reader(f, dialect)
+            rows = [r for r in reader if any(c.strip() for c in r)]
+        if len(rows) < 2:
+            return None
+        # Detect header: skip first row if the second column doesn't parse as float
+        start = 0
+        try:
+            float(rows[0][1].strip().rstrip("%"))
+        except (ValueError, IndexError):
+            start = 1  # first row is a header
+        data_rows = rows[start:]
+        if not data_rows:
+            return None
+        samples, rates = [], []
+        for row in data_rows:
+            if len(row) < 2:
+                continue
+            try:
+                rate = float(row[1].strip().rstrip("%"))
+            except ValueError:
+                continue
+            samples.append(row[0].strip())
+            rates.append(round(rate, 2))
+        if not samples:
+            return None
+        return json.dumps({"samples": samples, "rates": rates})
+    except Exception:
+        return None
+
+
 def _parse_snakemake_config(path: Path) -> str | None:
     try:
         with open(path) as f:
