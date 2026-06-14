@@ -119,7 +119,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold d-flex align-items-center gap-2">
-                Release tag
+                <span id="tag-label">Release tag</span>
                 <span id="tag-spinner" class="spinner-border spinner-border-sm text-secondary d-none" role="status"></span>
               </label>
               <select class="form-select" name="workflow_tag" id="workflow_tag"
@@ -270,10 +270,12 @@
   }
 
   async function fetchTags(repoUrl) {
+    const tagLabel = document.getElementById('tag-label');
     tagSelect.disabled = true;
     tagSelect.innerHTML = '<option value="">Loading…</option>';
     spinner.classList.remove('d-none');
     hint.textContent = '';
+    tagLabel.textContent = 'Release tag';
 
     const preselected = tagSelect.dataset.preselected || '';
     const repo = repoFromUrl(repoUrl);
@@ -304,10 +306,36 @@
         }
       }
 
-      tagSelect.innerHTML = '<option value="">— select tag —</option>';
       if (items.length === 0) {
-        hint.textContent = 'No releases found for this workflow.';
+        // Fall back to showing the 5 latest commits
+        const commitResp = await fetch(
+          `https://api.github.com/repos/${repo}/commits?per_page=5`
+        );
+        if (commitResp.ok) {
+          const commits = await commitResp.json();
+          if (commits.length > 0) {
+            tagLabel.textContent = 'Latest commit';
+            hint.textContent = 'No releases found — showing 5 latest commits.';
+            tagSelect.innerHTML = '<option value="">— select commit —</option>';
+            commits.forEach(c => {
+              const sha = c.sha.substring(0, 7);
+              const date = c.commit.author.date.substring(0, 10);
+              const subject = c.commit.message.split('\n')[0].substring(0, 72);
+              const opt = document.createElement('option');
+              opt.value = sha;
+              opt.textContent = `${sha}  ${date}  ${subject}`;
+              if (preselected && sha === preselected.substring(0, 7)) opt.selected = true;
+              tagSelect.appendChild(opt);
+            });
+            tagSelect.disabled = false;
+            spinner.classList.add('d-none');
+            return;
+          }
+        }
+        tagSelect.innerHTML = '<option value="">— no releases or commits found —</option>';
+        hint.textContent = 'Could not find releases or commits for this workflow.';
       } else {
+        tagSelect.innerHTML = '<option value="">— select tag —</option>';
         items.forEach(tag => {
           const opt = document.createElement('option');
           opt.value = tag;

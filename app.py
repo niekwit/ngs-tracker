@@ -101,6 +101,15 @@ app.jinja_env.globals["github_url"] = "https://github.com/niekwit/ngs-tracker"
 app.jinja_env.globals["WORKFLOW_SYSTEMS"] = WORKFLOW_SYSTEMS
 
 
+import re as _re
+
+
+@app.template_filter("is_commit_sha")
+def is_commit_sha_filter(s: str) -> bool:
+    """True when s looks like a short (7-char) or full (40-char) git commit SHA."""
+    return bool(_re.fullmatch(r"[0-9a-f]{7,40}", s or ""))
+
+
 @app.context_processor
 def inject_current_user():
     return {"current_user": get_current_user()}
