@@ -5,6 +5,7 @@
   </picture>
 </p>
 
+[![CI](https://github.com/niekwit/ngs-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/niekwit/ngs-tracker/actions/workflows/ci.yml)
 [![DOI](https://zenodo.org/badge/1266199288.svg)](https://doi.org/10.5281/zenodo.20677413)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
