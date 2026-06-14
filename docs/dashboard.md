@@ -33,10 +33,6 @@ Click any slice to navigate to the runs list filtered by that status. The cursor
 
 A progress bar showing the percentage of runs with at least one backup location recorded, followed by a per-location breakdown using your configured backup locations.
 
-### Runs per month
-
-A bar chart of workflow run activity over the last 12 calendar months.
-
 ---
 
 ## Search

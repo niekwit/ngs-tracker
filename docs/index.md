@@ -30,7 +30,7 @@ for sample tracking, custom scripts, file attachments, backup status, and public
 : Download project, researcher, or group summaries as CSV or Markdown — ready for grant reports or PI emails.
 
 **Dashboard**
-: Live stats, run timeline bar chart, status breakdown donut (click any slice to filter runs), backup coverage panel, and file-type pie chart.
+: Live stats, status breakdown donut (click any slice to filter runs), backup coverage panel, and file-type pie chart.
 
 **Statistics**
 : Cross-run charts showing execution counts and average wall-clock runtime per registered workflow, populated automatically when `register_run()` is called with the Snakemake log file.

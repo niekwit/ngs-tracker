@@ -3,6 +3,11 @@
 The Statistics page (`/stats`, **Statistics** in the sidebar) provides cross-run charts
 that summarise pipeline usage and performance across the entire database.
 
+## Workflow Runs per Month
+
+A bar chart of workflow run activity over the last 12 calendar months, covering all
+non-trashed runs regardless of status.
+
 ## Executions per Workflow
 
 A bar chart showing the total number of runs (all statuses, non-trashed) recorded for

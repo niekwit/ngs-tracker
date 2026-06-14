@@ -90,22 +90,6 @@ def register(app):
                 backup_by_loc[b["location"]] += 1
         backup_locations = get_backup_locations()
 
-        # Timeline: runs per month for the last 12 months
-        now = datetime.utcnow()
-        months = []
-        for i in range(11, -1, -1):
-            month_num = now.month - i
-            year = now.year + (month_num - 1) // 12
-            month = ((month_num - 1) % 12) + 1
-            months.append(f"{year:04d}-{month:02d}")
-
-        timeline_counts = defaultdict(int)
-        for run in WorkflowRun.query.filter_by(trashed=False).all():
-            key = run.run_date.strftime("%Y-%m")
-            if key in months:
-                timeline_counts[key] += 1
-        timeline_data = {m: timeline_counts[m] for m in months}
-
         stats = {
             "groups": ResearchGroup.query.filter_by(trashed=False).count(),
             "researchers": Researcher.query.filter_by(trashed=False).count(),
@@ -122,7 +106,6 @@ def register(app):
             recent_runs=recent_runs,
             stats=stats,
             file_type_counts=json.dumps(file_type_counts),
-            timeline_data=json.dumps(timeline_data),
             status_data=json.dumps(status_data),
             status_urls=json.dumps(status_urls),
             backup_pct=backup_pct,

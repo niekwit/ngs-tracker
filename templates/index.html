@@ -163,22 +163,6 @@
 </div>
 {% endif %}
 
-<!-- Run timeline chart -->
-<div class="row g-3 mt-1">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header"><i class="bi bi-bar-chart-line me-1"></i> Workflow Runs per Month</div>
-      <div class="card-body">
-        {% if stats.runs > 0 %}
-        <canvas id="timelineChart" height="60"></canvas>
-        {% else %}
-        <p class="text-muted text-center py-3 mb-0">No workflow runs yet.</p>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- File type chart modal -->
 <div class="modal fade" id="fileChartModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
@@ -286,56 +270,6 @@
       },
       onHover: function(evt, elements) {
         evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-      }
-    }
-  });
-})();
-</script>
-<script>
-(function() {
-  var timeline = {{ timeline_data | safe }};
-  var months = Object.keys(timeline);
-  var counts = Object.values(timeline);
-
-  // Format labels as "Jan 2025"
-  var labels = months.map(function(m) {
-    var parts = m.split('-');
-    var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
-    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-  });
-
-  var ctx = document.getElementById('timelineChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Runs',
-        data: counts,
-        backgroundColor: '#2563eb',
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              return ' ' + ctx.parsed.y + ' run' + (ctx.parsed.y !== 1 ? 's' : '');
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { stepSize: 1, precision: 0 },
-          grid: { color: '#f0f0f0' }
-        },
-        x: { grid: { display: false } }
       }
     }
   });

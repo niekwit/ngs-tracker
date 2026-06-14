@@ -6,9 +6,66 @@
   <h4 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h4>
 </div>
 
-{% if executions or workflows %}
+{% if timeline_data or executions or workflows %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 {% endif %}
+
+<!-- Runs per month -->
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="bi bi-bar-chart-line me-1"></i> Workflow Runs per Month
+    <span class="text-muted small ms-2">(last 12 months)</span>
+  </div>
+  <div class="card-body">
+    <canvas id="timelineChart" height="60"></canvas>
+  </div>
+</div>
+<script>
+(function () {
+  var timeline = {{ timeline_data | safe }};
+  var months = Object.keys(timeline);
+  var counts  = Object.values(timeline);
+  var labels  = months.map(function (m) {
+    var parts = m.split('-');
+    var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  });
+  new Chart(document.getElementById('timelineChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Runs',
+        data: counts,
+        backgroundColor: '#2563eb',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              return ' ' + ctx.parsed.y + ' run' + (ctx.parsed.y !== 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, precision: 0 },
+          grid: { color: '#f0f0f0' }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+})();
+</script>
 
 {% if executions %}
 <div class="card mb-4">
