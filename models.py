@@ -210,6 +210,7 @@ class WorkflowRun(db.Model):
     backups = db.Column(db.Text, nullable=True)  # JSON list of {location, path}
     workflow_system = db.Column(db.String(20), default="snakemake")
     tags = db.Column(db.String(500), default="")
+    runtime_seconds = db.Column(db.Integer, nullable=True)
     sample_sheet = db.relationship(
         "SampleSheet",
         backref="run",
@@ -256,6 +257,19 @@ class WorkflowRun(db.Model):
         if self.backup_rfs:
             result.append({"location": "RFS", "path": self.backup_rfs_path or ""})
         return result
+
+    @property
+    def runtime_display(self) -> str:
+        if self.runtime_seconds is None:
+            return ""
+        s = int(self.runtime_seconds)
+        h, rem = divmod(s, 3600)
+        m, sec = divmod(rem, 60)
+        if h:
+            return f"{h}h {m}m {sec}s"
+        if m:
+            return f"{m}m {sec}s"
+        return f"{sec}s"
 
     @property
     def backup_labels(self) -> list[str]:

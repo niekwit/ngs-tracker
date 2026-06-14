@@ -77,6 +77,7 @@ def _run_dict(run: WorkflowRun) -> dict:
         "notes": run.notes or "",
         "backups": run.backups_list,
         "created_by": run.created_by or "",
+        "runtime_seconds": run.runtime_seconds,
     }
 
 
@@ -207,6 +208,12 @@ def register(app):
                     ),
                     400,
                 )
+
+        if "runtime_seconds" in data:
+            try:
+                run.runtime_seconds = int(data["runtime_seconds"])
+            except (TypeError, ValueError):
+                pass
 
         db.session.add(run)
         db.session.commit()

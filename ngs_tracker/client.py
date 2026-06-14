@@ -29,7 +29,9 @@ config["ngs_tracker"]["created_by"].
 
 import json
 import os
+import re
 import sys
+from datetime import datetime as _dt
 from pathlib import Path
 
 try:
@@ -45,6 +47,34 @@ VALID_FILE_TYPES = {"config", "sample_info", "qc", "results", "mapping_rates", "
 _SETTINGS_FILE = Path.home() / ".ngs-tracker" / "settings.json"
 
 
+_TS_RE = re.compile(r"\[(\w{3} \w{3} +\d+ \d{2}:\d{2}:\d{2} \d{4})\]")
+
+
+def _parse_snakemake_log(path) -> int | None:
+    """Return total pipeline duration in seconds from a Snakemake main log.
+
+    Snakemake writes timestamps like ``[Fri Dec 12 11:36:18 2025]`` for every
+    job event.  We take the first and last timestamp and return the difference.
+    """
+    timestamps = []
+    try:
+        with open(path) as f:
+            for line in f:
+                m = _TS_RE.search(line)
+                if m:
+                    # Collapse double-spaces (single-digit day: "Dec  2")
+                    ts_str = " ".join(m.group(1).split())
+                    try:
+                        timestamps.append(_dt.strptime(ts_str, "%a %b %d %H:%M:%S %Y"))
+                    except ValueError:
+                        pass
+    except Exception:
+        return None
+    if len(timestamps) < 2:
+        return None
+    return int((timestamps[-1] - timestamps[0]).total_seconds())
+
+
 def _local_credentials() -> tuple[str, str]:
     """Return (api_key, current_user) from ~/.ngs-tracker/settings.json, or ('', '')."""
     try:
@@ -55,7 +85,7 @@ def _local_credentials() -> tuple[str, str]:
         return "", ""
 
 
-def register_run(config: dict, status: str = "completed") -> int | None:
+def register_run(config: dict, status: str = "completed", log_file=None) -> int | None:
     """
     Register a workflow run in NGS Tracker.
 
@@ -98,6 +128,11 @@ def register_run(config: dict, status: str = "completed") -> int | None:
         Long-form Markdown notes stored on the run.
     created_by (str, optional):
         Username.  Prefer the ``NGS_TRACKER_USER`` environment variable.
+    log_file (str | Path, optional):
+        Path to the Snakemake main log file.  In Snakemake ``onsuccess`` /
+        ``onerror`` blocks the built-in ``log`` variable holds this path.
+        When provided, the total pipeline runtime is parsed from the log and
+        stored on the run record.
     files (list[dict], optional):
         Files to attach.  Each entry has:
           path (str):        Path to the file (absolute or relative to CWD).
@@ -141,6 +176,16 @@ def register_run(config: dict, status: str = "completed") -> int | None:
         os.environ.get("NGS_TRACKER_USER") or _local_user or cfg.get("created_by", "")
     )
 
+    # Parse Snakemake log for runtime (log_file arg takes priority over config)
+    _log_path = log_file or cfg.get("log_file")
+    runtime_seconds = None
+    if _log_path:
+        runtime_seconds = _parse_snakemake_log(_log_path)
+        if runtime_seconds is not None:
+            _info(f"Parsed runtime: {runtime_seconds}s from {_log_path}")
+        else:
+            _warn(f"Could not parse runtime from log: {_log_path}")
+
     try:
         # ── Create the run ────────────────────────────────────────────────────
         payload = {
@@ -154,6 +199,8 @@ def register_run(config: dict, status: str = "completed") -> int | None:
             "notes": cfg.get("notes", ""),
             "created_by": created_by,
         }
+        if runtime_seconds is not None:
+            payload["runtime_seconds"] = runtime_seconds
 
         resp = _requests.post(f"{base}/runs", headers=headers, json=payload, timeout=30)
         resp.raise_for_status()

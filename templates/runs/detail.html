@@ -60,6 +60,9 @@
       &nbsp;·&nbsp;<i class="bi bi-person me-1"></i>{{ run.created_by }}
       {% endif %}
       &nbsp;·&nbsp;<span title="Run ID (use this with the REST API)">ID&nbsp;{{ run.id }}</span>
+      {% if run.runtime_display %}
+      &nbsp;·&nbsp;<i class="bi bi-stopwatch me-1"></i>{{ run.runtime_display }}
+      {% endif %}
     </span>
   </div>
   <div class="d-flex gap-2">

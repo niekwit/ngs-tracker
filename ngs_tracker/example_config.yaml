@@ -11,11 +11,11 @@
 #
 #   onsuccess:
 #       from ngs_tracker import register_run
-#       register_run(config)
+#       register_run(config, log_file=log)   # 'log' = Snakemake's built-in log path
 #
 #   onerror:
 #       from ngs_tracker import register_run
-#       register_run(config, status="failed")
+#       register_run(config, status="failed", log_file=log)
 
 ngs_tracker:
   enabled: true                           # set to false to skip registration
