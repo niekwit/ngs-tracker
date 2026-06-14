@@ -154,8 +154,27 @@ def load_settings() -> dict:
 
 def save_settings(settings: dict) -> None:
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    to_write = dict(settings)
+    # When env var overrides are active (demo/CI mode) we must NOT bake the
+    # overridden paths into the real settings file.  Read the original on-disk
+    # values and restore them so that any save during demo mode is transparent.
+    if os.environ.get("NGS_DB_PATH") or os.environ.get("NGS_STORAGE_PATH"):
+        raw: dict = {}
+        if SETTINGS_FILE.exists():
+            with open(SETTINGS_FILE) as _f:
+                raw = json.load(_f)
+        if os.environ.get("NGS_DB_PATH"):
+            if "db_path" in raw:
+                to_write["db_path"] = raw["db_path"]
+            else:
+                to_write.pop("db_path", None)
+        if os.environ.get("NGS_STORAGE_PATH"):
+            if "storage_path" in raw:
+                to_write["storage_path"] = raw["storage_path"]
+            else:
+                to_write.pop("storage_path", None)
     with open(SETTINGS_FILE, "w") as f:
-        json.dump(settings, f, indent=2)
+        json.dump(to_write, f, indent=2)
 
 
 def is_configured() -> bool:
