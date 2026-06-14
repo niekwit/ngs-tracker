@@ -56,6 +56,20 @@ def register(app):
                     save_workflows(workflows)
                     flash(f'Workflow "{name}" added.', "success")
 
+            elif action == "update_cutoff":
+                name = request.form.get("name", "")
+                try:
+                    cutoff = float(request.form.get("mapping_rate_cutoff", "60"))
+                    cutoff = max(0.0, min(100.0, cutoff))
+                except ValueError:
+                    cutoff = 60.0
+                for wf in workflows:
+                    if wf["name"] == name:
+                        wf["mapping_rate_cutoff"] = cutoff
+                        break
+                save_workflows(workflows)
+                flash(f'Cutoff for "{name}" updated to {cutoff}%.', "success")
+
             elif action == "delete":
                 name = request.form.get("name", "")
                 workflows = [w for w in workflows if w["name"] != name]

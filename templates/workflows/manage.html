@@ -90,7 +90,22 @@
               <i class="bi bi-github me-1"></i>{{ wf.url }}
             </a>
           </td>
-          <td class="align-middle text-muted small">{{ wf.get('mapping_rate_cutoff', 60.0) }}%</td>
+          <td class="align-middle">
+            <form method="POST" class="d-flex align-items-center gap-1">
+              <input type="hidden" name="action" value="update_cutoff">
+              <input type="hidden" name="name" value="{{ wf.name }}">
+              <input type="number" class="form-control form-control-sm"
+                     name="mapping_rate_cutoff"
+                     value="{{ wf.get('mapping_rate_cutoff', 60.0) }}"
+                     min="0" max="100" step="0.1"
+                     style="width:5.5rem;">
+              <span class="text-muted small">%</span>
+              <button class="btn btn-xs btn-outline-secondary" type="submit"
+                      title="Save cutoff">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+          </td>
           <td class="text-end align-middle">
             <form method="POST"
                   onsubmit="return confirm('Remove workflow {{ wf.name }}?')">
