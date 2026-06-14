@@ -80,14 +80,24 @@
   {% for r in results.runs %}
   <a href="{{ url_for('run_detail', id=r.id) }}"
      class="list-group-item list-group-item-action py-2">
-    <span class="fw-semibold">{{ r.workflow_name }}</span>
-    {% if r.workflow_tag %}
-    <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ r.workflow_tag }}</span>
-    {% endif %}
-    <span class="badge bg-{{ r.status_color }} ms-1" style="font-size:.7rem;">{{ r.status_label }}</span>
-    <span class="text-muted ms-2 small">{{ r.project.name }} · {{ r.run_date.strftime('%Y-%m-%d') }}</span>
+    <div class="d-flex align-items-center flex-wrap gap-1">
+      <span class="fw-semibold">{{ r.workflow_name }}</span>
+      {% if r.workflow_tag %}
+      <span class="badge bg-secondary" style="font-size:.7rem;">{{ r.workflow_tag }}</span>
+      {% endif %}
+      <span class="badge bg-{{ r.status_color }}" style="font-size:.7rem;">{{ r.status_label }}</span>
+      {% if notes_snippets.get(r.id) %}
+      <span class="badge bg-light text-dark border" style="font-size:.65rem;">in notes</span>
+      {% endif %}
+      <span class="text-muted small ms-1">{{ r.project.name }} · {{ r.run_date.strftime('%Y-%m-%d') }}</span>
+    </div>
     {% if r.description %}
-    <div class="text-muted small">{{ r.description[:100] }}</div>
+    <div class="text-muted small mt-1">{{ r.description[:120] }}</div>
+    {% endif %}
+    {% if notes_snippets.get(r.id) %}
+    <div class="small mt-1 text-muted font-monospace" style="font-size:.78rem; line-height:1.5;">
+      {{ notes_snippets[r.id] }}
+    </div>
     {% endif %}
   </a>
   {% endfor %}

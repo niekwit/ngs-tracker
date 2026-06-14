@@ -35,6 +35,9 @@ for sample tracking, custom scripts, file attachments, backup status, and public
 **Statistics**
 : Cross-run charts showing execution counts and average wall-clock runtime per registered workflow, populated automatically when `register_run()` is called with the Snakemake log file.
 
+**Full-text search**
+: The navbar search box searches across groups, researchers, projects, run names/descriptions/tags, and run notes — with highlighted excerpts showing where in the notes a match was found.
+
 **Audit log**
 : Every action is written to a plain-text change log with user attribution, filterable in the browser.
 
@@ -60,6 +63,7 @@ data-model
 runs
 workflows
 settings
+search
 audit-log
 dashboard
 stats

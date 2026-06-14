@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 
 from flask import flash, redirect, render_template, request, url_for
+from markupsafe import Markup, escape
 
 from config import (
     LOG_FILE,
@@ -19,6 +20,34 @@ from config import (
     save_workflows,
 )
 from models import Project, ProjectScript, ResearchGroup, Researcher, WorkflowRun, db
+
+
+def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
+    """Return an HTML-safe excerpt from notes around the first query match, with <mark> highlight."""
+    if not notes or not query:
+        return None
+    lower_notes = notes.lower()
+    lower_query = query.lower()
+    idx = lower_notes.find(lower_query)
+    if idx == -1:
+        return None
+    half = window // 2
+    start = max(0, idx - half)
+    end = min(len(notes), idx + len(query) + half)
+    excerpt = notes[start:end]
+    prefix = Markup("&hellip;") if start > 0 else Markup("")
+    suffix = Markup("&hellip;") if end < len(notes) else Markup("")
+    match_start = idx - start
+    match_end = match_start + len(query)
+    return (
+        prefix
+        + escape(excerpt[:match_start])
+        + Markup("<mark>")
+        + escape(excerpt[match_start:match_end])
+        + Markup("</mark>")
+        + escape(excerpt[match_end:])
+        + suffix
+    )
 
 
 def register(app):
@@ -134,16 +163,30 @@ def register(app):
                 WorkflowRun.trashed == False,
                 WorkflowRun.workflow_name.ilike(like)
                 | WorkflowRun.description.ilike(like)
+                | WorkflowRun.tags.ilike(like)
                 | WorkflowRun.notes.ilike(like),
-            ).all(),
+            )
+            .order_by(WorkflowRun.run_date.desc())
+            .all(),
             "scripts": ProjectScript.query.filter(
                 ProjectScript.trashed == False,
                 ProjectScript.original_filename.ilike(like)
                 | ProjectScript.description.ilike(like),
             ).all(),
         }
+        notes_snippets = {
+            run.id: _notes_snippet(run.notes, q)
+            for run in results["runs"]
+            if run.notes and q.lower() in run.notes.lower()
+        }
         total = sum(len(v) for v in results.values())
-        return render_template("search.html", q=q, results=results, total=total)
+        return render_template(
+            "search.html",
+            q=q,
+            results=results,
+            total=total,
+            notes_snippets=notes_snippets,
+        )
 
     @app.route("/log")
     def log_viewer():
