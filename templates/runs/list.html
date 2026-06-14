@@ -110,6 +110,11 @@
       </button>
       {% endif %}
       <div class="vr"></div>
+      <button type="button" class="btn btn-sm btn-outline-danger"
+              onclick="showRemoveTagsModal()">
+        Remove Tags
+      </button>
+      <div class="vr"></div>
       <button type="button" class="btn btn-sm btn-link text-muted p-0"
               onclick="clearSelection()">Deselect all</button>
     </div>
@@ -228,6 +233,25 @@
   </div>
 </div>
 {% endif %}
+
+<div class="modal fade" id="removeTagsModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title">Remove all tags</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Remove all tags from <strong id="removeTagsCount">0</strong> run(s)?</p>
+        <p class="text-muted small mb-0">This cannot be undone.</p>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-danger" id="removeTagsConfirm">Remove Tags</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -261,6 +285,17 @@
     document.getElementById('batchValue').value = value;
     form.submit();
   };
+
+  window.showRemoveTagsModal = function () {
+    const n = document.querySelectorAll('.run-check:checked').length;
+    document.getElementById('removeTagsCount').textContent = n;
+    new bootstrap.Modal(document.getElementById('removeTagsModal')).show();
+  };
+
+  document.getElementById('removeTagsConfirm').addEventListener('click', function () {
+    bootstrap.Modal.getInstance(document.getElementById('removeTagsModal')).hide();
+    applyBatch('remove_tags', 'yes');
+  });
 
   window.clearSelection = function () {
     checkboxes.forEach(cb => cb.checked = false);

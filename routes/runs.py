@@ -457,6 +457,16 @@ def register(app):
                     "success",
                 )
 
+        elif action == "remove_tags":
+            updated = 0
+            for run in batch_runs:
+                if run.tags:
+                    run.tags = ""
+                    updated += 1
+                    db_log("UPDATE", "WorkflowRun", run.id, "batch: all tags removed")
+            db.session.commit()
+            flash(f"All tags removed from {updated} run(s).", "success")
+
         else:
             flash("Unknown batch action.", "danger")
 

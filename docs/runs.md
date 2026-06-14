@@ -141,6 +141,7 @@ Select multiple runs on the runs list page and apply an action to all of them at
 | **Set Status** | Choose a status from the dropdown and click **Set Status** |
 | **Add Tag** | Type or select a tag and click **Add Tag** |
 | **Mark Backup** | Choose a backup location and click **Mark Backup** |
+| **Remove Tags** | Click **Remove Tags** and confirm in the dialog — clears every tag from each selected run |
 
 3. Click **Deselect all** to clear the selection without taking an action.
 
