@@ -279,7 +279,8 @@ def register(app):
             flash("Workflow run updated.", "success")
             return redirect(url_for("run_detail", id=id))
         default_tags = get_default_tags()
-        extra_tags = [t for t in run.tag_list if t not in default_tags]
+        default_tag_names = {t["name"] for t in default_tags}
+        extra_tags = [t for t in run.tag_list if t not in default_tag_names]
         wf_list = load_workflows()
         return render_template(
             "runs/form.html",

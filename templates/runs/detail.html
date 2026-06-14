@@ -45,8 +45,10 @@
     <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
       <span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span>
       {% for tag in run.tag_list %}
+      {% set tc = tag_colors.get(tag, 'warning') %}
       <a href="{{ url_for('runs_list', tag=tag) }}"
-         class="badge bg-warning text-dark text-decoration-none" style="font-size:.72rem;">
+         class="badge bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %} text-decoration-none"
+         style="font-size:.72rem;">
         <i class="bi bi-tag me-1"></i>{{ tag }}
       </a>
       {% endfor %}

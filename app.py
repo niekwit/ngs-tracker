@@ -6,8 +6,10 @@ from flask import request as flask_request
 
 from config import (
     DEFAULT_DB,
+    TAG_COLOR_OPTIONS,
     WORKFLOW_SYSTEMS,
     get_current_user,
+    get_tag_colors,
     get_version,
     is_configured,
     load_settings,
@@ -102,6 +104,16 @@ app.jinja_env.globals["WORKFLOW_SYSTEMS"] = WORKFLOW_SYSTEMS
 @app.context_processor
 def inject_current_user():
     return {"current_user": get_current_user()}
+
+
+@app.context_processor
+def inject_tag_context():
+    return {
+        "tag_colors": get_tag_colors(),
+        "tag_color_options": TAG_COLOR_OPTIONS,
+        # colors that need text-dark for readability
+        "TAG_LIGHT_COLORS": {"warning", "info", "light"},
+    }
 
 
 @app.before_request

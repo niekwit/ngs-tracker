@@ -39,10 +39,25 @@ Rotating the key cannot be undone. Clients still using the old key will receive 
 
 ## Default tags
 
-Tags are free-text labels attached to workflow runs. The default list is shown as a checkbox picker when creating or editing a run. New tags typed inline are added to the list automatically.
+Tags are free-text labels attached to workflow runs. The default list is shown as a coloured checkbox picker when creating or editing a run. New tags typed inline are added to the list automatically.
 
-- **Add** a tag from the Settings page
-- **Remove** a tag by clicking × on its badge
+Each tag has a configurable **colour** chosen from:
+
+| Colour | Bootstrap class | Typical use |
+|---|---|---|
+| Yellow | `warning` | Caution, low-priority flags |
+| Red | `danger` | Failures, contamination |
+| Green | `success` | Published, final, approved |
+| Blue | `primary` | General purpose |
+| Cyan | `info` | Informational, pilot |
+| Grey | `secondary` | Neutral, archived |
+| Dark | `dark` | High-contrast label |
+
+The built-in defaults ship with sensible colours (`failed-QC` → Red, `published` → Green, `needs-review` → Yellow, etc.). Change any colour instantly from the Settings page — the dropdown auto-saves on change.
+
+- **Add** a tag (with colour) from the Settings page
+- **Change colour** via the colour dropdown next to each tag
+- **Remove** a tag by clicking ×
 
 Removing a tag from the defaults does not affect runs that already use it.
 

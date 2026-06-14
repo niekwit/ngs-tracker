@@ -143,18 +143,26 @@
             {% set current_tags = run.tag_list if run else [] %}
             <div class="d-flex flex-wrap gap-2 mb-2 p-2 border rounded bg-light" id="tag-checkboxes" style="min-height:2.4rem;">
               {% for tag in default_tags %}
+              {% set tc = tag_colors.get(tag.name, 'warning') %}
               <div class="form-check mb-0">
                 <input class="form-check-input" type="checkbox" name="tags"
-                       id="tag-def-{{ loop.index }}" value="{{ tag }}"
-                       {% if tag in current_tags %}checked{% endif %}>
-                <label class="form-check-label" for="tag-def-{{ loop.index }}">{{ tag }}</label>
+                       id="tag-def-{{ loop.index }}" value="{{ tag.name }}"
+                       {% if tag.name in current_tags %}checked{% endif %}>
+                <label class="form-check-label" for="tag-def-{{ loop.index }}">
+                  <span class="badge bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %}"
+                        style="font-size:.75rem;">{{ tag.name }}</span>
+                </label>
               </div>
               {% endfor %}
               {% for tag in extra_tags %}
+              {% set tc = tag_colors.get(tag, 'warning') %}
               <div class="form-check mb-0">
                 <input class="form-check-input" type="checkbox" name="tags"
                        id="tag-extra-{{ loop.index }}" value="{{ tag }}" checked>
-                <label class="form-check-label fst-italic" for="tag-extra-{{ loop.index }}">{{ tag }}</label>
+                <label class="form-check-label" for="tag-extra-{{ loop.index }}">
+                  <span class="badge bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %}"
+                        style="font-size:.75rem;">{{ tag }}</span>
+                </label>
               </div>
               {% endfor %}
               {% if not default_tags and not extra_tags %}

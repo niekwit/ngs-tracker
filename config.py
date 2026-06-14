@@ -230,43 +230,92 @@ def set_current_user(name: str) -> None:
 
 # ── Default tags ──────────────────────────────────────────────────────────────
 
-_DEFAULT_TAGS = [
-    "contamination",
-    "failed-QC",
-    "final",
-    "low-coverage",
-    "needs-review",
-    "pilot",
-    "published",
-    "re-run",
-    "test",
+TAG_COLOR_OPTIONS = [
+    ("warning", "Yellow"),
+    ("danger", "Red"),
+    ("success", "Green"),
+    ("primary", "Blue"),
+    ("info", "Cyan"),
+    ("secondary", "Grey"),
+    ("dark", "Dark"),
+]
+
+# Colors applied during migration for known built-in tag names
+_DEFAULT_TAG_COLORS: dict[str, str] = {
+    "contamination": "danger",
+    "failed-QC": "danger",
+    "final": "success",
+    "low-coverage": "warning",
+    "needs-review": "warning",
+    "pilot": "info",
+    "published": "success",
+    "re-run": "secondary",
+    "test": "secondary",
+}
+
+_DEFAULT_TAGS: list[dict] = [
+    {"name": name, "color": color}
+    for name, color in sorted(_DEFAULT_TAG_COLORS.items(), key=lambda x: x[0].lower())
 ]
 
 
-def get_default_tags() -> list[str]:
+def _migrate_tags(tags: list) -> list[dict]:
+    """Upgrade old list[str] format to list[dict] with colour."""
+    migrated = []
+    for t in tags:
+        if isinstance(t, str):
+            migrated.append({"name": t, "color": _DEFAULT_TAG_COLORS.get(t, "warning")})
+        else:
+            migrated.append(t)
+    return migrated
+
+
+def get_default_tags() -> list[dict]:
     s = load_settings()
     if "default_tags" not in s:
-        s["default_tags"] = sorted(_DEFAULT_TAGS, key=str.lower)
+        s["default_tags"] = _DEFAULT_TAGS[:]
         save_settings(s)
-    return sorted(s["default_tags"], key=str.lower)
+        return _DEFAULT_TAGS[:]
+    tags = _migrate_tags(s["default_tags"])
+    if tags != s["default_tags"]:
+        s["default_tags"] = tags
+        save_settings(s)
+    return sorted(tags, key=lambda t: t["name"].lower())
 
 
-def add_default_tag(name: str) -> None:
+def get_tag_colors() -> dict[str, str]:
+    """Return {tag_name: bootstrap_color} for all default tags."""
+    return {t["name"]: t["color"] for t in get_default_tags()}
+
+
+def add_default_tag(name: str, color: str = "warning") -> None:
     name = name.strip()
     if not name:
         return
     s = load_settings()
-    tags = s.get("default_tags", [])
-    if name not in tags:
-        tags.append(name)
-        tags.sort(key=str.lower)
+    tags = _migrate_tags(s.get("default_tags", []))
+    if name not in [t["name"] for t in tags]:
+        tags.append({"name": name, "color": color})
+        tags.sort(key=lambda t: t["name"].lower())
         s["default_tags"] = tags
         save_settings(s)
 
 
 def remove_default_tag(name: str) -> None:
     s = load_settings()
-    s["default_tags"] = [t for t in s.get("default_tags", []) if t != name]
+    tags = _migrate_tags(s.get("default_tags", []))
+    s["default_tags"] = [t for t in tags if t["name"] != name]
+    save_settings(s)
+
+
+def set_tag_color(name: str, color: str) -> None:
+    s = load_settings()
+    tags = _migrate_tags(s.get("default_tags", []))
+    for t in tags:
+        if t["name"] == name:
+            t["color"] = color
+            break
+    s["default_tags"] = tags
     save_settings(s)
 
 

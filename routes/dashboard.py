@@ -28,6 +28,7 @@ from config import (
     save_settings,
     set_backup_reminder_days,
     set_current_user,
+    set_tag_color,
 )
 from helpers import _format_file_size, _total_file_size
 from models import (
@@ -166,12 +167,13 @@ def register(app):
 
             if action == "add_tag":
                 name = request.form.get("tag_name", "").strip()
+                color = request.form.get("tag_color", "warning")
                 if not name:
                     flash("Tag name is required.", "danger")
-                elif name in get_default_tags():
+                elif name in [t["name"] for t in get_default_tags()]:
                     flash(f'Tag "{name}" already exists.', "warning")
                 else:
-                    add_default_tag(name)
+                    add_default_tag(name, color)
                     flash(f'Tag "{name}" added.', "success")
                 return redirect(url_for("setup"))
 
@@ -179,6 +181,12 @@ def register(app):
                 name = request.form.get("tag_name", "")
                 remove_default_tag(name)
                 flash(f'Tag "{name}" removed from defaults.', "success")
+                return redirect(url_for("setup"))
+
+            if action == "set_tag_color":
+                name = request.form.get("tag_name", "")
+                color = request.form.get("tag_color", "warning")
+                set_tag_color(name, color)
                 return redirect(url_for("setup"))
 
             if action == "add_backup_loc":

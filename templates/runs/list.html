@@ -36,8 +36,9 @@
     All
   </a>
   {% for tag in all_tags %}
+  {% set tc = tag_colors.get(tag, 'warning') %}
   <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag, status=status_filter) }}"
-     class="badge text-decoration-none {% if tag == tag_filter %}bg-warning text-dark{% else %}bg-secondary opacity-75{% endif %}">
+     class="badge text-decoration-none {% if tag == tag_filter %}bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %}{% else %}bg-secondary opacity-75{% endif %}">
     <i class="bi bi-tag me-1"></i>{{ tag }}
   </a>
   {% endfor %}
@@ -148,8 +149,10 @@
               <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ run.workflow_tag }}</span>
               {% endif %}
               {% for tag in run.tag_list %}
+              {% set tc = tag_colors.get(tag, 'warning') %}
               <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag) }}"
-                 class="badge bg-warning text-dark text-decoration-none ms-1" style="font-size:.68rem;">
+                 class="badge bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %} text-decoration-none ms-1"
+                 style="font-size:.68rem;">
                 <i class="bi bi-tag me-1"></i>{{ tag }}
               </a>
               {% endfor %}
