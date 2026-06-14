@@ -67,72 +67,6 @@
 })();
 </script>
 
-{% if published_by_group %}
-<div class="card mb-4">
-  <div class="card-header">
-    <i class="bi bi-journal-check me-1"></i> Published Projects per Research Group
-  </div>
-  <div class="card-body">
-    <canvas id="pubChart" style="max-height:340px;"></canvas>
-  </div>
-</div>
-<script>
-(function () {
-  var pdata   = {{ published_by_group | tojson }};
-  var plabels = pdata.map(function (d) { return d.group; });
-  var pcounts = pdata.map(function (d) { return d.count; });
-  var colors  = [
-    'rgba(124, 58, 237, 0.75)', 'rgba(37, 99, 235, 0.75)',
-    'rgba(16, 185, 129, 0.75)', 'rgba(234, 88, 12, 0.75)',
-    'rgba(8, 145, 178, 0.75)',  'rgba(220, 38, 38, 0.75)',
-    'rgba(245, 158, 11, 0.75)', 'rgba(99, 102, 241, 0.75)',
-  ];
-  var borders = colors.map(function (c) { return c.replace('0.75', '1'); });
-
-  new Chart(document.getElementById('pubChart'), {
-    type: 'bar',
-    data: {
-      labels: plabels,
-      datasets: [{
-        label: 'Published projects',
-        data: pcounts,
-        backgroundColor: plabels.map(function (_, i) { return colors[i % colors.length]; }),
-        borderColor:     plabels.map(function (_, i) { return borders[i % borders.length]; }),
-        borderWidth: 1,
-        borderRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function (ctx) {
-              var n = ctx.parsed.y;
-              return n + ' published project' + (n !== 1 ? 's' : '');
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: 'Published projects' },
-          ticks: { stepSize: 1, precision: 0 },
-          grid: { color: '#f0f0f0' }
-        },
-        x: {
-          grid: { display: false },
-          ticks: { maxRotation: 30, minRotation: 0 }
-        }
-      }
-    }
-  });
-})();
-</script>
-{% endif %}
-
 {% if executions %}
 <div class="card mb-4">
   <div class="card-header">
@@ -146,7 +80,7 @@
 {% endif %}
 
 {% if workflows %}
-<div class="card">
+<div class="card {% if published_by_group %}mb-4{% endif %}">
   <div class="card-header">
     <i class="bi bi-stopwatch me-1"></i> Average Runtime per Workflow
     <span class="text-muted small ms-2">(completed runs with recorded runtime)</span>
@@ -270,10 +204,76 @@
 </script>
 
 {% else %}
-<div class="alert alert-info">
+<div class="alert alert-info {% if published_by_group %}mb-4{% endif %}">
   <i class="bi bi-info-circle me-1"></i>
   No runtime data yet. Runtime is recorded automatically when you use
   <code>register_run(config, log_file=log)</code> in your Snakemake workflow.
 </div>
+{% endif %}
+
+{% if published_by_group %}
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-journal-check me-1"></i> Published Projects per Research Group
+  </div>
+  <div class="card-body">
+    <canvas id="pubChart" style="max-height:340px;"></canvas>
+  </div>
+</div>
+<script>
+(function () {
+  var pdata   = {{ published_by_group | tojson }};
+  var plabels = pdata.map(function (d) { return d.group; });
+  var pcounts = pdata.map(function (d) { return d.count; });
+  var colors  = [
+    'rgba(124, 58, 237, 0.75)', 'rgba(37, 99, 235, 0.75)',
+    'rgba(16, 185, 129, 0.75)', 'rgba(234, 88, 12, 0.75)',
+    'rgba(8, 145, 178, 0.75)',  'rgba(220, 38, 38, 0.75)',
+    'rgba(245, 158, 11, 0.75)', 'rgba(99, 102, 241, 0.75)',
+  ];
+  var borders = colors.map(function (c) { return c.replace('0.75', '1'); });
+
+  new Chart(document.getElementById('pubChart'), {
+    type: 'bar',
+    data: {
+      labels: plabels,
+      datasets: [{
+        label: 'Published projects',
+        data: pcounts,
+        backgroundColor: plabels.map(function (_, i) { return colors[i % colors.length]; }),
+        borderColor:     plabels.map(function (_, i) { return borders[i % borders.length]; }),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var n = ctx.parsed.y;
+              return n + ' published project' + (n !== 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Published projects' },
+          ticks: { stepSize: 1, precision: 0 },
+          grid: { color: '#f0f0f0' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { maxRotation: 30, minRotation: 0 }
+        }
+      }
+    }
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}
