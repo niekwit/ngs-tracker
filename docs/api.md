@@ -493,22 +493,36 @@ onerror:
     register_run(config, status="failed")
 ```
 
-**Step 3 — set your API key**
+**Step 3 — just run**
 
 ```bash
-export NGS_TRACKER_KEY="your-api-key"   # shown in Settings → REST API Key
 snakemake --cores 8
 ```
 
-Optionally set `NGS_TRACKER_USER` to record who ran the workflow:
+The API key and current user are read automatically from
+`~/.ngs-tracker/settings.json` — the same file NGS Tracker writes on first
+startup. No environment variables are needed on a machine where NGS Tracker
+has been started at least once.
+
+If you need to override (e.g. running on an HPC node that doesn't share your
+home directory), set:
 
 ```bash
-export NGS_TRACKER_USER="alice"
+export NGS_TRACKER_KEY="your-api-key"   # shown in Settings → REST API Key
+export NGS_TRACKER_USER="alice"         # optional — overrides the stored user
 ```
 
 The client prints progress to stderr prefixed with `[ngs-tracker]` and
 **never raises an exception** — if the server is unreachable or a file is
 missing the run continues normally and a warning is printed instead.
+
+**Credential resolution order** (first match wins):
+
+| | API key | User |
+|--|---------|------|
+| 1 | `NGS_TRACKER_KEY` env var | `NGS_TRACKER_USER` env var |
+| 2 | `~/.ngs-tracker/settings.json` | `~/.ngs-tracker/settings.json` |
+| 3 | `api_key:` in config YAML | `created_by:` in config YAML |
 
 ---
 

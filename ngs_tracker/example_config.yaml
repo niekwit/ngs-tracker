@@ -1,8 +1,11 @@
 # NGS Tracker integration block — add this to your workflow's config.yaml
 #
+# The API key and current user are read automatically from
+# ~/.ngs-tracker/settings.json (written by NGS Tracker on first run).
+# You do not need to set NGS_TRACKER_KEY or NGS_TRACKER_USER unless you
+# want to override those values.
+#
 # Find your project_id on the project detail page in NGS Tracker.
-# Set the NGS_TRACKER_KEY environment variable to your API key
-# (shown in NGS Tracker → Settings).
 #
 # In your Snakefile:
 #
@@ -19,7 +22,6 @@ ngs_tracker:
 
   # Connection
   base_url: "http://127.0.0.1:5000/api"  # change if NGS Tracker runs on a different host/port
-  # api_key: "..."                        # prefer the NGS_TRACKER_KEY env var instead
 
   # Run identity
   project_id: 1                          # required — see the project detail page
@@ -27,7 +29,6 @@ ngs_tracker:
   workflow_tag: "v1.0.0"                 # release tag
   workflow_system: "snakemake"           # snakemake | nextflow | cwl | other
   description: "Short description of this run"
-  created_by: ""                         # prefer the NGS_TRACKER_USER env var instead
 
   # Optional tags and notes (Markdown supported in notes)
   tags:

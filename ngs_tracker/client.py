@@ -27,6 +27,7 @@ The current user is read from NGS_TRACKER_USER (env var) or
 config["ngs_tracker"]["created_by"].
 """
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -40,6 +41,18 @@ except ImportError:  # pragma: no cover
 DEFAULT_BASE_URL = "http://127.0.0.1:5000/api"
 VALID_STATUSES = {"completed", "running", "pending", "failed"}
 VALID_FILE_TYPES = {"config", "sample_info", "qc", "results", "mapping_rates", "other"}
+
+_SETTINGS_FILE = Path.home() / ".ngs-tracker" / "settings.json"
+
+
+def _local_credentials() -> tuple[str, str]:
+    """Return (api_key, current_user) from ~/.ngs-tracker/settings.json, or ('', '')."""
+    try:
+        with open(_SETTINGS_FILE) as f:
+            s = json.load(f)
+        return s.get("api_key", ""), s.get("current_user", "")
+    except Exception:
+        return "", ""
 
 
 def register_run(config: dict, status: str = "completed") -> int | None:
@@ -105,9 +118,15 @@ def register_run(config: dict, status: str = "completed") -> int | None:
         status = "completed"
 
     base = cfg.get("base_url", DEFAULT_BASE_URL).rstrip("/")
-    key = os.environ.get("NGS_TRACKER_KEY") or cfg.get("api_key", "")
+
+    # Key resolution: env var > ~/.ngs-tracker/settings.json > config YAML
+    _local_key, _local_user = _local_credentials()
+    key = os.environ.get("NGS_TRACKER_KEY") or _local_key or cfg.get("api_key", "")
     if not key:
-        _warn("No API key found. Set the NGS_TRACKER_KEY environment variable.")
+        _warn(
+            "No API key found. Set NGS_TRACKER_KEY or ensure NGS Tracker has "
+            f"been started at least once (key is written to {_SETTINGS_FILE})."
+        )
         return None
 
     project_id = cfg.get("project_id")
@@ -116,6 +135,11 @@ def register_run(config: dict, status: str = "completed") -> int | None:
         return None
 
     headers = {"X-Api-Key": key}
+
+    # User resolution: env var > ~/.ngs-tracker/settings.json > config YAML
+    created_by = (
+        os.environ.get("NGS_TRACKER_USER") or _local_user or cfg.get("created_by", "")
+    )
 
     try:
         # ── Create the run ────────────────────────────────────────────────────
@@ -128,8 +152,7 @@ def register_run(config: dict, status: str = "completed") -> int | None:
             "description": cfg.get("description", ""),
             "tags": cfg.get("tags", []),
             "notes": cfg.get("notes", ""),
-            "created_by": os.environ.get("NGS_TRACKER_USER", "")
-            or cfg.get("created_by", ""),
+            "created_by": created_by,
         }
 
         resp = _requests.post(f"{base}/runs", headers=headers, json=payload, timeout=30)
