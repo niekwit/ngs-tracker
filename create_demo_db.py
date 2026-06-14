@@ -649,7 +649,7 @@ with app.app_context():
         created_by="David Osei",
         tags="benchmark,Snakemake,RNA-seq",
         runtime_seconds=14280,  # 3h 58min (matches notes)
-        backups=backups(("Local", "/data/david/benchmark_smk")),
+        backups=backups(),
         notes="Matched parameters. STAR + featureCounts. Runtime: 3h 58min. Gene-level correlation r=0.998 vs nf-core.",
     )
     db.session.add(run_bench2)
@@ -839,7 +839,7 @@ with app.app_context():
         created_by="Grace O'Brien",
         tags="ATAC-seq,CWL,WorkflowHub,portability",
         runtime_seconds=4562,  # ~1h 16min
-        backups=backups(("Local", "/data/grace/cwl_atac")),
+        backups=backups(),
         notes=(
             "## CWL ATAC-seq pipeline validation\n\n"
             "Validated on ENCODE GM12878 ATAC-seq data (ENCSR095QNB).\n\n"
