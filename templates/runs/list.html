@@ -3,7 +3,14 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="fw-bold mb-0"><i class="bi bi-play-circle-fill me-1 text-danger"></i> Workflow Runs</h4>
+  <div>
+    <h4 class="fw-bold mb-0"><i class="bi bi-play-circle-fill me-1 text-danger"></i> Workflow Runs</h4>
+    {% if total > per_page %}
+    <span class="text-muted small">
+      Showing {{ (page - 1) * per_page + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}
+    </span>
+    {% endif %}
+  </div>
   <a href="{{ url_for('run_new') }}" class="btn btn-primary btn-sm">
     <i class="bi bi-plus-lg me-1"></i> New Run
   </a>
@@ -128,6 +135,33 @@
     </table>
   </div>
 </div>
+
+{% if total_pages > 1 %}
+{% macro page_url(p) %}{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, page=p) }}{% endmacro %}
+<nav class="d-flex justify-content-center mt-3">
+  <ul class="pagination pagination-sm mb-0">
+    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ page_url(page - 1) }}">&#8592;</a>
+    </li>
+    {% set ns = namespace(prev=0) %}
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+        {% if ns.prev > 0 and p > ns.prev + 1 %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
+        </li>
+        {% set ns.prev = p %}
+      {% endif %}
+    {% endfor %}
+    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ page_url(page + 1) }}">&#8594;</a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+
 {% else %}
 <div class="card">
   <div class="card-body text-center py-5 text-muted">

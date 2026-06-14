@@ -25,12 +25,15 @@ from models import (
 
 
 def register(app):
+    PER_PAGE = 50
+
     @app.route("/runs")
     def runs_list():
         sort = request.args.get("sort", "date")
         direction = request.args.get("dir", "desc")
         tag_filter = request.args.get("tag", "").strip()
         status_filter = request.args.get("status", "").strip().lower()
+        page = max(1, request.args.get("page", 1, type=int))
         reverse = direction == "desc"
 
         all_runs = WorkflowRun.query.filter_by(trashed=False).all()
@@ -53,15 +56,24 @@ def register(app):
         }
         runs.sort(key=key_map.get(sort, key_map["date"]), reverse=reverse)
 
+        total = len(runs)
+        total_pages = max(1, (total + PER_PAGE - 1) // PER_PAGE)
+        page = min(page, total_pages)
+        runs_page = runs[(page - 1) * PER_PAGE : page * PER_PAGE]
+
         return render_template(
             "runs/list.html",
-            runs=runs,
+            runs=runs_page,
             sort=sort,
             dir=direction,
             tag_filter=tag_filter,
             status_filter=status_filter,
             all_tags=all_tags,
             run_statuses=RUN_STATUSES,
+            page=page,
+            total_pages=total_pages,
+            total=total,
+            per_page=PER_PAGE,
         )
 
     @app.route("/runs/<int:id>")

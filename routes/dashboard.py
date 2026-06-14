@@ -12,6 +12,7 @@ from config import (
     add_default_tag,
     add_user,
     db_log,
+    get_api_key,
     get_backup_locations,
     get_current_user,
     get_default_tags,
@@ -22,6 +23,7 @@ from config import (
     remove_backup_location,
     remove_default_tag,
     remove_user,
+    rotate_api_key,
     save_settings,
     set_current_user,
 )
@@ -194,6 +196,13 @@ def register(app):
                 flash(f'Backup location "{name}" removed.', "success")
                 return redirect(url_for("setup"))
 
+            if action == "rotate_api_key":
+                rotate_api_key()
+                flash(
+                    "API key rotated. Update any scripts using the old key.", "success"
+                )
+                return redirect(url_for("setup"))
+
             # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
@@ -226,4 +235,5 @@ def register(app):
             current_user=get_current_user(),
             default_tags=get_default_tags(),
             backup_locations=get_backup_locations(),
+            api_key=get_api_key(),
         )

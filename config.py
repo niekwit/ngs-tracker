@@ -1,6 +1,7 @@
 import gzip
 import json
 import os
+import secrets
 import shutil
 import subprocess
 import yaml
@@ -352,3 +353,23 @@ def add_run_template(template: dict) -> None:
 def delete_run_template(tid: str) -> None:
     templates = [t for t in load_run_templates() if t.get("id") != tid]
     save_run_templates(templates)
+
+
+# ── API key ───────────────────────────────────────────────────────────────────
+
+
+def get_api_key() -> str:
+    """Return the API key, generating one on first call."""
+    s = load_settings()
+    if not s.get("api_key"):
+        s["api_key"] = secrets.token_urlsafe(32)
+        save_settings(s)
+    return s["api_key"]
+
+
+def rotate_api_key() -> str:
+    """Generate and store a new API key, invalidating the old one."""
+    s = load_settings()
+    s["api_key"] = secrets.token_urlsafe(32)
+    save_settings(s)
+    return s["api_key"]

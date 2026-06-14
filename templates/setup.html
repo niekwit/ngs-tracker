@@ -162,6 +162,34 @@
       </div>
     </div>
 
+    <!-- API key -->
+    <h5 class="fw-bold mt-4 mb-2"><i class="bi bi-key me-1"></i> REST API Key</h5>
+    <div class="card">
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Use this key to authenticate requests to the
+          <a href="/api/health" target="_blank"><code>/api/</code></a> endpoints.
+          Pass it as the <code>X-Api-Key</code> header or <code>?api_key=</code> query parameter.
+        </p>
+        <div class="input-group mb-3" style="max-width:520px;">
+          <input type="text" id="apiKeyInput" class="form-control font-monospace"
+                 value="{{ api_key }}" readonly style="font-size:.82rem;">
+          <button class="btn btn-outline-secondary" type="button"
+                  onclick="navigator.clipboard.writeText(document.getElementById('apiKeyInput').value)"
+                  title="Copy to clipboard">
+            <i class="bi bi-clipboard"></i>
+          </button>
+        </div>
+        <form method="POST">
+          <button type="submit" name="action" value="rotate_api_key"
+                  class="btn btn-sm btn-outline-danger"
+                  onclick="return confirm('Rotate the API key? Existing scripts using the current key will stop working.')">
+            <i class="bi bi-arrow-repeat me-1"></i>Rotate key
+          </button>
+        </form>
+      </div>
+    </div>
+
     <div class="alert alert-info mt-3 py-2">
       <i class="bi bi-info-circle me-1"></i>
       Settings are saved to <code>{{ settings_file }}</code> and persist across restarts.

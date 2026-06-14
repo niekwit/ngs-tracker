@@ -14,6 +14,7 @@ from config import (
 )
 from models import db
 
+import routes.api
 import routes.dashboard
 import routes.export
 import routes.files
@@ -103,13 +104,17 @@ def inject_current_user():
 
 @app.before_request
 def require_setup():
+    # API endpoints and static files bypass the setup redirect
     if flask_request.endpoint in ("setup", "static"):
+        return
+    if flask_request.path.startswith("/api/"):
         return
     if not is_configured():
         return redirect(url_for("setup"))
 
 
 # Register all route modules
+routes.api.register(app)
 routes.dashboard.register(app)
 routes.export.register(app)
 routes.groups.register(app)

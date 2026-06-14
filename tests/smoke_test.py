@@ -3,6 +3,7 @@ Smoke test: create demo DB, then use Flask's test client to check key endpoints.
 No networking required — avoids platform-specific port-binding issues on macOS.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -11,9 +12,11 @@ from pathlib import Path
 
 REPO = Path(__file__).parent.parent
 
-ENDPOINTS = [
+# Standard UI pages
+UI_ENDPOINTS = [
     "/",
     "/runs",
+    "/runs?page=1",
     "/runs/1",
     "/runs/2",
     "/groups",
@@ -48,30 +51,105 @@ def main() -> int:
     # Import app after env vars are set so create_app() picks up the demo DB path
     sys.path.insert(0, str(REPO))
     import app as flask_app
+    from config import get_api_key
 
     client = flask_app.app.test_client()
-
-    print("Running endpoint checks...\n")
-    sys.stdout.flush()
+    api_key = get_api_key()
 
     failed = []
-    for endpoint in ENDPOINTS:
+
+    # ── UI endpoints ──────────────────────────────────────────────────────────
+    print("UI endpoint checks...\n")
+    sys.stdout.flush()
+    for endpoint in UI_ENDPOINTS:
         resp = client.get(endpoint, follow_redirects=True)
         status = resp.status_code
         ok = status == 200
-        marker = "OK  " if ok else "FAIL"
-        print(f"  {marker}  {endpoint}  ->  {status}")
+        print(f"  {'OK  ' if ok else 'FAIL'}  {endpoint}  ->  {status}")
         if not ok:
             failed.append((endpoint, status))
 
+    # ── API endpoints ─────────────────────────────────────────────────────────
+    print("\nAPI endpoint checks...\n")
+    sys.stdout.flush()
+
+    # Health — no auth required
+    resp = client.get("/api/health")
+    ok = resp.status_code == 200
+    print(f"  {'OK  ' if ok else 'FAIL'}  GET /api/health  ->  {resp.status_code}")
+    if not ok:
+        failed.append(("/api/health", resp.status_code))
+
+    # Unauthenticated request should be 401
+    resp = client.get("/api/runs")
+    ok = resp.status_code == 401
+    print(f"  {'OK  ' if ok else 'FAIL'}  GET /api/runs (no key)  ->  {resp.status_code} (expect 401)")
+    if not ok:
+        failed.append(("/api/runs [no-auth]", resp.status_code))
+
+    headers = {"X-Api-Key": api_key}
+
+    # Authenticated list endpoints
+    for endpoint in ["/api/runs", "/api/projects", "/api/researchers"]:
+        resp = client.get(endpoint, headers=headers)
+        ok = resp.status_code == 200
+        data = resp.get_json()
+        count = len(data) if isinstance(data, list) else "?"
+        print(f"  {'OK  ' if ok else 'FAIL'}  GET {endpoint}  ->  {resp.status_code} ({count} items)")
+        if not ok:
+            failed.append((endpoint, resp.status_code))
+
+    # Single run
+    resp = client.get("/api/runs/1", headers=headers)
+    ok = resp.status_code == 200
+    print(f"  {'OK  ' if ok else 'FAIL'}  GET /api/runs/1  ->  {resp.status_code}")
+    if not ok:
+        failed.append(("/api/runs/1", resp.status_code))
+
+    # Create a run via API
+    payload = {
+        "project_id": 1,
+        "workflow_name": "test-pipeline",
+        "workflow_tag": "v1.0.0",
+        "workflow_system": "snakemake",
+        "status": "completed",
+        "description": "Created by smoke test",
+        "tags": ["test"],
+    }
+    resp = client.post(
+        "/api/runs",
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers=headers,
+    )
+    ok = resp.status_code == 201
+    new_id = resp.get_json().get("id") if ok else None
+    print(f"  {'OK  ' if ok else 'FAIL'}  POST /api/runs  ->  {resp.status_code} (id={new_id})")
+    if not ok:
+        failed.append(("/api/runs [POST]", resp.status_code))
+
+    # Update the run's status via PATCH
+    if new_id:
+        resp = client.patch(
+            f"/api/runs/{new_id}",
+            data=json.dumps({"status": "failed", "notes": "smoke test patch"}),
+            content_type="application/json",
+            headers=headers,
+        )
+        ok = resp.status_code == 200 and resp.get_json().get("status") == "failed"
+        print(f"  {'OK  ' if ok else 'FAIL'}  PATCH /api/runs/{new_id}  ->  {resp.status_code}")
+        if not ok:
+            failed.append((f"/api/runs/{new_id} [PATCH]", resp.status_code))
+
     print()
     if failed:
-        print(f"FAILED: {len(failed)} endpoint(s) did not return 200:")
+        print(f"FAILED: {len(failed)} check(s):")
         for ep, st in failed:
             print(f"  {ep}  ->  {st}")
         return 1
 
-    print(f"All {len(ENDPOINTS)} endpoints returned 200.")
+    total = len(UI_ENDPOINTS) + 7  # UI + API checks
+    print(f"All {total} checks passed.")
     return 0
 
 
