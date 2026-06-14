@@ -7,7 +7,7 @@ from models import WorkflowRun, db
 def register(app):
     @app.route("/stats")
     def stats():
-        rows = (
+        runtime_rows = (
             db.session.query(
                 WorkflowRun.workflow_name,
                 func.avg(WorkflowRun.runtime_seconds).label("avg_seconds"),
@@ -29,7 +29,20 @@ def register(app):
                 "avg_seconds": int(r.avg_seconds),
                 "run_count": r.run_count,
             }
-            for r in rows
+            for r in runtime_rows
         ]
 
-        return render_template("stats.html", workflows=workflows)
+        exec_rows = (
+            db.session.query(
+                WorkflowRun.workflow_name,
+                func.count(WorkflowRun.id).label("total"),
+            )
+            .filter(WorkflowRun.trashed == False)
+            .group_by(WorkflowRun.workflow_name)
+            .order_by(func.count(WorkflowRun.id).desc())
+            .all()
+        )
+
+        executions = [{"name": r.workflow_name, "total": r.total} for r in exec_rows]
+
+        return render_template("stats.html", workflows=workflows, executions=executions)

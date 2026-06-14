@@ -6,6 +6,22 @@
   <h4 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h4>
 </div>
 
+{% if executions or workflows %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endif %}
+
+{% if executions %}
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="bi bi-play-circle-fill me-1"></i> Executions per Workflow
+    <span class="text-muted small ms-2">(all non-trashed runs)</span>
+  </div>
+  <div class="card-body">
+    <canvas id="execChart" style="max-height:420px;"></canvas>
+  </div>
+</div>
+{% endif %}
+
 {% if workflows %}
 <div class="card">
   <div class="card-header">
@@ -17,7 +33,6 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script>
 (function () {
   var data = {{ workflows | tojson }};
@@ -84,6 +99,51 @@
     }
   });
 })();
+
+{% if executions %}
+(function () {
+  var edata   = {{ executions | tojson }};
+  var elabels = edata.map(function (d) { return d.name; });
+  var etotals = edata.map(function (d) { return d.total; });
+
+  new Chart(document.getElementById('execChart'), {
+    type: 'bar',
+    data: {
+      labels: elabels,
+      datasets: [{
+        label: 'Executions',
+        data: etotals,
+        backgroundColor: 'rgba(16, 185, 129, 0.70)',
+        borderColor:     'rgba(16, 185, 129, 1)',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var n = ctx.parsed.y;
+              return n + ' run' + (n !== 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Number of runs' },
+          ticks: { stepSize: 1, precision: 0 }
+        },
+        x: { ticks: { maxRotation: 40, minRotation: 20 } }
+      }
+    }
+  });
+})();
+{% endif %}
 </script>
 
 {% else %}
