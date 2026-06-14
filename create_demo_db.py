@@ -330,6 +330,7 @@ with app.app_context():
         run_date=dt(340),
         created_by="Alice Morgan",
         tags="pilot,histone-mark,MEF",
+        runtime_seconds=2847,  # ~47 min (4 samples)
         backups=backups(
             ("Local", "/data/alice/chip_pilot"), ("RCS", "/rcs/alice/chip_pilot")
         ),
@@ -357,6 +358,7 @@ with app.app_context():
         run_date=dt(290),
         created_by="Alice Morgan",
         tags="published,histone-mark,MEF,timecourse",
+        runtime_seconds=4521,  # ~1h 15min (6 samples)
         backups=backups(
             ("Local", "/data/alice/chip_timecourse"),
             ("RCS", "/rcs/alice/chip_timecourse"),
@@ -388,6 +390,7 @@ with app.app_context():
         run_date=dt(185),
         created_by="Alice Morgan",
         tags="ATAC-seq,iPSC,chromatin",
+        runtime_seconds=1923,  # ~32 min (4 samples)
         backups=backups(("Local", "/data/alice/atac_tc")),
         notes="Initial two time points. D0 FRiP = 0.22, D2 FRiP = 0.19. Proceeding to full timecourse.",
     )
@@ -405,6 +408,7 @@ with app.app_context():
         run_date=dt(140),
         created_by="Alice Morgan",
         tags="ATAC-seq,iPSC,chromatin,timecourse",
+        runtime_seconds=6237,  # ~1h 44min (10 samples)
         backups=backups(
             ("Local", "/data/alice/atac_full"),
             ("RCS", "/rcs/alice/atac_full"),
@@ -451,6 +455,7 @@ with app.app_context():
         run_date=dt(260),
         created_by="Ben Hartley",
         tags="CRISPR,screen,KRAS,oncology",
+        runtime_seconds=1834,  # ~30 min
         backups=backups(
             ("Local", "/data/ben/crispr_screen"),
             ("RCS", "/rcs/ben/crispr_kras"),
@@ -482,6 +487,7 @@ with app.app_context():
         run_date=dt(200),
         created_by="Ben Hartley",
         tags="CRISPR,screen,validation,KRAS",
+        runtime_seconds=1502,  # ~25 min
         backups=backups(
             ("Local", "/data/ben/crispr_validation"),
             ("RCS", "/rcs/ben/crispr_validation"),
@@ -505,6 +511,7 @@ with app.app_context():
         run_date=dt(145),
         created_by="Ben Hartley",
         tags="RNA-seq,MEK,drug-treatment,Nextflow",
+        runtime_seconds=12543,  # ~3h 29min (12 samples, Nextflow)
         backups=backups(
             ("Local", "/data/ben/rnaseq_meki"),
             ("RCS", "/rcs/ben/rnaseq_meki"),
@@ -551,6 +558,7 @@ with app.app_context():
         run_date=dt(220),
         created_by="Chloe Nakamura",
         tags="CUT&RUN,histone-mark,mESC,bivalent",
+        runtime_seconds=4128,  # ~1h 9min (5 samples)
         backups=backups(
             ("Local", "/data/chloe/cutnrun_mesc"),
             ("RCS", "/rcs/chloe/cutnrun"),
@@ -577,6 +585,7 @@ with app.app_context():
         run_date=dt(190),
         created_by="Chloe Nakamura",
         tags="CUT&RUN,histone-mark,mESC,heterochromatin",
+        runtime_seconds=743,  # ~12 min (failed early — QC abort)
         backups=backups(("Local", "/data/chloe/cutnrun_h3k9me3")),
         notes=(
             "## H3K9me3 run — FAILED\n\n"
@@ -599,6 +608,7 @@ with app.app_context():
         run_date=dt(155),
         created_by="Chloe Nakamura",
         tags="CUT&RUN,histone-mark,mESC,heterochromatin",
+        runtime_seconds=3219,  # ~54 min (3 samples)
         backups=backups(
             ("Local", "/data/chloe/cutnrun_h3k9me3_v2"),
             ("RCS", "/rcs/chloe/cutnrun_h3k9me3_v2"),
@@ -621,6 +631,7 @@ with app.app_context():
         run_date=dt(300),
         created_by="David Osei",
         tags="benchmark,Nextflow,nf-core,RNA-seq",
+        runtime_seconds=15720,  # 4h 22min (matches notes)
         backups=backups(("Local", "/data/david/benchmark_nfcore")),
         notes="Baseline run using nf-core/rnaseq v3.12. STAR + Salmon. Runtime: 4h 22min on 32 cores.",
     )
@@ -637,6 +648,7 @@ with app.app_context():
         run_date=dt(285),
         created_by="David Osei",
         tags="benchmark,Snakemake,RNA-seq",
+        runtime_seconds=14280,  # 3h 58min (matches notes)
         backups=backups(("Local", "/data/david/benchmark_smk")),
         notes="Matched parameters. STAR + featureCounts. Runtime: 3h 58min. Gene-level correlation r=0.998 vs nf-core.",
     )
@@ -655,6 +667,7 @@ with app.app_context():
         run_date=dt(110),
         created_by="David Osei",
         tags="scRNA-seq,atlas,PDAC,Nextflow,nf-core",
+        runtime_seconds=34812,  # ~9h 40min (18 samples, Cell Ranger)
         backups=backups(
             ("Local", "/data/david/pdac_atlas"),
             ("RCS", "/rcs/david/pdac_atlas"),
@@ -705,6 +718,7 @@ with app.app_context():
         run_date=dt(200),
         created_by="Emma Thorpe",
         tags="WGS,variant-calling,germline,GATK,Nextflow",
+        runtime_seconds=52438,  # ~14h 34min (WGS, 24 samples)
         backups=backups(
             ("Local", "/data/emma/variant_calling"),
             ("RCS", "/rcs/emma/wgs_cohort"),
@@ -735,6 +749,7 @@ with app.app_context():
         run_date=dt(130),
         created_by="Emma Thorpe",
         tags="WGS,variant-calling,annotation,patch",
+        runtime_seconds=50912,  # ~14h 8min
         backups=backups(
             ("Local", "/data/emma/variant_calling_v2"),
             ("RCS", "/rcs/emma/wgs_cohort_v2"),
@@ -757,6 +772,7 @@ with app.app_context():
         run_date=dt(250),
         created_by="Finn Larsson",
         tags="ChIP-seq,CTCF,cohesin,development,mouse",
+        runtime_seconds=3124,  # ~52 min (4 samples)
         backups=backups(
             ("Local", "/data/finn/devchip_early"),
             ("RCS", "/rcs/finn/devchip"),
@@ -777,6 +793,7 @@ with app.app_context():
         run_date=dt(210),
         created_by="Finn Larsson",
         tags="ChIP-seq,CTCF,cohesin,development,mouse",
+        runtime_seconds=3287,  # ~55 min (4 samples)
         backups=backups(
             ("Local", "/data/finn/devchip_late"),
             ("RCS", "/rcs/finn/devchip"),
@@ -797,6 +814,7 @@ with app.app_context():
         run_date=dt(170),
         created_by="Finn Larsson",
         tags="ChIP-seq,CTCF,timecourse,integration",
+        runtime_seconds=5834,  # ~1h 37min (8 samples)
         backups=backups(
             ("Local", "/data/finn/devchip_merged"),
             ("RCS", "/rcs/finn/devchip_merged"),
@@ -820,6 +838,7 @@ with app.app_context():
         run_date=dt(160),
         created_by="Grace O'Brien",
         tags="ATAC-seq,CWL,WorkflowHub,portability",
+        runtime_seconds=4562,  # ~1h 16min
         backups=backups(("Local", "/data/grace/cwl_atac")),
         notes=(
             "## CWL ATAC-seq pipeline validation\n\n"
@@ -843,6 +862,7 @@ with app.app_context():
         run_date=dt(75),
         created_by="Grace O'Brien",
         tags="WGBS,methylation,gastrulation,mouse",
+        runtime_seconds=31847,  # ~8h 51min (WGBS bisulfite alignment)
         backups=backups(
             ("Local", "/data/grace/wgbs_gastrulation"),
             ("RCS", "/rcs/grace/wgbs"),
