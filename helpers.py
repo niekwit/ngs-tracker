@@ -114,6 +114,24 @@ def _parse_snakemake_config(path: Path) -> str | None:
         return None
 
 
+def find_duplicate_runs(
+    project_id: int,
+    workflow_name: str,
+    run_date: datetime,
+    exclude_id: int | None = None,
+) -> list:
+    """Return runs sharing the same project, workflow, and calendar date."""
+    target_date = run_date.date()
+    q = WorkflowRun.query.filter(
+        WorkflowRun.project_id == project_id,
+        WorkflowRun.workflow_name == workflow_name,
+        WorkflowRun.trashed == False,
+    )
+    if exclude_id is not None:
+        q = q.filter(WorkflowRun.id != exclude_id)
+    return [r for r in q.all() if r.run_date.date() == target_date]
+
+
 def _parse_datetime(value: str) -> datetime:
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d"):
         try:

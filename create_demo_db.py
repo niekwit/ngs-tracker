@@ -426,6 +426,27 @@ with app.app_context():
     db.session.flush()
     link_samples(run_atac2, atac_samples)
 
+    # Duplicate of run_atac1 — same workflow, project, and date — triggers detection demo
+    run_atac1b = WorkflowRun(
+        project_id=proj_atac.id,
+        workflow_name="atac-seq",
+        workflow_tag="v2.0.0",
+        workflow_system="snakemake",
+        description="D0 and D2 — accidentally re-submitted",
+        status="completed",
+        run_date=dt(185),
+        created_by="Alice Morgan",
+        tags="ATAC-seq,iPSC",
+        backups=backups(),
+        notes=(
+            "Submitted by mistake — duplicate of the other atac-seq run from this date. "
+            "One of these two runs should be deleted."
+        ),
+    )
+    db.session.add(run_atac1b)
+    db.session.flush()
+    link_samples(run_atac1b, atac_samples[:4])
+
     run_atac3 = WorkflowRun(
         project_id=proj_atac.id,
         workflow_name="atac-seq",

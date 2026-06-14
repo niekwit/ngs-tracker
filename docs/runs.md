@@ -18,6 +18,15 @@ When creating or editing a run you can fill in:
 | **Notes** | Long-form Markdown text |
 | **Backup status** | Per-location checkboxes with optional storage path |
 
+## Duplicate detection
+
+When a new run is created (via the web form or REST API), NGS Tracker checks whether another non-trashed run already exists with the same **workflow name**, **project**, and **calendar date**. If one is found:
+
+- **Web form** — a warning banner appears on the new run's detail page with a direct link to the existing run. The new run is still saved; delete whichever is the accidental duplicate.
+- **REST API** — the response body includes `"duplicate_warning": true` and `"duplicate_of": [<id>, ...]` alongside the normal 201 payload. The caller can log the warning or act on it as needed.
+
+The check is date-based (same day), not time-based, so re-running a pipeline later the same day is still flagged. If that is intentional, simply dismiss the warning.
+
 ## Workflow system badge
 
 When a workflow is selected in the form, a coloured pill badge immediately shows the workflow system — Snakemake (green), Nextflow (orange), CWL (blue), or Other (grey). The badge also appears on the run detail page next to the workflow name.

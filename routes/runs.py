@@ -11,7 +11,9 @@ from config import (
     load_run_templates,
     load_workflows,
 )
-from helpers import _compare_configs, _parse_datetime
+from markupsafe import Markup
+
+from helpers import _compare_configs, _parse_datetime, find_duplicate_runs
 from models import (
     FILE_TYPES,
     RUN_STATUSES,
@@ -210,6 +212,23 @@ def register(app):
                 f"{run.workflow_name} (project: {run.project.name})",
             )
             flash(f'Workflow run "{workflow_name}" created.', "success")
+            duplicates = find_duplicate_runs(
+                project_id, workflow_name, run_date, exclude_id=run.id
+            )
+            if duplicates:
+                links = ", ".join(
+                    f'<a href="{url_for("run_detail", id=r.id)}" class="alert-link">'
+                    f"{r.workflow_name} #{r.id} ({r.run_date.strftime('%Y-%m-%d')})</a>"
+                    for r in duplicates
+                )
+                flash(
+                    Markup(
+                        f"Possible duplicate: another <strong>{workflow_name}</strong> run "
+                        f"exists for this project on the same date — {links}. "
+                        f"Delete one if this was accidental."
+                    ),
+                    "warning",
+                )
             return redirect(url_for("run_detail", id=run.id))
 
         default_tags = get_default_tags()

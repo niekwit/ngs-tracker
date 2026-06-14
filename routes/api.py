@@ -27,7 +27,12 @@ from flask import jsonify, request
 from werkzeug.utils import secure_filename
 
 from config import db_log, get_api_key, get_storage_path
-from helpers import _parse_mapping_rates, _parse_snakemake_config, _parse_snakemake_log
+from helpers import (
+    _parse_mapping_rates,
+    _parse_snakemake_config,
+    _parse_snakemake_log,
+    find_duplicate_runs,
+)
 from models import (
     FILE_TYPES,
     AttachedFile,
@@ -218,7 +223,14 @@ def register(app):
         db.session.add(run)
         db.session.commit()
         db_log("CREATE", "WorkflowRun", run.id, f"{run.workflow_name} via API")
-        return jsonify(_run_dict(run)), 201
+        resp = _run_dict(run)
+        duplicates = find_duplicate_runs(
+            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id
+        )
+        if duplicates:
+            resp["duplicate_warning"] = True
+            resp["duplicate_of"] = [r.id for r in duplicates]
+        return jsonify(resp), 201
 
     # ── Runs — update ─────────────────────────────────────────────────────────
 
