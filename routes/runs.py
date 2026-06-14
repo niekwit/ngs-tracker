@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from flask import flash, redirect, render_template, request, url_for
 
@@ -35,8 +36,24 @@ def register(app):
         direction = request.args.get("dir", "desc")
         tag_filter = request.args.get("tag", "").strip()
         status_filter = request.args.get("status", "").strip().lower()
+        date_from_str = request.args.get("date_from", "").strip()
+        date_to_str = request.args.get("date_to", "").strip()
         page = max(1, request.args.get("page", 1, type=int))
         reverse = direction == "desc"
+
+        # Parse and validate date range
+        date_from = None
+        date_to = None
+        try:
+            if date_from_str:
+                date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+        except ValueError:
+            date_from_str = ""
+        try:
+            if date_to_str:
+                date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+        except ValueError:
+            date_to_str = ""
 
         all_runs = WorkflowRun.query.filter_by(trashed=False).all()
         all_tags = sorted({tag for r in all_runs for tag in r.tag_list})
@@ -46,6 +63,10 @@ def register(app):
             runs = [r for r in runs if tag_filter in r.tag_list]
         if status_filter and status_filter in RUN_STATUSES:
             runs = [r for r in runs if r.status == status_filter]
+        if date_from:
+            runs = [r for r in runs if r.run_date.date() >= date_from]
+        if date_to:
+            runs = [r for r in runs if r.run_date.date() <= date_to]
 
         key_map = {
             "workflow": lambda r: r.workflow_name.lower(),
@@ -70,6 +91,8 @@ def register(app):
             dir=direction,
             tag_filter=tag_filter,
             status_filter=status_filter,
+            date_from=date_from_str,
+            date_to=date_to_str,
             all_tags=all_tags,
             run_statuses=RUN_STATUSES,
             page=page,
@@ -411,7 +434,8 @@ def register(app):
         action = request.form.get("action", "")
         value = request.form.get("value", "").strip()
         redir_kw = {
-            k: request.form.get(k, "") for k in ("sort", "dir", "tag", "status")
+            k: request.form.get(k, "")
+            for k in ("sort", "dir", "tag", "status", "date_from", "date_to")
         }
         redir_kw = {k: v for k, v in redir_kw.items() if v}
 

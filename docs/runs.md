@@ -137,6 +137,24 @@ You can combine a status filter with a tag filter:
 /runs?status=failed&tag=RNA-seq
 ```
 
+## Filtering by date range
+
+A **Date** row above the tag filter lets you narrow the list to runs within a specific period:
+
+1. Enter a **from** date, a **to** date, or both, using the date pickers.
+2. Click **Apply**.
+3. A blue banner confirms the active date range. Click **clear filter** in the banner or **Clear dates** next to the pickers to remove it.
+
+Date filters can be combined freely with status and tag filters. They are also preserved across sort column changes and pagination. You can link directly to a date-filtered view:
+
+```
+/runs?date_from=2025-01-01&date_to=2025-06-30
+/runs?date_from=2025-06-01                     # from date only
+/runs?date_to=2025-12-31&status=completed      # combined with status
+```
+
+The same `date_from` / `date_to` parameters are supported by the [REST API](api.md) `GET /api/runs` endpoint.
+
 ## Batch operations
 
 Select multiple runs on the runs list page and apply an action to all of them at once.

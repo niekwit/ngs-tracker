@@ -100,6 +100,8 @@ List all workflow runs, newest first.
 | `status` | string | Filter by status: `completed`, `running`, `pending`, `failed` |
 | `project_id` | integer | Filter by project ID |
 | `researcher_id` | integer | Filter by researcher ID |
+| `date_from` | string | Include only runs on or after this date (`YYYY-MM-DD`) |
+| `date_to` | string | Include only runs on or before this date (`YYYY-MM-DD`) |
 
 **Response** — array of [run objects](#run-object)
 
@@ -114,6 +116,9 @@ curl -H "X-Api-Key: $KEY" "http://127.0.0.1:5000/api/runs?status=failed"
 
 # Runs for project 3
 curl -H "X-Api-Key: $KEY" "http://127.0.0.1:5000/api/runs?project_id=3"
+
+# Runs in a date range
+curl -H "X-Api-Key: $KEY" "http://127.0.0.1:5000/api/runs?date_from=2025-01-01&date_to=2025-06-30"
 ```
 
 **Python**

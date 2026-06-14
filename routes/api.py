@@ -136,6 +136,8 @@ def register(app):
     @app.route("/api/runs")
     @_require_api_key
     def api_runs_list():
+        from datetime import timedelta
+
         q = WorkflowRun.query.filter_by(trashed=False)
         if status := request.args.get("status"):
             q = q.filter_by(status=status)
@@ -143,6 +145,18 @@ def register(app):
             q = q.filter_by(project_id=pid)
         if rid := request.args.get("researcher_id", type=int):
             q = q.join(Project).filter(Project.researcher_id == rid)
+        if df_str := request.args.get("date_from", "").strip():
+            try:
+                df = datetime.strptime(df_str, "%Y-%m-%d")
+                q = q.filter(WorkflowRun.run_date >= df)
+            except ValueError:
+                return jsonify({"error": "Invalid date_from — use YYYY-MM-DD"}), 400
+        if dt_str := request.args.get("date_to", "").strip():
+            try:
+                dt = datetime.strptime(dt_str, "%Y-%m-%d") + timedelta(days=1)
+                q = q.filter(WorkflowRun.run_date < dt)
+            except ValueError:
+                return jsonify({"error": "Invalid date_to — use YYYY-MM-DD"}), 400
         runs = q.order_by(WorkflowRun.run_date.desc()).all()
         return jsonify([_run_dict(r) for r in runs])
 

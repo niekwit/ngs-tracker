@@ -18,7 +18,7 @@
 
 {% macro sort_link(col, label) %}
 {% set next_dir = 'desc' if sort == col and dir == 'asc' else 'asc' %}
-<a href="{{ url_for('runs_list', sort=col, dir=next_dir, tag=tag_filter, status=status_filter) }}" class="text-decoration-none text-dark">
+<a href="{{ url_for('runs_list', sort=col, dir=next_dir, tag=tag_filter, status=status_filter, date_from=date_from, date_to=date_to) }}" class="text-decoration-none text-dark">
   {{ label }}
   {% if sort == col %}
   <i class="bi bi-arrow-{{ 'up' if dir == 'asc' else 'down' }}-short"></i>
@@ -28,16 +28,37 @@
 </a>
 {% endmacro %}
 
+<!-- Date range filter -->
+<form method="GET" action="{{ url_for('runs_list') }}" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="dir" value="{{ dir }}">
+  {% if tag_filter %}<input type="hidden" name="tag" value="{{ tag_filter }}">{% endif %}
+  {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+  <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>Date:</span>
+  <input type="date" class="form-control form-control-sm" name="date_from"
+         value="{{ date_from }}" style="width:148px;">
+  <span class="text-muted small">–</span>
+  <input type="date" class="form-control form-control-sm" name="date_to"
+         value="{{ date_to }}" style="width:148px;">
+  <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+  {% if date_from or date_to %}
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter) }}"
+     class="btn btn-sm btn-link text-muted p-0 text-decoration-none">
+    <i class="bi bi-x-circle me-1"></i>Clear dates
+  </a>
+  {% endif %}
+</form>
+
 {% if all_tags %}
 <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
   <span class="text-muted small">Filter by tag:</span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter) }}"
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter, date_from=date_from, date_to=date_to) }}"
      class="badge text-decoration-none {% if not tag_filter %}bg-dark{% else %}bg-secondary opacity-75{% endif %}">
     All
   </a>
   {% for tag in all_tags %}
   {% set tc = tag_colors.get(tag, 'warning') %}
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag, status=status_filter) }}"
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag, status=status_filter, date_from=date_from, date_to=date_to) }}"
      class="badge text-decoration-none {% if tag == tag_filter %}bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %}{% else %}bg-secondary opacity-75{% endif %}">
     <i class="bi bi-tag me-1"></i>{{ tag }}
   </a>
@@ -52,7 +73,7 @@
     <i class="bi bi-funnel me-1"></i>
     Showing <span class="badge bg-{{ status_meta[1] }} ms-1">{{ status_meta[0] }}</span> runs
   </span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter) }}" class="alert-link small">clear filter</a>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, date_from=date_from, date_to=date_to) }}" class="alert-link small">clear filter</a>
 </div>
 {% endif %}
 
@@ -62,7 +83,23 @@
     <i class="bi bi-funnel me-1"></i>
     Showing runs tagged <strong>{{ tag_filter }}</strong>
   </span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter) }}" class="alert-link small">clear filter</a>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter, date_from=date_from, date_to=date_to) }}" class="alert-link small">clear filter</a>
+</div>
+{% endif %}
+
+{% if date_from or date_to %}
+<div class="alert alert-info py-2 mb-3 d-flex align-items-center justify-content-between">
+  <span>
+    <i class="bi bi-calendar3 me-1"></i>
+    {% if date_from and date_to %}
+      Showing runs from <strong>{{ date_from }}</strong> to <strong>{{ date_to }}</strong>
+    {% elif date_from %}
+      Showing runs from <strong>{{ date_from }}</strong> onwards
+    {% else %}
+      Showing runs up to <strong>{{ date_to }}</strong>
+    {% endif %}
+  </span>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter) }}" class="alert-link small">clear filter</a>
 </div>
 {% endif %}
 
@@ -72,6 +109,8 @@
   <input type="hidden" name="dir" value="{{ dir }}">
   <input type="hidden" name="tag" value="{{ tag_filter }}">
   <input type="hidden" name="status" value="{{ status_filter }}">
+  <input type="hidden" name="date_from" value="{{ date_from }}">
+  <input type="hidden" name="date_to" value="{{ date_to }}">
   <input type="hidden" name="action" id="batchAction" value="">
   <input type="hidden" name="value" id="batchValue" value="">
 
@@ -150,7 +189,7 @@
               {% endif %}
               {% for tag in run.tag_list %}
               {% set tc = tag_colors.get(tag, 'warning') %}
-              <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag) }}"
+              <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag, date_from=date_from, date_to=date_to) }}"
                  class="badge bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %} text-decoration-none ms-1"
                  style="font-size:.68rem;">
                 <i class="bi bi-tag me-1"></i>{{ tag }}
@@ -197,7 +236,7 @@
 </form>
 
 {% if total_pages > 1 %}
-{% macro page_url(p) %}{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, page=p) }}{% endmacro %}
+{% macro page_url(p) %}{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, date_from=date_from, date_to=date_to, page=p) }}{% endmacro %}
 <nav class="d-flex justify-content-center mt-3">
   <ul class="pagination pagination-sm mb-0">
     <li class="page-item {% if page == 1 %}disabled{% endif %}">
@@ -226,7 +265,7 @@
 <div class="card">
   <div class="card-body text-center py-5 text-muted">
     <i class="bi bi-play-circle fs-1 opacity-25"></i>
-    {% if tag_filter or status_filter %}
+    {% if tag_filter or status_filter or date_from or date_to %}
     <p class="mt-2">No runs match the current filter.</p>
     <a href="{{ url_for('runs_list') }}" class="btn btn-outline-secondary btn-sm">Clear filters</a>
     {% else %}
@@ -302,8 +341,7 @@
 
   window.clearSelection = function () {
     checkboxes.forEach(cb => cb.checked = false);
-    selectAll.checked = false;
-    selectAll.indeterminate = false;
+    if (selectAll) selectAll.checked = false;
     updateBar();
   };
 })();
