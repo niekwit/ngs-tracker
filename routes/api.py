@@ -11,18 +11,33 @@ GET  /api/runs                List runs. Optional ?status=&project_id=&researche
 GET  /api/runs/<id>           Single run.
 POST /api/runs                Create a run.
 PATCH /api/runs/<id>          Update status / notes / tags / backups.
+POST /api/runs/<id>/files     Attach a file from disk to a run.
 GET  /api/projects            List projects.
 GET  /api/researchers         List researchers.
 """
 
 import json
+import shutil
+import uuid
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 
 from flask import jsonify, request
+from werkzeug.utils import secure_filename
 
-from config import db_log, get_api_key
-from models import Project, Researcher, ResearchGroup, RUN_STATUSES, WorkflowRun, db
+from config import db_log, get_api_key, get_storage_path
+from helpers import _parse_snakemake_config
+from models import (
+    FILE_TYPES,
+    AttachedFile,
+    Project,
+    Researcher,
+    ResearchGroup,
+    RUN_STATUSES,
+    WorkflowRun,
+    db,
+)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -85,6 +100,18 @@ def _researcher_dict(r: Researcher) -> dict:
         "email": r.email or "",
         "group_id": r.group_id,
         "group": r.group.name,
+    }
+
+
+def _file_dict(f: AttachedFile) -> dict:
+    return {
+        "id": f.id,
+        "workflow_run_id": f.workflow_run_id,
+        "original_filename": f.original_filename,
+        "file_type": f.file_type,
+        "type_label": f.type_label,
+        "description": f.description or "",
+        "uploaded_at": f.uploaded_at.isoformat(),
     }
 
 
@@ -213,6 +240,68 @@ def register(app):
         db.session.commit()
         db_log("UPDATE", "WorkflowRun", run.id, f"{run.workflow_name} via API")
         return jsonify(_run_dict(run))
+
+    # ── Files — attach from disk path ─────────────────────────────────────────
+
+    @app.route("/api/runs/<int:id>/files", methods=["POST"])
+    @_require_api_key
+    def api_run_attach_file(id):
+        run = db.get_or_404(WorkflowRun, id)
+        data = request.get_json(force=True, silent=True) or {}
+
+        file_path = data.get("file_path", "").strip()
+        if not file_path:
+            return jsonify({"error": "'file_path' is required"}), 400
+
+        src = Path(file_path)
+        if not src.exists():
+            return jsonify({"error": f"File not found: {file_path}"}), 400
+        if not src.is_file():
+            return jsonify({"error": f"Path is not a file: {file_path}"}), 400
+
+        file_type = data.get("file_type", "other")
+        if file_type not in FILE_TYPES:
+            return (
+                jsonify(
+                    {
+                        "error": f"Invalid file_type '{file_type}'. "
+                        f"Choose from: {list(FILE_TYPES)}"
+                    }
+                ),
+                400,
+            )
+
+        description = data.get("description", "").strip()
+
+        run_dir = get_storage_path() / "runs" / str(id)
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        original_name = secure_filename(src.name)
+        stored_path = run_dir / f"{uuid.uuid4().hex}_{original_name}"
+        shutil.copy2(src, stored_path)
+
+        parsed_config = (
+            _parse_snakemake_config(stored_path) if file_type == "config" else None
+        )
+
+        attached = AttachedFile(
+            workflow_run_id=id,
+            original_filename=original_name,
+            stored_path=str(stored_path),
+            file_type=file_type,
+            description=description,
+            parsed_config=parsed_config,
+        )
+        db.session.add(attached)
+        db.session.flush()
+        db_log(
+            "CREATE",
+            "AttachedFile",
+            attached.id,
+            f"{original_name} [{file_type}] on run id={id} via API",
+        )
+        db.session.commit()
+        return jsonify(_file_dict(attached)), 201
 
     # ── Projects ──────────────────────────────────────────────────────────────
 

@@ -83,7 +83,9 @@ def main() -> int:
     # Unauthenticated request should be 401
     resp = client.get("/api/runs")
     ok = resp.status_code == 401
-    print(f"  {'OK  ' if ok else 'FAIL'}  GET /api/runs (no key)  ->  {resp.status_code} (expect 401)")
+    print(
+        f"  {'OK  ' if ok else 'FAIL'}  GET /api/runs (no key)  ->  {resp.status_code} (expect 401)"
+    )
     if not ok:
         failed.append(("/api/runs [no-auth]", resp.status_code))
 
@@ -95,7 +97,9 @@ def main() -> int:
         ok = resp.status_code == 200
         data = resp.get_json()
         count = len(data) if isinstance(data, list) else "?"
-        print(f"  {'OK  ' if ok else 'FAIL'}  GET {endpoint}  ->  {resp.status_code} ({count} items)")
+        print(
+            f"  {'OK  ' if ok else 'FAIL'}  GET {endpoint}  ->  {resp.status_code} ({count} items)"
+        )
         if not ok:
             failed.append((endpoint, resp.status_code))
 
@@ -124,7 +128,9 @@ def main() -> int:
     )
     ok = resp.status_code == 201
     new_id = resp.get_json().get("id") if ok else None
-    print(f"  {'OK  ' if ok else 'FAIL'}  POST /api/runs  ->  {resp.status_code} (id={new_id})")
+    print(
+        f"  {'OK  ' if ok else 'FAIL'}  POST /api/runs  ->  {resp.status_code} (id={new_id})"
+    )
     if not ok:
         failed.append(("/api/runs [POST]", resp.status_code))
 
@@ -137,9 +143,34 @@ def main() -> int:
             headers=headers,
         )
         ok = resp.status_code == 200 and resp.get_json().get("status") == "failed"
-        print(f"  {'OK  ' if ok else 'FAIL'}  PATCH /api/runs/{new_id}  ->  {resp.status_code}")
+        print(
+            f"  {'OK  ' if ok else 'FAIL'}  PATCH /api/runs/{new_id}  ->  {resp.status_code}"
+        )
         if not ok:
             failed.append((f"/api/runs/{new_id} [PATCH]", resp.status_code))
+
+    # Attach a file to the run via API
+    if new_id:
+        tmp_file = demo_files / "smoke_test_output.txt"
+        tmp_file.write_text("smoke test file content")
+        resp = client.post(
+            f"/api/runs/{new_id}/files",
+            data=json.dumps(
+                {
+                    "file_path": str(tmp_file),
+                    "file_type": "results",
+                    "description": "smoke test attachment",
+                }
+            ),
+            content_type="application/json",
+            headers=headers,
+        )
+        ok = resp.status_code == 201
+        print(
+            f"  {'OK  ' if ok else 'FAIL'}  POST /api/runs/{new_id}/files  ->  {resp.status_code}"
+        )
+        if not ok:
+            failed.append((f"/api/runs/{new_id}/files [POST]", resp.status_code))
 
     print()
     if failed:
@@ -148,7 +179,7 @@ def main() -> int:
             print(f"  {ep}  ->  {st}")
         return 1
 
-    total = len(UI_ENDPOINTS) + 7  # UI + API checks
+    total = len(UI_ENDPOINTS) + 8  # UI + API checks
     print(f"All {total} checks passed.")
     return 0
 

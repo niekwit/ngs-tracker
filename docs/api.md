@@ -49,6 +49,7 @@ Change host/port via `NGS_HOST` and `NGS_PORT` environment variables (see [Insta
 | `GET` | `/api/runs/<id>` | Yes | Get a single run |
 | `POST` | `/api/runs` | Yes | Create a new run |
 | `PATCH` | `/api/runs/<id>` | Yes | Update a run |
+| `POST` | `/api/runs/<id>/files` | Yes | Attach a file from disk to a run |
 | `GET` | `/api/projects` | Yes | List projects |
 | `GET` | `/api/researchers` | Yes | List researchers |
 
@@ -261,6 +262,71 @@ requests.patch(
 
 ---
 
+## `POST /api/runs/<id>/files`
+
+Attach a file that already exists on the server's filesystem to a workflow run. This is the recommended way to record output files from a Snakemake or Nextflow pipeline — the pipeline knows its output paths, so there is no need to re-upload them over HTTP.
+
+The file is **copied** into NGS Tracker's storage directory. The original file is not moved or deleted.
+
+**Request body** — JSON
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `file_path` | string | Yes | — | Absolute path to the file on disk |
+| `file_type` | string | No | `"other"` | One of `config`, `sample_info`, `qc`, `results`, `other` |
+| `description` | string | No | `""` | Short label shown in the UI |
+
+**Response** — a [file object](#file-object), HTTP `201`
+
+**curl**
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/runs/42/files \
+  -H "X-Api-Key: $KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "/home/user/projects/rna-seq/results/multiqc_report.html",
+    "file_type": "qc",
+    "description": "MultiQC report"
+  }'
+```
+
+**Snakemake `onsuccess` example**
+
+```python
+# Snakefile
+onsuccess:
+    import requests
+
+    base = "http://127.0.0.1:5000/api"
+    key  = os.environ["NGS_TRACKER_KEY"]
+    headers = {"X-Api-Key": key}
+
+    # First create the run record
+    run = requests.post(f"{base}/runs", headers=headers, json={
+        "project_id": NGS_PROJECT_ID,
+        "workflow_name": "rna-seq-pipeline",
+        "workflow_tag": config["workflow_tag"],
+        "status": "completed",
+    }).json()
+    run_id = run["id"]
+
+    # Then attach output files
+    output_files = [
+        ("/path/to/results/multiqc_report.html", "qc",      "MultiQC report"),
+        ("/path/to/results/counts.tsv",           "results", "DESeq2 count matrix"),
+        ("/path/to/config/config.yaml",            "config",  "Pipeline config"),
+    ]
+    for path, ftype, desc in output_files:
+        requests.post(f"{base}/runs/{run_id}/files", headers=headers, json={
+            "file_path": path,
+            "file_type": ftype,
+            "description": desc,
+        })
+```
+
+---
+
 ## `GET /api/projects`
 
 List all projects, ordered by group → researcher → project name.
@@ -290,6 +356,23 @@ curl -H "X-Api-Key: $KEY" http://127.0.0.1:5000/api/researchers
 ---
 
 ## Response schemas
+
+(file-object)=
+### File object
+
+Returned by `POST /api/runs/<id>/files`.
+
+```json
+{
+  "id": 17,
+  "workflow_run_id": 42,
+  "original_filename": "multiqc_report.html",
+  "file_type": "qc",
+  "type_label": "QC",
+  "description": "MultiQC report",
+  "uploaded_at": "2025-06-14T09:15:00"
+}
+```
 
 (run-object)=
 ### Run object
