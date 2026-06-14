@@ -27,7 +27,7 @@ from flask import jsonify, request
 from werkzeug.utils import secure_filename
 
 from config import db_log, get_api_key, get_storage_path
-from helpers import _parse_mapping_rates, _parse_snakemake_config
+from helpers import _parse_mapping_rates, _parse_snakemake_config, _parse_snakemake_log
 from models import (
     FILE_TYPES,
     AttachedFile,
@@ -291,6 +291,11 @@ def register(app):
             parsed_config = _parse_snakemake_config(stored_path)
         elif file_type == "mapping_rates":
             parsed_config = _parse_mapping_rates(stored_path)
+        elif file_type == "snakemake_log":
+            parsed_config = None
+            secs = _parse_snakemake_log(stored_path)
+            if secs is not None:
+                run.runtime_seconds = secs
         else:
             parsed_config = None
 

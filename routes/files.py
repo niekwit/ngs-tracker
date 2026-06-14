@@ -10,6 +10,7 @@ from helpers import (
     _parse_csv,
     _parse_mapping_rates,
     _parse_snakemake_config,
+    _parse_snakemake_log,
 )
 from models import FILE_TYPES, AttachedFile, SampleSheet, WorkflowRun, db
 
@@ -30,6 +31,7 @@ def register(app):
         run_dir.mkdir(parents=True, exist_ok=True)
 
         saved = []
+        parsed_runtime = None
         for file in files:
             original_name = secure_filename(file.filename)
             stored_path = run_dir / f"{uuid.uuid4().hex}_{original_name}"
@@ -39,6 +41,12 @@ def register(app):
                 parsed_config = _parse_snakemake_config(stored_path)
             elif file_type == "mapping_rates":
                 parsed_config = _parse_mapping_rates(stored_path)
+            elif file_type == "snakemake_log":
+                parsed_config = None
+                secs = _parse_snakemake_log(stored_path)
+                if secs is not None:
+                    run.runtime_seconds = secs
+                    parsed_runtime = secs
             else:
                 parsed_config = None
 
@@ -61,10 +69,11 @@ def register(app):
             saved.append(original_name)
 
         db.session.commit()
-        if len(saved) == 1:
-            flash(f'File "{saved[0]}" uploaded.', "success")
-        else:
-            flash(f"{len(saved)} files uploaded.", "success")
+        label = f'File "{saved[0]}"' if len(saved) == 1 else f"{len(saved)} files"
+        msg = f"{label} uploaded."
+        if parsed_runtime is not None:
+            msg += f" Runtime parsed: {run.runtime_display}."
+        flash(msg, "success")
         return redirect(url_for("run_detail", id=id))
 
     @app.route("/files/<int:id>/download")

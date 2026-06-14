@@ -175,6 +175,7 @@ FILE_TYPES = {
     "qc": ("QC", "info"),
     "results": ("Results", "purple"),
     "mapping_rates": ("Mapping Rates", "teal"),
+    "snakemake_log": ("Snakemake Log", "warning"),
     "other": ("Other", "secondary"),
 }
 

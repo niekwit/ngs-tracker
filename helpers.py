@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -74,6 +75,31 @@ def _parse_mapping_rates(path: Path) -> str | None:
         return json.dumps({"samples": samples, "rates": rates})
     except Exception:
         return None
+
+
+_SNAKEMAKE_TS_RE = re.compile(r"\[(\w{3} \w{3} +\d+ \d{2}:\d{2}:\d{2} \d{4})\]")
+
+
+def _parse_snakemake_log(path: Path) -> int | None:
+    """Return pipeline duration in seconds from a Snakemake main log, or None."""
+    timestamps = []
+    try:
+        with open(path, errors="replace") as f:
+            for line in f:
+                m = _SNAKEMAKE_TS_RE.search(line)
+                if m:
+                    ts_str = " ".join(m.group(1).split())
+                    try:
+                        timestamps.append(
+                            datetime.strptime(ts_str, "%a %b %d %H:%M:%S %Y")
+                        )
+                    except ValueError:
+                        pass
+    except Exception:
+        return None
+    if len(timestamps) < 2:
+        return None
+    return int((timestamps[-1] - timestamps[0]).total_seconds())
 
 
 def _parse_snakemake_config(path: Path) -> str | None:
