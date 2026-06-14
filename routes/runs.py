@@ -110,6 +110,9 @@ def register(app):
         backup_locations = get_backup_locations()
         backed_up = {b["location"]: b["path"] for b in run.backups_list}
         loc_names = [l["name"] for l in backup_locations]
+        duplicate_runs = find_duplicate_runs(
+            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id
+        )
         return render_template(
             "runs/detail.html",
             run=run,
@@ -120,6 +123,7 @@ def register(app):
             backed_up=backed_up,
             loc_names=loc_names,
             mapping_rate_cutoff=mapping_rate_cutoff,
+            duplicate_runs=duplicate_runs,
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
