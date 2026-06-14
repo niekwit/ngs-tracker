@@ -432,52 +432,120 @@ Returned by `POST /api/runs/<id>/files`.
 
 ## Pipeline integration
 
-### Snakemake — register a run on success
+### Snakemake — using the `ngs_tracker` client (recommended)
 
-Add an `onsuccess` block to your `Snakefile` so each completed run is automatically recorded in NGS Tracker.
-
-```python
-# Snakefile
-NGS_BASE = "http://127.0.0.1:5000/api"
-NGS_KEY  = os.environ.get("NGS_TRACKER_KEY", "")
-NGS_PROJECT_ID = 3   # set to your project ID
-
-onsuccess:
-    import requests, datetime
-    requests.post(
-        f"{NGS_BASE}/runs",
-        headers={"X-Api-Key": NGS_KEY},
-        json={
-            "project_id": NGS_PROJECT_ID,
-            "workflow_name": "rna-seq-pipeline",
-            "workflow_tag": config.get("workflow_tag", ""),
-            "workflow_system": "snakemake",
-            "status": "completed",
-            "run_date": datetime.datetime.now().isoformat(),
-            "description": config.get("description", ""),
-            "tags": config.get("tags", []),
-        },
-    )
-
-onerror:
-    import requests, datetime
-    requests.post(
-        f"{NGS_BASE}/runs",
-        headers={"X-Api-Key": NGS_KEY},
-        json={
-            "project_id": NGS_PROJECT_ID,
-            "workflow_name": "rna-seq-pipeline",
-            "status": "failed",
-            "run_date": datetime.datetime.now().isoformat(),
-        },
-    )
-```
-
-Store your API key in the environment rather than hard-coding it:
+NGS Tracker ships a lightweight Python client in the `ngs_tracker/` package.
+Install it directly from GitHub into your workflow's conda environment — it only
+requires `requests`, nothing from the web server stack:
 
 ```bash
-export NGS_TRACKER_KEY="your-api-key"
+pip install git+https://github.com/niekwit/ngs-tracker.git
+```
+
+**Step 1 — add an `ngs_tracker` block to your workflow's `config.yaml`**
+
+```yaml
+ngs_tracker:
+  enabled: true                           # set to false to skip registration
+
+  # Connection
+  base_url: "http://127.0.0.1:5000/api"  # change host/port if needed
+
+  # Run identity  (find project_id on the project detail page)
+  project_id: 3
+  workflow_name: "rna-seq-pipeline"
+  workflow_tag: "v2.1.0"
+  workflow_system: "snakemake"            # snakemake | nextflow | cwl | other
+  description: "Full timecourse run"
+  tags:
+    - RNA-seq
+    - timecourse
+
+  # Files to attach — paths relative to the working directory or absolute
+  # type: config | sample_info | qc | results | mapping_rates | other
+  files:
+    - path: "config/config.yaml"
+      type: config
+      description: "Pipeline config"
+    - path: "results/qc/multiqc_report.html"
+      type: qc
+      description: "MultiQC report"
+    - path: "results/counts/all_counts.tsv"
+      type: results
+      description: "Count matrix"
+    - path: "results/mapping_rates.csv"
+      type: mapping_rates
+      description: "STAR alignment mapping rates"
+```
+
+A fully commented template is included in the package at
+`ngs_tracker/example_config.yaml`.
+
+**Step 2 — add `onsuccess` / `onerror` to your `Snakefile`**
+
+```python
+onsuccess:
+    from ngs_tracker import register_run
+    register_run(config)
+
+onerror:
+    from ngs_tracker import register_run
+    register_run(config, status="failed")
+```
+
+**Step 3 — set your API key**
+
+```bash
+export NGS_TRACKER_KEY="your-api-key"   # shown in Settings → REST API Key
 snakemake --cores 8
+```
+
+Optionally set `NGS_TRACKER_USER` to record who ran the workflow:
+
+```bash
+export NGS_TRACKER_USER="alice"
+```
+
+The client prints progress to stderr prefixed with `[ngs-tracker]` and
+**never raises an exception** — if the server is unreachable or a file is
+missing the run continues normally and a warning is printed instead.
+
+---
+
+### Snakemake — manual (no install required)
+
+If you prefer not to install the package, paste this directly into your
+`Snakefile`:
+
+```python
+onsuccess:
+    import os, requests, datetime
+    _base = "http://127.0.0.1:5000/api"
+    _hdrs = {"X-Api-Key": os.environ["NGS_TRACKER_KEY"]}
+    run = requests.post(f"{_base}/runs", headers=_hdrs, json={
+        "project_id": 3,                         # find on project page
+        "workflow_name": "rna-seq-pipeline",
+        "workflow_tag": config.get("workflow_tag", ""),
+        "status": "completed",
+    }).json()
+    run_id = run["id"]
+    for path, ftype, desc in [
+        ("results/qc/multiqc_report.html", "qc",      "MultiQC report"),
+        ("results/counts/all_counts.tsv",  "results", "Count matrix"),
+        ("config/config.yaml",             "config",  "Pipeline config"),
+    ]:
+        requests.post(f"{_base}/runs/{run_id}/files", headers=_hdrs, json={
+            "file_path": str(__import__("pathlib").Path(path).resolve()),
+            "file_type": ftype,
+            "description": desc,
+        })
+
+onerror:
+    import os, requests
+    requests.post("http://127.0.0.1:5000/api/runs",
+        headers={"X-Api-Key": os.environ["NGS_TRACKER_KEY"]},
+        json={"project_id": 3, "workflow_name": "rna-seq-pipeline",
+              "status": "failed"})
 ```
 
 ### Nextflow — register a run on completion

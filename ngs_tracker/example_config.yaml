@@ -1,0 +1,56 @@
+# NGS Tracker integration block — add this to your workflow's config.yaml
+#
+# Find your project_id on the project detail page in NGS Tracker.
+# Set the NGS_TRACKER_KEY environment variable to your API key
+# (shown in NGS Tracker → Settings).
+#
+# In your Snakefile:
+#
+#   onsuccess:
+#       from ngs_tracker import register_run
+#       register_run(config)
+#
+#   onerror:
+#       from ngs_tracker import register_run
+#       register_run(config, status="failed")
+
+ngs_tracker:
+  enabled: true                           # set to false to skip registration
+
+  # Connection
+  base_url: "http://127.0.0.1:5000/api"  # change if NGS Tracker runs on a different host/port
+  # api_key: "..."                        # prefer the NGS_TRACKER_KEY env var instead
+
+  # Run identity
+  project_id: 1                          # required — see the project detail page
+  workflow_name: "my-pipeline"           # name as registered under Workflows in NGS Tracker
+  workflow_tag: "v1.0.0"                 # release tag
+  workflow_system: "snakemake"           # snakemake | nextflow | cwl | other
+  description: "Short description of this run"
+  created_by: ""                         # prefer the NGS_TRACKER_USER env var instead
+
+  # Optional tags and notes (Markdown supported in notes)
+  tags:
+    - RNA-seq
+    - timecourse
+  notes: ""
+
+  # Files to attach after a successful (or failed) run.
+  # Paths can be relative to the working directory or absolute.
+  # type: config | sample_info | qc | results | mapping_rates | other
+  files:
+    - path: "config/config.yaml"
+      type: config
+      description: "Pipeline config"
+
+    - path: "results/qc/multiqc_report.html"
+      type: qc
+      description: "MultiQC report"
+
+    - path: "results/counts/all_counts.tsv"
+      type: results
+      description: "Count matrix"
+
+    - path: "results/mapping_rates.csv"
+      type: mapping_rates
+      description: "STAR alignment mapping rates"
