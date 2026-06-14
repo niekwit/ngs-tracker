@@ -16,7 +16,7 @@ def _git_version() -> str:
 
 project = "NGS Tracker"
 author = "Niek Wit"
-copyright = "2025, Niek Wit"
+copyright = "2026, Niek Wit"
 release = _git_version()
 version = release
 
