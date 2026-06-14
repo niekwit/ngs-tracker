@@ -72,6 +72,12 @@ def register(app):
             "Pending": status_counts.get("pending", 0),
             "Failed": status_counts.get("failed", 0),
         }
+        status_urls = {
+            "Completed": url_for("runs_list", status="completed"),
+            "Running": url_for("runs_list", status="running"),
+            "Pending": url_for("runs_list", status="pending"),
+            "Failed": url_for("runs_list", status="failed"),
+        }
 
         n_runs = len(all_runs)
         n_backup = sum(1 for r in all_runs if r.backups_list)
@@ -116,6 +122,7 @@ def register(app):
             file_type_counts=json.dumps(file_type_counts),
             timeline_data=json.dumps(timeline_data),
             status_data=json.dumps(status_data),
+            status_urls=json.dumps(status_urls),
             backup_pct=backup_pct,
             backup_by_loc=backup_by_loc,
             backup_locations=backup_locations,

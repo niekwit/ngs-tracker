@@ -30,16 +30,17 @@ def register(app):
         sort = request.args.get("sort", "date")
         direction = request.args.get("dir", "desc")
         tag_filter = request.args.get("tag", "").strip()
+        status_filter = request.args.get("status", "").strip().lower()
         reverse = direction == "desc"
 
         all_runs = WorkflowRun.query.filter_by(trashed=False).all()
         all_tags = sorted({tag for r in all_runs for tag in r.tag_list})
 
-        runs = (
-            [r for r in all_runs if tag_filter in r.tag_list]
-            if tag_filter
-            else all_runs
-        )
+        runs = all_runs
+        if tag_filter:
+            runs = [r for r in runs if tag_filter in r.tag_list]
+        if status_filter and status_filter in RUN_STATUSES:
+            runs = [r for r in runs if r.status == status_filter]
 
         key_map = {
             "workflow": lambda r: r.workflow_name.lower(),
@@ -58,7 +59,9 @@ def register(app):
             sort=sort,
             dir=direction,
             tag_filter=tag_filter,
+            status_filter=status_filter,
             all_tags=all_tags,
+            run_statuses=RUN_STATUSES,
         )
 
     @app.route("/runs/<int:id>")

@@ -247,11 +247,12 @@
 <script>
 (function() {
   var sd = {{ status_data | safe }};
+  var urls = {{ status_urls | safe }};
   var labels = Object.keys(sd);
   var values = Object.values(sd);
   var colors = { Completed: '#198754', Running: '#ffc107', Pending: '#6c757d', Failed: '#dc3545' };
   var ctx = document.getElementById('statusChart').getContext('2d');
-  new Chart(ctx, {
+  var chart = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: labels,
@@ -275,6 +276,16 @@
             }
           }
         }
+      },
+      onClick: function(evt) {
+        var points = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+        if (points.length) {
+          var label = chart.data.labels[points[0].index];
+          if (urls[label]) window.location.href = urls[label];
+        }
+      },
+      onHover: function(evt, elements) {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
       }
     }
   });
