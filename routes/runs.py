@@ -74,6 +74,7 @@ def register(app):
             total_pages=total_pages,
             total=total,
             per_page=PER_PAGE,
+            backup_locations=get_backup_locations(),
         )
 
     @app.route("/runs/<int:id>")
@@ -379,3 +380,84 @@ def register(app):
         db_log("TRASH", "WorkflowRun", run.id, run.workflow_name)
         flash(f'Workflow run "{run.workflow_name}" moved to trash.', "success")
         return redirect(url_for("project_detail", id=run.project_id))
+
+    @app.route("/runs/batch", methods=["POST"])
+    def runs_batch():
+        run_ids = request.form.getlist("run_ids", type=int)
+        action = request.form.get("action", "")
+        value = request.form.get("value", "").strip()
+        redir_kw = {
+            k: request.form.get(k, "") for k in ("sort", "dir", "tag", "status")
+        }
+        redir_kw = {k: v for k, v in redir_kw.items() if v}
+
+        if not run_ids:
+            flash("No runs selected.", "warning")
+            return redirect(url_for("runs_list", **redir_kw))
+
+        batch_runs = WorkflowRun.query.filter(
+            WorkflowRun.id.in_(run_ids),
+            WorkflowRun.trashed == False,
+        ).all()
+
+        if action == "set_status":
+            if value not in RUN_STATUSES:
+                flash("Invalid status.", "danger")
+            else:
+                for run in batch_runs:
+                    run.status = value
+                    db_log("UPDATE", "WorkflowRun", run.id, f"batch: status → {value}")
+                db.session.commit()
+                label = RUN_STATUSES[value][0]
+                flash(
+                    f'Status set to "{label}" for {len(batch_runs)} run(s).', "success"
+                )
+
+        elif action == "add_tag":
+            if not value:
+                flash("No tag specified.", "warning")
+            else:
+                add_default_tag(value)
+                updated = 0
+                for run in batch_runs:
+                    tags = run.tag_list
+                    if value not in tags:
+                        tags.append(value)
+                        run.tags = ",".join(tags)
+                        updated += 1
+                        db_log(
+                            "UPDATE",
+                            "WorkflowRun",
+                            run.id,
+                            f"batch: tag added '{value}'",
+                        )
+                db.session.commit()
+                flash(f'Tag "{value}" added to {updated} run(s).', "success")
+
+        elif action == "mark_backup":
+            if not value:
+                flash("No backup location specified.", "warning")
+            else:
+                updated = 0
+                for run in batch_runs:
+                    blist = run.backups_list
+                    if value not in [b["location"] for b in blist]:
+                        blist.append({"location": value, "path": ""})
+                        run.backups = json.dumps(blist)
+                        updated += 1
+                        db_log(
+                            "UPDATE",
+                            "WorkflowRun",
+                            run.id,
+                            f"batch: backup marked '{value}'",
+                        )
+                db.session.commit()
+                flash(
+                    f'Marked backed up at "{value}" for {updated} run(s).',
+                    "success",
+                )
+
+        else:
+            flash("Unknown batch action.", "danger")
+
+        return redirect(url_for("runs_list", **redir_kw))

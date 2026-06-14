@@ -66,75 +66,127 @@
 {% endif %}
 
 {% if runs %}
-<div class="card">
-  <div class="table-responsive">
-    <table class="table table-hover mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>{{ sort_link('workflow', 'Workflow') }}</th>
-          <th>{{ sort_link('project', 'Project') }}</th>
-          <th>{{ sort_link('researcher', 'Researcher') }}</th>
-          <th>{{ sort_link('date', 'Date') }}</th>
-          <th>{{ sort_link('status', 'Status') }}</th>
-          <th>{{ sort_link('backup', 'Backup') }}</th>
-          <th>{{ sort_link('files', 'Files') }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for run in runs %}
-        <tr>
-          <td>
-            <a href="{{ url_for('run_detail', id=run.id) }}" class="text-decoration-none fw-semibold">
-              {{ run.workflow_name }}
-            </a>
-            {% if run.workflow_tag %}
-            <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ run.workflow_tag }}</span>
-            {% endif %}
-            {% for tag in run.tag_list %}
-            <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag) }}"
-               class="badge bg-warning text-dark text-decoration-none ms-1" style="font-size:.68rem;">
-              <i class="bi bi-tag me-1"></i>{{ tag }}
-            </a>
-            {% endfor %}
-            {% if run.description %}
-            <div class="text-muted small">{{ run.description }}</div>
-            {% endif %}
-          </td>
-          <td>
-            <a href="{{ url_for('project_detail', id=run.project_id) }}" class="text-decoration-none text-secondary">
-              {{ run.project.name }}
-            </a>
-          </td>
-          <td class="text-muted">{{ run.project.researcher.name }}</td>
-          <td class="text-muted">{{ run.run_date.strftime('%Y-%m-%d') }}</td>
-          <td><span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span></td>
-          <td>
-            {% if run.backup_labels %}
-              {% for lbl in run.backup_labels %}
-              <span class="badge bg-success backup-badge">{{ lbl }}</span>
-              {% endfor %}
-            {% else %}
-              <span class="badge bg-secondary backup-badge">None</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if run.attached_files %}
-            <span class="badge bg-light text-dark border">{{ run.attached_files|length }}</span>
-            {% else %}
-            <span class="text-muted small">—</span>
-            {% endif %}
-          </td>
-          <td class="text-end">
-            <a href="{{ url_for('run_detail', id=run.id) }}" class="btn btn-xs btn-outline-primary">View</a>
-            <a href="{{ url_for('run_edit', id=run.id) }}" class="btn btn-xs btn-outline-secondary">Edit</a>
-          </td>
-        </tr>
+<form id="batchForm" method="POST" action="{{ url_for('runs_batch') }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="dir" value="{{ dir }}">
+  <input type="hidden" name="tag" value="{{ tag_filter }}">
+  <input type="hidden" name="status" value="{{ status_filter }}">
+  <input type="hidden" name="action" id="batchAction" value="">
+  <input type="hidden" name="value" id="batchValue" value="">
+
+  <div id="batchBar" class="card border-primary mb-2 d-none">
+    <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center gap-2">
+      <span class="text-primary fw-semibold small" id="batchCount">0 selected</span>
+      <div class="vr"></div>
+      <select class="form-select form-select-sm" id="batchStatusVal" style="width:auto;">
+        {% for key, (label, color) in run_statuses.items() %}
+        <option value="{{ key }}">{{ label }}</option>
         {% endfor %}
-      </tbody>
-    </table>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-primary"
+              onclick="applyBatch('set_status', document.getElementById('batchStatusVal').value)">
+        Set Status
+      </button>
+      <div class="vr"></div>
+      <input type="text" class="form-control form-control-sm" id="batchTagVal"
+             placeholder="Tag…" list="batchTagList" style="width:9rem;">
+      <datalist id="batchTagList">
+        {% for tag in all_tags %}<option value="{{ tag }}">{% endfor %}
+      </datalist>
+      <button type="button" class="btn btn-sm btn-outline-warning"
+              onclick="applyBatch('add_tag', document.getElementById('batchTagVal').value)">
+        Add Tag
+      </button>
+      {% if backup_locations %}
+      <div class="vr"></div>
+      <select class="form-select form-select-sm" id="batchBackupVal" style="width:auto;">
+        {% for loc in backup_locations %}
+        <option value="{{ loc.name }}">{{ loc.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-success"
+              onclick="applyBatch('mark_backup', document.getElementById('batchBackupVal').value)">
+        Mark Backup
+      </button>
+      {% endif %}
+      <div class="vr"></div>
+      <button type="button" class="btn btn-sm btn-link text-muted p-0"
+              onclick="clearSelection()">Deselect all</button>
+    </div>
   </div>
-</div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:2rem;"><input type="checkbox" id="selectAll" class="form-check-input"></th>
+            <th>{{ sort_link('workflow', 'Workflow') }}</th>
+            <th>{{ sort_link('project', 'Project') }}</th>
+            <th>{{ sort_link('researcher', 'Researcher') }}</th>
+            <th>{{ sort_link('date', 'Date') }}</th>
+            <th>{{ sort_link('status', 'Status') }}</th>
+            <th>{{ sort_link('backup', 'Backup') }}</th>
+            <th>{{ sort_link('files', 'Files') }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+          <tr>
+            <td><input type="checkbox" class="form-check-input run-check" name="run_ids" value="{{ run.id }}"></td>
+            <td>
+              <a href="{{ url_for('run_detail', id=run.id) }}" class="text-decoration-none fw-semibold">
+                {{ run.workflow_name }}
+              </a>
+              {% if run.workflow_tag %}
+              <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ run.workflow_tag }}</span>
+              {% endif %}
+              {% for tag in run.tag_list %}
+              <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag) }}"
+                 class="badge bg-warning text-dark text-decoration-none ms-1" style="font-size:.68rem;">
+                <i class="bi bi-tag me-1"></i>{{ tag }}
+              </a>
+              {% endfor %}
+              {% if run.description %}
+              <div class="text-muted small">{{ run.description }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('project_detail', id=run.project_id) }}" class="text-decoration-none text-secondary">
+                {{ run.project.name }}
+              </a>
+            </td>
+            <td class="text-muted">{{ run.project.researcher.name }}</td>
+            <td class="text-muted">{{ run.run_date.strftime('%Y-%m-%d') }}</td>
+            <td><span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span></td>
+            <td>
+              {% if run.backup_labels %}
+                {% for lbl in run.backup_labels %}
+                <span class="badge bg-success backup-badge">{{ lbl }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="badge bg-secondary backup-badge">None</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if run.attached_files %}
+              <span class="badge bg-light text-dark border">{{ run.attached_files|length }}</span>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{{ url_for('run_detail', id=run.id) }}" class="btn btn-xs btn-outline-primary">View</a>
+              <a href="{{ url_for('run_edit', id=run.id) }}" class="btn btn-xs btn-outline-secondary">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</form>
 
 {% if total_pages > 1 %}
 {% macro page_url(p) %}{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, page=p) }}{% endmacro %}
@@ -176,4 +228,46 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('batchForm');
+  if (!form) return;
+  const batchBar = document.getElementById('batchBar');
+  const batchCount = document.getElementById('batchCount');
+  const selectAll = document.getElementById('selectAll');
+  const checkboxes = document.querySelectorAll('.run-check');
+
+  function updateBar() {
+    const n = document.querySelectorAll('.run-check:checked').length;
+    batchBar.classList.toggle('d-none', n === 0);
+    batchCount.textContent = n + ' run' + (n !== 1 ? 's' : '') + ' selected';
+    selectAll.indeterminate = n > 0 && n < checkboxes.length;
+    selectAll.checked = n > 0 && n === checkboxes.length;
+  }
+
+  selectAll.addEventListener('change', function () {
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateBar();
+  });
+
+  checkboxes.forEach(cb => cb.addEventListener('change', updateBar));
+
+  window.applyBatch = function (action, value) {
+    if (!value.trim()) return;
+    document.getElementById('batchAction').value = action;
+    document.getElementById('batchValue').value = value;
+    form.submit();
+  };
+
+  window.clearSelection = function () {
+    checkboxes.forEach(cb => cb.checked = false);
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    updateBar();
+  };
+})();
+</script>
 {% endblock %}

@@ -127,6 +127,31 @@ You can combine a status filter with a tag filter:
 /runs?status=failed&tag=RNA-seq
 ```
 
+## Batch operations
+
+Select multiple runs on the runs list page and apply an action to all of them at once.
+
+**How to use:**
+
+1. Tick the checkbox on the left of one or more rows. A batch action bar appears above the table.
+2. The bar shows how many runs are selected and offers three actions:
+
+| Action | How |
+|---|---|
+| **Set Status** | Choose a status from the dropdown and click **Set Status** |
+| **Add Tag** | Type or select a tag and click **Add Tag** |
+| **Mark Backup** | Choose a backup location and click **Mark Backup** |
+
+3. Click **Deselect all** to clear the selection without taking an action.
+
+**Notes:**
+
+- The **Select all** checkbox in the table header selects every run on the current page.
+- **Add Tag** only adds the tag to runs that do not already have it; it also saves the tag to the global default list.
+- **Mark Backup** records the location without a path. To add a path, edit the run individually.
+- All batch actions are written to the [audit log](audit-log.md).
+- Filters and sort order are preserved after a batch action.
+
 ## Pagination
 
 The runs list shows **50 runs per page**. When there are more than 50 runs, a page count (`Showing X–Y of Z`) appears below the page heading and Bootstrap pagination controls appear below the table.
