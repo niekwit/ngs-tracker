@@ -4,6 +4,29 @@
 {% block content %}
 <h4 class="mb-3 fw-bold">Dashboard</h4>
 
+{% if unbackedup_runs %}
+<div class="alert alert-warning d-flex align-items-start gap-2 mb-3 py-2">
+  <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0 mt-1"></i>
+  <div class="flex-grow-1">
+    <strong>{{ unbackedup_runs|length }} run{{ 's' if unbackedup_runs|length != 1 }} with no backup</strong>
+    older than {{ reminder_days }} day{{ 's' if reminder_days != 1 }}.
+    <a href="{{ url_for('setup') }}#backup-reminder" class="alert-link ms-1">Change threshold</a>
+    <ul class="mb-0 mt-1 small">
+      {% for run in unbackedup_runs[:5] %}
+      <li>
+        <a href="{{ url_for('run_detail', id=run.id) }}" class="alert-link fw-semibold">{{ run.workflow_name }}</a>
+        — {{ run.project.name }} — {{ run.run_date.strftime('%Y-%m-%d') }}
+        <span class="badge bg-{{ run.status_color }} ms-1" style="font-size:.65rem;">{{ run.status_label }}</span>
+      </li>
+      {% endfor %}
+      {% if unbackedup_runs|length > 5 %}
+      <li class="text-muted">…and {{ unbackedup_runs|length - 5 }} more</li>
+      {% endif %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
 <!-- Stats row -->
 <div class="row g-3 mb-4">
   {% set cards = [

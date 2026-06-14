@@ -29,6 +29,12 @@ A donut chart showing run counts by status:
 
 Click any slice to navigate to the runs list filtered by that status. The cursor changes to a pointer when hovering over a slice to indicate it is clickable.
 
+### Backup reminder
+
+When the backup reminder is enabled (configured in [Settings](settings.md#backup-reminder)), a warning banner appears at the top of the dashboard listing every completed or failed run that has no backup recorded and is older than the configured threshold. Each entry links directly to the run's detail page so backup status can be updated immediately.
+
+The banner is hidden when there are no overdue runs or when the reminder is disabled (threshold = 0).
+
 ### Backup coverage
 
 A progress bar showing the percentage of runs with at least one backup location recorded, followed by a per-location breakdown using your configured backup locations.

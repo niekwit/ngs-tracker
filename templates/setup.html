@@ -162,6 +162,32 @@
       </div>
     </div>
 
+    <!-- Backup reminder -->
+    <h5 class="fw-bold mt-4 mb-2" id="backup-reminder"><i class="bi bi-bell me-1"></i> Backup Reminder</h5>
+    <p class="text-muted mb-3">Show a dashboard warning for completed or failed runs older than N days that have no backup recorded. Set to 0 to disable.</p>
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="POST" class="d-flex align-items-center gap-2 flex-wrap">
+          <input type="hidden" name="action" value="set_backup_reminder">
+          <label class="text-muted small mb-0" for="reminderDaysInput">Flag runs older than</label>
+          <input type="number" id="reminderDaysInput" class="form-control form-control-sm"
+                 name="reminder_days" value="{{ backup_reminder_days }}"
+                 min="0" max="3650" style="width:5rem;" required>
+          <span class="text-muted small">days</span>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-save me-1"></i>Save
+          </button>
+          {% if backup_reminder_days > 0 %}
+          <span class="badge bg-success ms-1">
+            <i class="bi bi-bell-fill me-1"></i>Active — {{ backup_reminder_days }} day{{ 's' if backup_reminder_days != 1 }}
+          </span>
+          {% else %}
+          <span class="badge bg-secondary ms-1">Disabled</span>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
     <!-- API key -->
     <h5 class="fw-bold mt-4 mb-2"><i class="bi bi-key me-1"></i> REST API Key</h5>
     <div class="card">

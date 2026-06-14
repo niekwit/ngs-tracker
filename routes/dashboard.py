@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import flash, redirect, render_template, request, url_for
@@ -14,6 +14,7 @@ from config import (
     db_log,
     get_api_key,
     get_backup_locations,
+    get_backup_reminder_days,
     get_current_user,
     get_default_tags,
     get_storage_path,
@@ -25,6 +26,7 @@ from config import (
     remove_user,
     rotate_api_key,
     save_settings,
+    set_backup_reminder_days,
     set_current_user,
 )
 from helpers import _format_file_size, _total_file_size
@@ -81,6 +83,22 @@ def register(app):
             "Failed": url_for("runs_list", status="failed"),
         }
 
+        reminder_days = get_backup_reminder_days()
+        if reminder_days > 0:
+            cutoff = datetime.utcnow() - timedelta(days=reminder_days)
+            unbackedup_runs = sorted(
+                [
+                    r
+                    for r in all_runs
+                    if not r.backups_list
+                    and r.run_date < cutoff
+                    and r.status in ("completed", "failed")
+                ],
+                key=lambda r: r.run_date,
+            )
+        else:
+            unbackedup_runs = []
+
         n_runs = len(all_runs)
         n_backup = sum(1 for r in all_runs if r.backups_list)
         backup_pct = round(n_backup / n_runs * 100) if n_runs else 0
@@ -113,6 +131,8 @@ def register(app):
             backup_locations=backup_locations,
             n_backup=n_backup,
             n_runs=n_runs,
+            unbackedup_runs=unbackedup_runs,
+            reminder_days=reminder_days,
         )
 
     @app.route("/setup", methods=["GET", "POST"])
@@ -186,6 +206,18 @@ def register(app):
                 )
                 return redirect(url_for("setup"))
 
+            if action == "set_backup_reminder":
+                try:
+                    days = max(0, int(request.form.get("reminder_days", 30)))
+                except (ValueError, TypeError):
+                    days = 30
+                set_backup_reminder_days(days)
+                if days == 0:
+                    flash("Backup reminder disabled.", "success")
+                else:
+                    flash(f"Backup reminder set to {days} day(s).", "success")
+                return redirect(url_for("setup"))
+
             # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
@@ -219,4 +251,5 @@ def register(app):
             default_tags=get_default_tags(),
             backup_locations=get_backup_locations(),
             api_key=get_api_key(),
+            backup_reminder_days=get_backup_reminder_days(),
         )

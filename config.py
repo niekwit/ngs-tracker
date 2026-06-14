@@ -395,3 +395,17 @@ def rotate_api_key() -> str:
     s["api_key"] = secrets.token_urlsafe(32)
     save_settings(s)
     return s["api_key"]
+
+
+# ── Backup reminder ───────────────────────────────────────────────────────────
+
+
+def get_backup_reminder_days() -> int:
+    """Return the backup reminder threshold in days (0 = disabled)."""
+    return max(0, int(load_settings().get("backup_reminder_days", 30)))
+
+
+def set_backup_reminder_days(days: int) -> None:
+    s = load_settings()
+    s["backup_reminder_days"] = max(0, int(days))
+    save_settings(s)

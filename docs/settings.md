@@ -46,6 +46,19 @@ Tags are free-text labels attached to workflow runs. The default list is shown a
 
 Removing a tag from the defaults does not affect runs that already use it.
 
+## Backup reminder
+
+The backup reminder flags runs that have been completed or failed for longer than a configurable number of days without any backup being recorded. When triggered, a warning banner appears on the [Dashboard](dashboard.md) listing the affected runs.
+
+| Setting | Effect |
+|---|---|
+| **0** | Reminder disabled — no banner is shown |
+| **N > 0** | Warn for runs older than N days with no backup |
+
+The default threshold is **30 days**. Change it from the Settings page under **Backup Reminder**. The setting persists in `settings.json` as `backup_reminder_days`.
+
+Only runs with status **Completed** or **Failed** are flagged — Running and Pending runs are excluded because they have not yet produced data worth backing up.
+
 ## Backup locations
 
 Backup locations are the named destinations shown on every run form. Each location has a **type**:
