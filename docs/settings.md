@@ -23,6 +23,20 @@ NGS Tracker has a lightweight user system — no passwords, just named profiles.
 
 If only one user exists they are selected automatically. Users are stored in `settings.json`.
 
+## REST API key
+
+NGS Tracker generates an API key on first use and stores it in `settings.json`. The key authenticates requests to the [REST API](api.md).
+
+The **Settings** page shows the current key in a read-only field with a copy-to-clipboard button.
+
+### Rotating the key
+
+Click **Rotate key** to generate a fresh 256-bit random key. The old key stops working immediately — update any scripts or pipelines that use the API before rotating.
+
+```{warning}
+Rotating the key cannot be undone. Clients still using the old key will receive `401 Unauthorized` responses.
+```
+
 ## Default tags
 
 Tags are free-text labels attached to workflow runs. The default list is shown as a checkbox picker when creating or editing a run. New tags typed inline are added to the list automatically.

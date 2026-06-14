@@ -107,3 +107,30 @@ Every project, researcher, and group detail page has an **Export** dropdown. The
 |---|---|
 | **CSV** | Import into Excel, R, or Python for further analysis |
 | **Markdown** | Paste into a lab notebook, grant report, or email to a PI |
+
+## Filtering by status
+
+The runs list can be filtered to show only runs with a specific status. Click any segment of the **Status breakdown** donut on the [Dashboard](dashboard.md), or navigate directly:
+
+```
+/runs?status=completed
+/runs?status=failed
+/runs?status=running
+/runs?status=pending
+```
+
+A dismissible banner at the top of the list shows the active status filter. Click **clear filter** to return to the full list.
+
+You can combine a status filter with a tag filter:
+
+```
+/runs?status=failed&tag=RNA-seq
+```
+
+## Pagination
+
+The runs list shows **50 runs per page**. When there are more than 50 runs, a page count (`Showing X–Y of Z`) appears below the page heading and Bootstrap pagination controls appear below the table.
+
+The current page, sort column, sort direction, tag filter, and status filter are all preserved in pagination links — navigating between pages does not reset your filters or sort order.
+
+Pagination is also supported via the [REST API](api.md) when querying `/api/runs`.

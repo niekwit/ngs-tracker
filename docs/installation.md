@@ -35,6 +35,18 @@ On first launch you are redirected to the **Settings** page to configure two pat
 
 Both values are written to `~/.ngs-tracker/settings.json` and survive re-clones or moves of the repository directory. Database migrations are applied automatically on every startup — no manual steps are ever needed.
 
+## Demo mode
+
+Run NGS Tracker with a pre-seeded demo database to explore the interface without touching your real data:
+
+```bash
+./run.sh demo
+```
+
+This regenerates `demo.db` in the repository directory on every invocation (using realistic fictional data: research groups, researchers, projects, and workflow runs), then starts the server pointing at that database. Your `~/.ngs-tracker/settings.json` is not modified.
+
+The demo database includes all workflow systems (Snakemake, Nextflow, CWL, Other), all run statuses, sample sheets, config files, backup records, tags, and Markdown notes — useful for screenshots and documentation.
+
 ## Environment variables
 
 | Variable | Default | Description |

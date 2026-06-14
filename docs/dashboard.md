@@ -27,6 +27,8 @@ A donut chart showing run counts by status:
 | Pending | Grey |
 | Failed | Red |
 
+Click any slice to navigate to the runs list filtered by that status. The cursor changes to a pointer when hovering over a slice to indicate it is clickable.
+
 ### Backup coverage
 
 A progress bar showing the percentage of runs with at least one backup location recorded, followed by a per-location breakdown using your configured backup locations.

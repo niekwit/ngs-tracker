@@ -30,10 +30,13 @@ for sample tracking, custom scripts, file attachments, backup status, and public
 : Download project, researcher, or group summaries as CSV or Markdown — ready for grant reports or PI emails.
 
 **Dashboard**
-: Live stats, run timeline bar chart, status breakdown donut, backup coverage panel, and file-type pie chart.
+: Live stats, run timeline bar chart, status breakdown donut (click any slice to filter runs), backup coverage panel, and file-type pie chart.
 
 **Audit log**
 : Every action is written to a plain-text change log with user attribution, filterable in the browser.
+
+**REST API**
+: A JSON API at `/api/` lets you register and update workflow runs from Snakemake `onsuccess` blocks, Nextflow `workflow.onComplete` handlers, SLURM epilogues, or any script. Authentication via a per-installation API key shown in Settings.
 
 ---
 
@@ -56,6 +59,14 @@ workflows
 settings
 audit-log
 dashboard
+```
+
+```{toctree}
+:maxdepth: 2
+:hidden:
+:caption: Automation
+
+api
 ```
 
 ```{toctree}
