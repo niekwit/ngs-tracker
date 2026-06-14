@@ -20,6 +20,7 @@
       <span class="hierarchy-arrow">›</span>
       <i class="bi bi-people me-1"></i>{{ project.researcher.group.name }}
       &nbsp;·&nbsp;<i class="bi bi-hdd me-1"></i>{{ disk_usage }}
+      &nbsp;·&nbsp;<span title="Project ID (use this with the REST API)">ID&nbsp;{{ project.id }}</span>
     </span>
     {% if project.description %}
     <div class="text-muted mt-1 mb-0 md-content">{{ project.description }}</div>
