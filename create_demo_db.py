@@ -888,7 +888,3 @@ with app.app_context():
     print(f"  Projects        : {n_projects}")
     print(f"  Workflow runs   : {n_runs}")
     print(f"  Samples         : {n_samples}")
-    print("\nTo use it, set the DB path in ~/.ngs-tracker/settings.json:")
-    print(
-        f'  {{"db_path": "{demo_db}", "file_storage_path": "/tmp/ngs-tracker-files"}}'
-    )
