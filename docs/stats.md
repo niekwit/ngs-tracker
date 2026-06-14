@@ -8,6 +8,12 @@ that summarise pipeline usage and performance across the entire database.
 A bar chart of workflow run activity over the last 12 calendar months, covering all
 non-trashed runs regardless of status.
 
+## Published Projects per Research Group
+
+A bar chart showing how many projects have been marked as **published** for each research
+group, sorted from most to least. Each bar is coloured distinctly per group. Hovering
+over a bar shows the exact count. Groups with no published projects are not shown.
+
 ## Executions per Workflow
 
 A bar chart showing the total number of runs (all statuses, non-trashed) recorded for
