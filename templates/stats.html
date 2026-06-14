@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Statistics — NGS Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h4>
+</div>
+
+{% if workflows %}
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-stopwatch me-1"></i> Average Runtime per Workflow
+    <span class="text-muted small ms-2">(completed runs with recorded runtime)</span>
+  </div>
+  <div class="card-body">
+    <canvas id="runtimeChart" style="max-height:420px;"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var data = {{ workflows | tojson }};
+
+  function fmtSeconds(s) {
+    s = Math.round(s);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    if (h > 0) return h + 'h ' + m + 'm ' + sec + 's';
+    if (m > 0) return m + 'm ' + sec + 's';
+    return sec + 's';
+  }
+
+  var labels   = data.map(function (d) { return d.name; });
+  var minutes  = data.map(function (d) { return d.avg_minutes; });
+  var seconds  = data.map(function (d) { return d.avg_seconds; });
+  var counts   = data.map(function (d) { return d.run_count; });
+
+  new Chart(document.getElementById('runtimeChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Avg runtime (min)',
+        data: minutes,
+        backgroundColor: 'rgba(37, 99, 235, 0.70)',
+        borderColor:     'rgba(37, 99, 235, 1)',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var i = ctx.dataIndex;
+              return [
+                'Avg runtime: ' + fmtSeconds(seconds[i]),
+                'Based on ' + counts[i] + ' run' + (counts[i] !== 1 ? 's' : ''),
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Average runtime (minutes)' },
+          ticks: {
+            callback: function (v) {
+              if (v >= 60) return (v / 60).toFixed(1) + ' h';
+              return v + ' min';
+            }
+          }
+        },
+        x: {
+          ticks: { maxRotation: 40, minRotation: 20 }
+        }
+      }
+    }
+  });
+})();
+</script>
+
+{% else %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle me-1"></i>
+  No runtime data yet. Runtime is recorded automatically when you use
+  <code>register_run(config, log_file=log)</code> in your Snakemake workflow.
+</div>
+{% endif %}
+{% endblock %}

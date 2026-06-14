@@ -159,6 +159,9 @@
     <a class="nav-link {% if request.endpoint == 'runs_list' %}active{% endif %}" href="{{ url_for('runs_list') }}">
       <i class="bi bi-play-circle-fill"></i> Runs
     </a>
+    <a class="nav-link {% if request.endpoint == 'stats' %}active{% endif %}" href="{{ url_for('stats') }}">
+      <i class="bi bi-bar-chart-fill"></i> Statistics
+    </a>
 
     <div class="nav-label mt-1">Add New</div>
     <a class="nav-link" href="{{ url_for('group_new') }}">
