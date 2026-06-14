@@ -1,0 +1,38 @@
+# Statistics
+
+The Statistics page (`/stats`, **Statistics** in the sidebar) provides cross-run charts
+that summarise pipeline usage and performance across the entire database.
+
+## Executions per Workflow
+
+A bar chart showing the total number of runs (all statuses, non-trashed) recorded for
+each workflow, sorted from most to least executed. Use this to see which pipelines are
+run most frequently across all researchers and projects.
+
+## Average Runtime per Workflow
+
+A bar chart of the mean wall-clock runtime for each workflow, derived from runs that
+have a recorded `runtime_seconds` value. Runs without runtime data (e.g. those created
+manually or via the API without a log file) are excluded from this average.
+
+The Y axis is labelled in minutes; ticks above 60 minutes are displayed in hours
+(e.g. `14.6 h`). Hovering over a bar shows the exact formatted runtime
+(e.g. `14h 33m 58s`) and the number of runs the average is based on.
+
+### Recording runtime automatically
+
+Runtime is captured from the Snakemake main log file and sent to the tracker when you
+call `register_run()` from a `onsuccess` / `onerror` block:
+
+```python
+onsuccess:
+    from ngs_tracker import register_run
+    register_run(config, log_file=log)   # 'log' is Snakemake's built-in log path
+```
+
+See {doc}`api` for full details on the Python client and the `log_file` parameter.
+
+```{note}
+If no runs have runtime data yet, the average runtime chart is not shown and an
+informational message is displayed instead.
+```

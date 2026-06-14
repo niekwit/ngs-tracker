@@ -32,6 +32,9 @@ for sample tracking, custom scripts, file attachments, backup status, and public
 **Dashboard**
 : Live stats, run timeline bar chart, status breakdown donut (click any slice to filter runs), backup coverage panel, and file-type pie chart.
 
+**Statistics**
+: Cross-run charts showing execution counts and average wall-clock runtime per registered workflow, populated automatically when `register_run()` is called with the Snakemake log file.
+
 **Audit log**
 : Every action is written to a plain-text change log with user attribution, filterable in the browser.
 
@@ -59,6 +62,7 @@ workflows
 settings
 audit-log
 dashboard
+stats
 ```
 
 ```{toctree}
