@@ -1,3 +1,4 @@
+import gzip
 import shutil
 import sqlite3
 from datetime import datetime
@@ -33,14 +34,19 @@ def run_snapshot() -> str:
     db_dir = dest_root / "db"
     db_dir.mkdir(parents=True, exist_ok=True)
 
-    # Safe online backup using SQLite's built-in API
-    snapshot_db = db_dir / f"ngs_tracker_{ts}.db"
+    # Safe online backup using SQLite's built-in API, then gzip
+    tmp_db = db_dir / f"ngs_tracker_{ts}.db"
     src = sqlite3.connect(db_path)
-    dst = sqlite3.connect(str(snapshot_db))
+    dst = sqlite3.connect(str(tmp_db))
     with dst:
         src.backup(dst)
     src.close()
     dst.close()
+
+    snapshot_gz = db_dir / f"ngs_tracker_{ts}.db.gz"
+    with open(tmp_db, "rb") as f_in, gzip.open(snapshot_gz, "wb", compresslevel=6) as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    tmp_db.unlink()
 
     # Mirror uploads — keep a single up-to-date copy (no per-snapshot duplication)
     if storage_path and Path(storage_path).exists():
@@ -56,12 +62,12 @@ def run_snapshot() -> str:
     _prune_db_snapshots(db_dir)
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     set_last_snapshot_time(now)
-    return str(snapshot_db)
+    return str(snapshot_gz)
 
 
 def _prune_db_snapshots(db_dir: Path) -> None:
     keep = get_snapshot_keep()
-    snapshots = sorted(db_dir.glob("ngs_tracker_*.db"), reverse=True)
+    snapshots = sorted(db_dir.glob("ngs_tracker_*.db.gz"), reverse=True)
     for old in snapshots[keep:]:
         old.unlink(missing_ok=True)
 
