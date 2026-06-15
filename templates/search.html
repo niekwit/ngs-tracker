@@ -7,7 +7,7 @@
 <form method="GET" action="{{ url_for('search') }}" class="mb-4">
   <div class="input-group">
     <input type="search" class="form-control" name="q" value="{{ q }}"
-           placeholder="Search projects, runs, researchers…" autofocus>
+           placeholder="Search projects, runs, samples, researchers…" autofocus>
     <button class="btn btn-primary" type="submit">Search</button>
   </div>
 </form>
@@ -98,6 +98,19 @@
     <div class="small mt-1 text-muted font-monospace" style="font-size:.78rem; line-height:1.5;">
       {{ notes_snippets[r.id] }}
     </div>
+    {% endif %}
+  </a>
+  {% endfor %}
+{% endcall %}
+
+{% call section('Samples', 'bi-eyedropper', 'secondary', results.samples) %}
+  {% for s in results.samples %}
+  <a href="{{ url_for('sample_detail', id=s.id) }}"
+     class="list-group-item list-group-item-action py-2">
+    <span class="fw-semibold">{{ s.name }}</span>
+    <span class="text-muted ms-2 small">{{ s.project.name }}</span>
+    {% if s.description %}
+    <span class="text-muted ms-2 small">— {{ s.description[:100] }}</span>
     {% endif %}
   </a>
   {% endfor %}

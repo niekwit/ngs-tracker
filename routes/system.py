@@ -19,7 +19,7 @@ from config import (
     load_workflows,
     save_workflows,
 )
-from models import Project, ProjectScript, ResearchGroup, Researcher, WorkflowRun, db
+from models import Project, ProjectScript, ResearchGroup, Researcher, Sample, WorkflowRun, db
 
 
 def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
@@ -172,6 +172,9 @@ def register(app):
                 ProjectScript.trashed == False,
                 ProjectScript.original_filename.ilike(like)
                 | ProjectScript.description.ilike(like),
+            ).all(),
+            "samples": Sample.query.filter(
+                Sample.name.ilike(like) | Sample.description.ilike(like),
             ).all(),
         }
         notes_snippets = {

@@ -55,6 +55,7 @@ The search box in the navbar searches all record types simultaneously:
 - Researchers (name, email)
 - Projects (name, description)
 - Workflow Runs (workflow name, description, notes)
+- Samples (name, description)
 - Scripts (filename, description)
 
 Results are grouped by type and link directly to each record.
