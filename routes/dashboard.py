@@ -108,6 +108,10 @@ def register(app):
             for b in r.backups_list:
                 backup_by_loc[b["location"]] += 1
         backup_locations = get_backup_locations()
+        no_backup_runs = sorted(
+            [r for r in all_runs if not r.backups_list],
+            key=lambda r: r.run_date,
+        )
 
         stats = {
             "groups": ResearchGroup.query.filter_by(trashed=False).count(),
@@ -134,6 +138,7 @@ def register(app):
             n_runs=n_runs,
             unbackedup_runs=unbackedup_runs,
             reminder_days=reminder_days,
+            no_backup_runs=no_backup_runs,
         )
 
     @app.route("/setup", methods=["GET", "POST"])
