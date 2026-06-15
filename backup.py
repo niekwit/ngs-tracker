@@ -1,6 +1,7 @@
 import gzip
 import shutil
 import sqlite3
+import tarfile
 from datetime import datetime
 from pathlib import Path
 
@@ -48,16 +49,11 @@ def run_snapshot() -> str:
         shutil.copyfileobj(f_in, f_out)
     tmp_db.unlink()
 
-    # Mirror uploads — keep a single up-to-date copy (no per-snapshot duplication)
+    # Compress uploads into a single overwritten archive
     if storage_path and Path(storage_path).exists():
-        uploads_mirror = dest_root / "uploads"
-        uploads_mirror.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(
-            storage_path,
-            str(uploads_mirror),
-            dirs_exist_ok=True,
-            copy_function=shutil.copy2,
-        )
+        uploads_gz = dest_root / "uploads.tar.gz"
+        with tarfile.open(uploads_gz, "w:gz", compresslevel=6) as tar:
+            tar.add(storage_path, arcname="uploads")
 
     _prune_db_snapshots(db_dir)
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
