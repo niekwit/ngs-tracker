@@ -74,6 +74,37 @@ The default threshold is **30 days**. Change it from the Settings page under **B
 
 Only runs with status **Completed** or **Failed** are flagged — Running and Pending runs are excluded because they have not yet produced data worth backing up.
 
+## Snapshot backup
+
+The snapshot backup creates point-in-time copies of the database and a mirror of the uploads directory in a separate location — for example an external drive, a second cloud path, or a network share. Configure it under **Snapshot Backup** in Settings.
+
+| Field | Description |
+|---|---|
+| **Backup directory** | Full path to the directory where snapshots are written. Leave empty to disable. |
+| **Every (hours)** | How often to run an automatic backup. Set to 0 to disable the schedule (manual only). |
+| **Keep (copies)** | How many DB snapshots to retain; the oldest are pruned automatically. Uploads are mirrored (single copy, overwritten each run). |
+
+The database snapshot uses SQLite's built-in online backup API, which produces a fully consistent copy even while the app is running — no shutdown required.
+
+Each automatic or manual backup writes:
+
+```
+<backup directory>/
+  db/
+    ngs_tracker_YYYYMMDD_HHMMSS.db   ← timestamped, up to N kept
+    ngs_tracker_YYYYMMDD_HHMMSS.db
+    ...
+  uploads/                            ← mirrored copy, updated each run
+```
+
+The **Snapshot Now** button (visible once a directory is configured) triggers an immediate backup and shows the result as a flash message. The last backup time is displayed next to the status badge.
+
+The scheduler checks every 10 minutes whether a backup is due — so the actual gap between backups is within 10 minutes of the configured interval.
+
+```{note}
+Your database is already inside Dropbox (`/mnt/4TB_SSD/Dropbox/ngs-tracker/`), giving you continuous cloud sync. Snapshot backup is most useful for a second off-Dropbox copy (e.g. an external drive) or for point-in-time recovery in case a corruption syncs to the cloud before you notice.
+```
+
 ## Backup locations
 
 Backup locations are the named destinations shown on every run form. Each location has a **type**:
