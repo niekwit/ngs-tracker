@@ -156,8 +156,18 @@
     }
   });
 })();
+</script>
+
+{% else %}
+<div class="alert alert-info {% if published_by_group %}mb-4{% endif %}">
+  <i class="bi bi-info-circle me-1"></i>
+  No runtime data yet. Runtime is recorded automatically when you use
+  <code>register_run(config, log_file=log)</code> in your Snakemake workflow.
+</div>
+{% endif %}
 
 {% if executions %}
+<script>
 (function () {
   var edata   = {{ executions | tojson }};
   var elabels = edata.map(function (d) { return d.name; });
@@ -200,15 +210,7 @@
     }
   });
 })();
-{% endif %}
 </script>
-
-{% else %}
-<div class="alert alert-info {% if published_by_group %}mb-4{% endif %}">
-  <i class="bi bi-info-circle me-1"></i>
-  No runtime data yet. Runtime is recorded automatically when you use
-  <code>register_run(config, log_file=log)</code> in your Snakemake workflow.
-</div>
 {% endif %}
 
 {% if published_by_group %}
