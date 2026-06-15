@@ -35,9 +35,15 @@ When the backup reminder is enabled (configured in [Settings](settings.md#backup
 
 The banner is hidden when there are no overdue runs or when the reminder is disabled (threshold = 0).
 
+Runs tagged **published-data** are excluded from the reminder entirely, as publicly available data does not require a separate backup.
+
 ### Backup coverage
 
 A progress bar showing the percentage of runs with at least one backup location recorded, followed by a per-location breakdown using your configured backup locations.
+
+When runs are missing a backup, the progress bar is clickable — a modal opens listing every unprotected run with links to the run and its parent project. A red **N without backup** link next to the coverage summary provides the same shortcut.
+
+Runs tagged **published-data** are excluded from all backup coverage calculations (count, percentage, per-location totals, and the unprotected-runs modal), since publicly available data is considered inherently accessible without a dedicated backup.
 
 ---
 
