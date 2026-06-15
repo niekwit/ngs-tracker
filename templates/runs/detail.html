@@ -436,9 +436,15 @@
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span><i class="bi bi-paperclip me-1"></i> Attached Files ({{ run.attached_files|length }})</span>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#uploadForm">
-      <i class="bi bi-upload me-1"></i> Upload File
-    </button>
+    <div class="d-flex gap-2">
+      <button id="deleteSelectedBtn" class="btn btn-danger btn-sm d-none"
+              onclick="document.getElementById('batchDeleteForm').requestSubmit()">
+        <i class="bi bi-trash me-1"></i> Delete Selected (<span id="selectedCount">0</span>)
+      </button>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#uploadForm">
+        <i class="bi bi-upload me-1"></i> Upload File
+      </button>
+    </div>
   </div>
 
   <!-- Upload form (collapsible) -->
@@ -474,10 +480,17 @@
   </div>
 
   {% if run.attached_files %}
+  <form id="batchDeleteForm" method="POST"
+        action="{{ url_for('files_batch_delete', id=run.id) }}"
+        onsubmit="return confirm('Delete ' + document.getElementById('selectedCount').textContent + ' selected file(s)?')">
+  </form>
   <div class="table-responsive">
     <table class="table table-hover table-sm mb-0">
       <thead class="table-light">
         <tr>
+          <th style="width:2rem;">
+            <input type="checkbox" id="selectAllFiles" title="Select all">
+          </th>
           <th>Filename</th>
           <th>Type</th>
           <th>Description</th>
@@ -488,6 +501,10 @@
       <tbody>
         {% for f in run.attached_files %}
         <tr class="file-row">
+          <td>
+            <input type="checkbox" class="file-checkbox" form="batchDeleteForm"
+                   name="file_ids" value="{{ f.id }}">
+          </td>
           <td>
             {% if f.is_image %}
             <i class="bi bi-file-earmark-image me-1 text-info"></i>
@@ -686,5 +703,32 @@ imgModal.addEventListener('hidden.bs.modal', function() {
   document.getElementById('imgModalImg').src = '';
   document.getElementById('imgModalPdf').src = '';
 });
+</script>
+<script>
+(function () {
+  var selectAll = document.getElementById('selectAllFiles');
+  var deleteBtn = document.getElementById('deleteSelectedBtn');
+  var countSpan = document.getElementById('selectedCount');
+  if (!selectAll) return;
+
+  function updateDeleteBtn() {
+    var checked = document.querySelectorAll('.file-checkbox:checked').length;
+    countSpan.textContent = checked;
+    deleteBtn.classList.toggle('d-none', checked === 0);
+    selectAll.indeterminate = checked > 0 && checked < document.querySelectorAll('.file-checkbox').length;
+    selectAll.checked = checked > 0 && checked === document.querySelectorAll('.file-checkbox').length;
+  }
+
+  selectAll.addEventListener('change', function () {
+    document.querySelectorAll('.file-checkbox').forEach(function (cb) {
+      cb.checked = selectAll.checked;
+    });
+    updateDeleteBtn();
+  });
+
+  document.querySelectorAll('.file-checkbox').forEach(function (cb) {
+    cb.addEventListener('change', updateDeleteBtn);
+  });
+})();
 </script>
 {% endblock %}

@@ -108,6 +108,24 @@ def register(app):
         flash(f'File "{fname}" deleted.', "success")
         return redirect(url_for("run_detail", id=run_id))
 
+    @app.route("/runs/<int:id>/files/batch-delete", methods=["POST"])
+    def files_batch_delete(id):
+        run = db.get_or_404(WorkflowRun, id)
+        file_ids = request.form.getlist("file_ids", type=int)
+        deleted = 0
+        for fid in file_ids:
+            f = db.session.get(AttachedFile, fid)
+            if f and f.workflow_run_id == run.id:
+                fname = f.original_filename
+                _delete_file(f.stored_path)
+                db.session.delete(f)
+                db.session.flush()
+                db_log("DELETE", "AttachedFile", fid, f"{fname} from run id={id}")
+                deleted += 1
+        db.session.commit()
+        flash(f'{deleted} file{"s" if deleted != 1 else ""} deleted.', "success")
+        return redirect(url_for("run_detail", id=id))
+
     # ── Sample sheets ─────────────────────────────────────────────────────────
 
     @app.route("/runs/<int:id>/samples/upload", methods=["POST"])
