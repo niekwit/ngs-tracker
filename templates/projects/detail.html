@@ -67,7 +67,6 @@
   </div>
 </div>
 
-{% set sorted_runs = project.sorted_runs %}
 {% if sorted_runs %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -77,9 +76,24 @@
     <table class="table table-hover mb-0">
       <thead class="table-light">
         <tr>
-          <th>Workflow</th>
-          <th>Date</th>
-          <th>Status</th>
+          <th>
+            <a href="?sort=workflow&dir={{ 'desc' if sort_col == 'workflow' and sort_dir == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark">
+              Workflow{% if sort_col == 'workflow' %}<i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }} ms-1"></i>{% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="?sort=date&dir={{ 'asc' if sort_col == 'date' and sort_dir == 'desc' else 'desc' }}"
+               class="text-decoration-none text-dark">
+              Date{% if sort_col == 'date' %}<i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }} ms-1"></i>{% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="?sort=status&dir={{ 'desc' if sort_col == 'status' and sort_dir == 'asc' else 'asc' }}"
+               class="text-decoration-none text-dark">
+              Status{% if sort_col == 'status' %}<i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }} ms-1"></i>{% endif %}
+            </a>
+          </th>
           <th>Backup</th>
           <th>Files</th>
           <th>Notes</th>

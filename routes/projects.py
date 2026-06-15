@@ -38,11 +38,33 @@ def register(app):
     def project_detail(id):
         project = db.get_or_404(Project, id)
         disk_usage = _format_file_size(_project_disk_bytes(project))
+
+        sort_col = request.args.get("sort", "date")
+        sort_dir = request.args.get("dir", "desc")
+        if sort_col not in ("workflow", "date", "status"):
+            sort_col = "date"
+        if sort_dir not in ("asc", "desc"):
+            sort_dir = "desc"
+
+        key_fns = {
+            "workflow": lambda r: r.workflow_name.lower(),
+            "date": lambda r: r.run_date,
+            "status": lambda r: r.status,
+        }
+        runs = sorted(
+            (r for r in project.workflow_runs if not r.trashed),
+            key=key_fns[sort_col],
+            reverse=(sort_dir == "desc"),
+        )
+
         return render_template(
             "projects/detail.html",
             project=project,
             script_languages=SCRIPT_LANGUAGES,
             disk_usage=disk_usage,
+            sorted_runs=runs,
+            sort_col=sort_col,
+            sort_dir=sort_dir,
         )
 
     @app.route("/projects/new", methods=["GET", "POST"])
