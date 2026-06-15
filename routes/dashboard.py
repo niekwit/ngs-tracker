@@ -84,13 +84,17 @@ def register(app):
             "Failed": url_for("runs_list", status="failed"),
         }
 
+        backup_tracked_runs = [
+            r for r in all_runs if "published-data" not in r.tag_list
+        ]
+
         reminder_days = get_backup_reminder_days()
         if reminder_days > 0:
             cutoff = datetime.utcnow() - timedelta(days=reminder_days)
             unbackedup_runs = sorted(
                 [
                     r
-                    for r in all_runs
+                    for r in backup_tracked_runs
                     if not r.backups_list
                     and r.run_date < cutoff
                     and r.status in ("completed", "failed")
@@ -100,16 +104,16 @@ def register(app):
         else:
             unbackedup_runs = []
 
-        n_runs = len(all_runs)
-        n_backup = sum(1 for r in all_runs if r.backups_list)
+        n_runs = len(backup_tracked_runs)
+        n_backup = sum(1 for r in backup_tracked_runs if r.backups_list)
         backup_pct = round(n_backup / n_runs * 100) if n_runs else 0
         backup_by_loc = defaultdict(int)
-        for r in all_runs:
+        for r in backup_tracked_runs:
             for b in r.backups_list:
                 backup_by_loc[b["location"]] += 1
         backup_locations = get_backup_locations()
         no_backup_runs = sorted(
-            [r for r in all_runs if not r.backups_list],
+            [r for r in backup_tracked_runs if not r.backups_list],
             key=lambda r: r.run_date,
         )
 
