@@ -458,3 +458,46 @@ def set_backup_reminder_days(days: int) -> None:
     s = load_settings()
     s["backup_reminder_days"] = max(0, int(days))
     save_settings(s)
+
+
+# ── Snapshot backup ───────────────────────────────────────────────────────────
+
+
+def get_snapshot_backup_dir() -> str:
+    return load_settings().get("snapshot_backup_dir", "")
+
+
+def set_snapshot_backup_dir(path: str) -> None:
+    s = load_settings()
+    s["snapshot_backup_dir"] = path.strip()
+    save_settings(s)
+
+
+def get_snapshot_interval_hours() -> int:
+    return max(0, int(load_settings().get("snapshot_interval_hours", 0)))
+
+
+def set_snapshot_interval_hours(hours: int) -> None:
+    s = load_settings()
+    s["snapshot_interval_hours"] = max(0, int(hours))
+    save_settings(s)
+
+
+def get_snapshot_keep() -> int:
+    return max(1, int(load_settings().get("snapshot_keep", 10)))
+
+
+def set_snapshot_keep(n: int) -> None:
+    s = load_settings()
+    s["snapshot_keep"] = max(1, int(n))
+    save_settings(s)
+
+
+def get_last_snapshot_time() -> str:
+    return load_settings().get("last_snapshot_time", "")
+
+
+def set_last_snapshot_time(ts: str) -> None:
+    s = load_settings()
+    s["last_snapshot_time"] = ts
+    save_settings(s)

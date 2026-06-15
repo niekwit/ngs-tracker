@@ -1,5 +1,7 @@
 import json
 import os
+import threading
+import time
 
 from flask import Flask, redirect, url_for
 from flask import request as flask_request
@@ -150,6 +152,26 @@ routes.samples.register(app)
 routes.scripts.register(app)
 routes.trash.register(app)
 routes.system.register(app)
+
+
+def _start_snapshot_scheduler(app: Flask) -> None:
+    """Daemon thread: check every 10 minutes and run a snapshot when due."""
+    from backup import is_snapshot_due, run_snapshot
+
+    def _loop():
+        while True:
+            time.sleep(600)
+            if is_snapshot_due():
+                try:
+                    with app.app_context():
+                        run_snapshot()
+                except Exception:
+                    pass
+
+    threading.Thread(target=_loop, daemon=True, name="snapshot-scheduler").start()
+
+
+_start_snapshot_scheduler(app)
 
 
 if __name__ == "__main__":

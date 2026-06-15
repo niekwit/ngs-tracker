@@ -209,6 +209,67 @@
       </div>
     </div>
 
+    <!-- Snapshot backup -->
+    <h5 class="fw-bold mt-4 mb-2" id="snapshot-backup"><i class="bi bi-archive me-1"></i> Snapshot Backup</h5>
+    <p class="text-muted mb-3">
+      Automatically save a timestamped copy of the database and a mirror of the uploads folder to a
+      separate directory (e.g. an external drive or a second cloud path). The database snapshot uses
+      SQLite's safe online backup API so it is always consistent.
+    </p>
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="action" value="set_snapshot_backup">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold mb-1" for="snapshotDir">Backup directory</label>
+              <input type="text" id="snapshotDir" class="form-control form-control-sm font-monospace"
+                     name="snapshot_backup_dir" value="{{ snapshot_backup_dir }}"
+                     placeholder="/path/to/backup — leave empty to disable">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold mb-1" for="snapshotInterval">Every (hours)</label>
+              <input type="number" id="snapshotInterval" class="form-control form-control-sm"
+                     name="snapshot_interval_hours" value="{{ snapshot_interval_hours }}"
+                     min="0" max="8760" placeholder="0 = off">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold mb-1" for="snapshotKeep">Keep (copies)</label>
+              <input type="number" id="snapshotKeep" class="form-control form-control-sm"
+                     name="snapshot_keep" value="{{ snapshot_keep }}"
+                     min="1" max="365">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-save me-1"></i>Save
+              </button>
+            </div>
+          </div>
+        </form>
+        <div class="mt-3 d-flex align-items-center gap-3 flex-wrap">
+          {% if snapshot_backup_dir and snapshot_interval_hours > 0 %}
+          <span class="badge bg-success">
+            <i class="bi bi-arrow-repeat me-1"></i>Active — every {{ snapshot_interval_hours }}h
+          </span>
+          {% elif snapshot_backup_dir %}
+          <span class="badge bg-secondary">Directory set — automatic schedule off</span>
+          {% else %}
+          <span class="badge bg-secondary">Disabled</span>
+          {% endif %}
+          {% if last_snapshot_time %}
+          <span class="text-muted small"><i class="bi bi-clock me-1"></i>Last snapshot: {{ last_snapshot_time }}</span>
+          {% endif %}
+          {% if snapshot_backup_dir %}
+          <form method="POST" class="ms-auto">
+            <button type="submit" name="action" value="run_snapshot_now" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-camera me-1"></i>Snapshot Now
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
     <!-- API key -->
     <h5 class="fw-bold mt-4 mb-2"><i class="bi bi-key me-1"></i> REST API Key</h5>
     <div class="card">

@@ -17,6 +17,10 @@ from config import (
     get_backup_reminder_days,
     get_current_user,
     get_default_tags,
+    get_last_snapshot_time,
+    get_snapshot_backup_dir,
+    get_snapshot_interval_hours,
+    get_snapshot_keep,
     get_storage_path,
     get_users,
     is_configured,
@@ -28,6 +32,9 @@ from config import (
     save_settings,
     set_backup_reminder_days,
     set_current_user,
+    set_snapshot_backup_dir,
+    set_snapshot_interval_hours,
+    set_snapshot_keep,
     set_tag_color,
 )
 from helpers import _format_file_size, _total_file_size
@@ -235,6 +242,42 @@ def register(app):
                     flash(f"Backup reminder set to {days} day(s).", "success")
                 return redirect(url_for("setup"))
 
+            if action == "set_snapshot_backup":
+                bdir = request.form.get("snapshot_backup_dir", "").strip()
+                try:
+                    hours = max(0, int(request.form.get("snapshot_interval_hours", 0)))
+                except (ValueError, TypeError):
+                    hours = 0
+                try:
+                    keep = max(1, int(request.form.get("snapshot_keep", 10)))
+                except (ValueError, TypeError):
+                    keep = 10
+                if bdir:
+                    try:
+                        Path(bdir).mkdir(parents=True, exist_ok=True)
+                    except Exception as e:
+                        flash(f"Could not create backup directory: {e}", "danger")
+                        return redirect(url_for("setup"))
+                set_snapshot_backup_dir(bdir)
+                set_snapshot_interval_hours(hours)
+                set_snapshot_keep(keep)
+                if bdir and hours > 0:
+                    flash(f"Snapshot backup enabled: every {hours}h to {bdir}, keeping {keep} copies.", "success")
+                elif bdir:
+                    flash(f"Snapshot backup directory set to {bdir} (automatic schedule disabled).", "success")
+                else:
+                    flash("Snapshot backup disabled.", "success")
+                return redirect(url_for("setup"))
+
+            if action == "run_snapshot_now":
+                from backup import run_snapshot
+                try:
+                    path = run_snapshot()
+                    flash(f"Snapshot saved to {path}.", "success")
+                except Exception as e:
+                    flash(f"Snapshot failed: {e}", "danger")
+                return redirect(url_for("setup"))
+
             # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
@@ -269,4 +312,8 @@ def register(app):
             backup_locations=get_backup_locations(),
             api_key=get_api_key(),
             backup_reminder_days=get_backup_reminder_days(),
+            snapshot_backup_dir=get_snapshot_backup_dir(),
+            snapshot_interval_hours=get_snapshot_interval_hours(),
+            snapshot_keep=get_snapshot_keep(),
+            last_snapshot_time=get_last_snapshot_time(),
         )
