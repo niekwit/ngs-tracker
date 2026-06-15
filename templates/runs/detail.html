@@ -535,6 +535,14 @@
               <i class="bi bi-eye"></i>
             </button>
             {% endif %}
+            <button class="btn btn-xs btn-outline-secondary"
+                    data-bs-toggle="modal" data-bs-target="#editFileModal"
+                    data-file-id="{{ f.id }}"
+                    data-file-name="{{ f.original_filename }}"
+                    data-file-type="{{ f.file_type }}"
+                    data-file-desc="{{ f.description or '' }}">
+              <i class="bi bi-pencil"></i>
+            </button>
             <a href="{{ url_for('file_download', id=f.id) }}" class="btn btn-xs btn-outline-primary">
               <i class="bi bi-download"></i>
             </a>
@@ -554,6 +562,44 @@
     <p class="mt-2 mb-0">No files attached yet. Upload a Snakemake config or result file above.</p>
   </div>
   {% endif %}
+</div>
+
+<!-- Edit file modal -->
+<div class="modal fade" id="editFileModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="editFileForm" method="POST" action="">
+        <div class="modal-header py-2">
+          <h6 class="modal-title mb-0"><i class="bi bi-pencil me-2"></i>Edit File</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold mb-1">Filename</label>
+            <input type="text" class="form-control form-control-sm" name="original_filename"
+                   id="editFileName" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold mb-1">Type</label>
+            <select class="form-select form-select-sm" name="file_type" id="editFileType">
+              {% for key, (label, color) in file_types.items() %}
+              <option value="{{ key }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold mb-1">Description</label>
+            <input type="text" class="form-control form-control-sm" name="description"
+                   id="editFileDesc" placeholder="Optional notes">
+          </div>
+        </div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- Compare config picker modal -->
@@ -703,6 +749,18 @@ imgModal.addEventListener('hidden.bs.modal', function() {
   document.getElementById('imgModalImg').src = '';
   document.getElementById('imgModalPdf').src = '';
 });
+</script>
+<script>
+var editFileModal = document.getElementById('editFileModal');
+if (editFileModal) {
+  editFileModal.addEventListener('show.bs.modal', function (e) {
+    var btn = e.relatedTarget;
+    document.getElementById('editFileForm').action = '/files/' + btn.dataset.fileId + '/edit';
+    document.getElementById('editFileName').value = btn.dataset.fileName;
+    document.getElementById('editFileType').value = btn.dataset.fileType;
+    document.getElementById('editFileDesc').value = btn.dataset.fileDesc;
+  });
+}
 </script>
 <script>
 (function () {
