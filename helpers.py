@@ -102,6 +102,34 @@ def _parse_snakemake_log(path: Path) -> int | None:
     return int((timestamps[-1] - timestamps[0]).total_seconds())
 
 
+def extract_samples_from_config(workflow_name: str, config: dict) -> list[dict] | None:
+    """
+    Extract sample names and group/condition labels from a parsed workflow config.
+    Returns list of {"name": str, "description": str}, or None if unsupported.
+
+    smallRNA-seq: samples: {sample_name: group}
+    gps-orfeome:  conditions: {condition: "sample1 sample2 ..."}
+    """
+    if workflow_name == "smallRNA-seq":
+        raw = config.get("samples")
+        if not isinstance(raw, dict):
+            return None
+        return [{"name": str(k), "description": str(v)} for k, v in raw.items()]
+
+    if workflow_name == "gps-orfeome":
+        conditions = config.get("conditions")
+        if not isinstance(conditions, dict):
+            return None
+        seen: dict[str, str] = {}
+        for condition, value in conditions.items():
+            for name in str(value).split():
+                if name not in seen:
+                    seen[name] = str(condition)
+        return [{"name": name, "description": cond} for name, cond in seen.items()]
+
+    return None
+
+
 def _parse_snakemake_config(path: Path) -> str | None:
     try:
         with open(path) as f:

@@ -205,6 +205,11 @@
         <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
       </form>
       {% endif %}
+      {% if config_samples %}
+      <a href="{{ url_for('samples_from_config', id=run.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-gear me-1"></i> Extract from config
+      </a>
+      {% endif %}
       <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#sampleUpload">
         <i class="bi bi-upload me-1"></i> {{ 'Replace' if run.sample_sheet else 'Upload CSV' }}
       </button>

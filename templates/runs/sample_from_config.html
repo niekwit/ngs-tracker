@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Samples from Config — {{ run.workflow_name }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('project_detail', id=run.project_id) }}">{{ run.project.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('run_detail', id=run.id) }}">{{ run.workflow_name }}</a>
+    </li>
+    <li class="breadcrumb-item active">Samples from Config</li>
+  </ol>
+</nav>
+
+<h4 class="fw-bold mb-1"><i class="bi bi-person-badge me-1"></i> Samples from Config</h4>
+<p class="text-muted mb-3">
+  The following samples were extracted from the uploaded config file.
+  Uncheck any you don't want to track. Names and descriptions are editable before confirming.
+  New samples will be created under <strong>{{ run.project.name }}</strong>; existing ones will be linked.
+</p>
+
+<form method="POST">
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-gear me-1"></i> Extracted from <code>{{ run.workflow_name }}</code> config</span>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-xs btn-outline-secondary" id="check-all">Check all</button>
+        <button type="button" class="btn btn-xs btn-outline-secondary" id="uncheck-all">Uncheck all</button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:2.5rem;"></th>
+            <th>Sample name</th>
+            <th>Group / condition</th>
+            <th style="width:8rem;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in candidates %}
+          {% set is_linked = c.name in already_linked %}
+          <tr>
+            <td>
+              <input type="checkbox" name="include_{{ loop.index0 }}"
+                     {% if is_linked %}checked{% else %}checked{% endif %}>
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm"
+                     name="name_{{ loop.index0 }}" value="{{ c.name }}">
+            </td>
+            <td>
+              <input type="text" class="form-control form-control-sm"
+                     name="desc_{{ loop.index0 }}" value="{{ c.description }}">
+            </td>
+            <td>
+              {% if is_linked %}
+              <span class="badge bg-success">Already linked</span>
+              {% elif c.name in run.project.samples | map(attribute='name') | list %}
+              <span class="badge bg-info">Existing sample</span>
+              {% else %}
+              <span class="badge bg-secondary">New</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-muted small">
+      {{ candidates|length }} sample{{ 's' if candidates|length != 1 }} found
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg me-1"></i> Confirm &amp; Link Samples
+    </button>
+    <a href="{{ url_for('run_detail', id=run.id) }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('check-all').addEventListener('click', function () {
+  document.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.checked = true; });
+});
+document.getElementById('uncheck-all').addEventListener('click', function () {
+  document.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.checked = false; });
+});
+</script>
+{% endblock %}

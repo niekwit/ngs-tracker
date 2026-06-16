@@ -14,7 +14,7 @@ from config import (
 )
 from markupsafe import Markup
 
-from helpers import _compare_configs, _parse_datetime, find_duplicate_runs
+from helpers import _compare_configs, _parse_datetime, extract_samples_from_config, find_duplicate_runs
 from models import (
     FILE_TYPES,
     RUN_STATUSES,
@@ -136,6 +136,15 @@ def register(app):
         duplicate_runs = find_duplicate_runs(
             run.project_id, run.workflow_name, run.run_date, exclude_id=run.id
         )
+
+        config_samples = None
+        for f in run.attached_files:
+            if f.file_type == "config" and f.config_dict:
+                extracted = extract_samples_from_config(run.workflow_name, f.config_dict)
+                if extracted:
+                    config_samples = extracted
+                    break
+
         return render_template(
             "runs/detail.html",
             run=run,
@@ -147,6 +156,7 @@ def register(app):
             loc_names=loc_names,
             mapping_rate_cutoff=mapping_rate_cutoff,
             duplicate_runs=duplicate_runs,
+            config_samples=config_samples,
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])

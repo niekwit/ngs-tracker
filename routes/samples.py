@@ -3,6 +3,7 @@ import json
 from flask import flash, redirect, render_template, request, url_for
 
 from config import db_log
+from helpers import extract_samples_from_config
 from models import RunSample, Sample, WorkflowRun, db
 
 
@@ -88,6 +89,62 @@ def register(app):
             col=col,
             already_linked=already_linked,
             project_samples=project_samples,
+        )
+
+    @app.route("/runs/<int:id>/samples/from-config", methods=["GET", "POST"])
+    def samples_from_config(id):
+        run = db.get_or_404(WorkflowRun, id)
+
+        candidates = None
+        for f in run.attached_files:
+            if f.file_type == "config" and f.config_dict:
+                candidates = extract_samples_from_config(run.workflow_name, f.config_dict)
+                if candidates:
+                    break
+
+        if not candidates:
+            flash("No extractable sample data found in the config for this workflow.", "warning")
+            return redirect(url_for("run_detail", id=id))
+
+        if request.method == "POST":
+            RunSample.query.filter_by(run_id=id).delete()
+            db.session.flush()
+
+            project = run.project
+            existing = {s.name: s for s in project.samples}
+            linked = 0
+
+            for i, c in enumerate(candidates):
+                if not request.form.get(f"include_{i}"):
+                    continue
+                name = request.form.get(f"name_{i}", c["name"]).strip()
+                description = request.form.get(f"desc_{i}", c["description"]).strip()
+                if not name:
+                    continue
+                if name in existing:
+                    sample = existing[name]
+                    if description and sample.description != description:
+                        sample.description = description
+                else:
+                    sample = Sample(project_id=project.id, name=name, description=description)
+                    db.session.add(sample)
+                    db.session.flush()
+                    existing[name] = sample
+                    db_log("CREATE", "Sample", sample.id, f"{name} (project: {project.name})")
+                rs = RunSample(run_id=id, sample_id=sample.id)
+                db.session.add(rs)
+                linked += 1
+
+            db.session.commit()
+            flash(f"{linked} sample{'s' if linked != 1 else ''} linked from config.", "success")
+            return redirect(url_for("run_detail", id=id))
+
+        already_linked = {rs.sample.name for rs in run.run_samples}
+        return render_template(
+            "runs/sample_from_config.html",
+            run=run,
+            candidates=candidates,
+            already_linked=already_linked,
         )
 
     @app.route("/samples/<int:id>")
