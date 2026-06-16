@@ -42,6 +42,7 @@
             <a href="{{ url_for('project_detail', id=p.id) }}" class="text-decoration-none fw-semibold">
               {{ p.name }}
             </a>
+            <span class="text-muted small ms-1">#{{ p.id }}</span>
             {% if p.description %}
             <div class="text-muted small">{{ p.description[:80] }}{{ '…' if p.description|length > 80 }}</div>
             {% endif %}
