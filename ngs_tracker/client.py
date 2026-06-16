@@ -27,6 +27,7 @@ The current user is read from NGS_TRACKER_USER (env var) or
 config["ngs_tracker"]["created_by"].
 """
 
+import glob as _glob
 import json
 import os
 import re
@@ -42,7 +43,15 @@ except ImportError:  # pragma: no cover
 
 DEFAULT_BASE_URL = "http://127.0.0.1:5000/api"
 VALID_STATUSES = {"completed", "running", "pending", "failed"}
-VALID_FILE_TYPES = {"config", "sample_info", "qc", "results", "mapping_rates", "other"}
+VALID_FILE_TYPES = {
+    "config",
+    "sample_info",
+    "qc",
+    "results",
+    "mapping_rates",
+    "snakemake_log",
+    "other",
+}
 
 _SETTINGS_FILE = Path.home() / ".ngs-tracker" / "settings.json"
 
@@ -83,6 +92,50 @@ def _local_credentials() -> tuple[str, str]:
         return s.get("api_key", ""), s.get("current_user", "")
     except Exception:
         return "", ""
+
+
+def _expand_file_entries(entries: list) -> list:
+    """Expand glob patterns in file entries and resolve paths.
+
+    Each entry may have a ``path`` that contains glob wildcards. Unmatched
+    globs are kept as-is so that a warning is emitted later; matched globs
+    produce one entry per matched file, inheriting ``type`` and ``description``.
+    """
+    result = []
+    for entry in entries:
+        raw_path = entry.get("path", "")
+        if not raw_path:
+            continue
+
+        # Resolve relative to CWD before globbing
+        base = Path(raw_path)
+        if not base.is_absolute():
+            base = Path.cwd() / base
+
+        file_type = entry.get("type", "other")
+        if file_type not in VALID_FILE_TYPES:
+            _warn(
+                f"Unknown file type '{file_type}',"
+                f" using 'other'. Valid types: {sorted(VALID_FILE_TYPES)}"
+            )
+            file_type = "other"
+
+        if any(c in raw_path for c in ("*", "?", "[")):
+            matched = sorted(_glob.glob(str(base)))
+            if not matched:
+                _warn(f"Glob matched no files, skipping: {raw_path}")
+            for m in matched:
+                result.append(
+                    {**entry, "path": str(Path(m).resolve()), "type": file_type}
+                )
+        else:
+            path = base.resolve()
+            if not path.exists():
+                _warn(f"File not found, skipping: {path}")
+                continue
+            result.append({**entry, "path": str(path), "type": file_type})
+
+    return result
 
 
 def register_run(config: dict, status: str = "completed", log_file=None) -> int | None:
@@ -136,8 +189,12 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
     files (list[dict], optional):
         Files to attach.  Each entry has:
           path (str):        Path to the file (absolute or relative to CWD).
+                             Glob wildcards (``*``, ``?``) are supported and
+                             expand to all matching files at registration time.
           type (str):        File type — config / sample_info / qc / results /
-                             mapping_rates / other.
+                             mapping_rates / snakemake_log / other.
+                             ``snakemake_log`` entries are parsed for runtime
+                             if no other runtime source is available.
           description (str): Optional label shown in the UI.
     """
     cfg = config.get("ngs_tracker", {})
@@ -176,7 +233,11 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
         os.environ.get("NGS_TRACKER_USER") or _local_user or cfg.get("created_by", "")
     )
 
-    # Parse Snakemake log for runtime (log_file arg takes priority over config)
+    # Expand globs in the files list once so we can inspect them below
+    _expanded_files = _expand_file_entries(cfg.get("files", []))
+
+    # Parse Snakemake log for runtime.
+    # Priority: log_file arg > config log_file key > snakemake_log file entries.
     _log_path = log_file or cfg.get("log_file")
     runtime_seconds = None
     if _log_path:
@@ -185,6 +246,15 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
             _info(f"Parsed runtime: {runtime_seconds}s from {_log_path}")
         else:
             _warn(f"Could not parse runtime from log: {_log_path}")
+
+    if runtime_seconds is None:
+        for entry in _expanded_files:
+            if entry.get("type") == "snakemake_log":
+                secs = _parse_snakemake_log(entry["path"])
+                if secs is not None:
+                    runtime_seconds = secs
+                    _info(f"Parsed runtime: {secs}s from {Path(entry['path']).name}")
+                    break
 
     try:
         # ── Create the run ────────────────────────────────────────────────────
@@ -208,27 +278,9 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
         _info(f"Run {run_id} registered (status={status}) — {base}/runs/{run_id}")
 
         # ── Attach files ──────────────────────────────────────────────────────
-        for entry in cfg.get("files", []):
-            raw_path = entry.get("path", "")
-            if not raw_path:
-                continue
-
-            path = Path(raw_path)
-            if not path.is_absolute():
-                path = Path.cwd() / path
-            path = path.resolve()
-
-            if not path.exists():
-                _warn(f"File not found, skipping: {path}")
-                continue
-
+        for entry in _expanded_files:
+            path = Path(entry["path"])
             file_type = entry.get("type", "other")
-            if file_type not in VALID_FILE_TYPES:
-                _warn(
-                    f"Unknown file type '{file_type}' for {path.name},"
-                    f" using 'other'. Valid types: {sorted(VALID_FILE_TYPES)}"
-                )
-                file_type = "other"
 
             r = _requests.post(
                 f"{base}/runs/{run_id}/files",

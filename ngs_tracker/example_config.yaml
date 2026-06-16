@@ -38,7 +38,9 @@ ngs_tracker:
 
   # Files to attach after a successful (or failed) run.
   # Paths can be relative to the working directory or absolute.
-  # type: config | sample_info | qc | results | mapping_rates | other
+  # Glob wildcards (* ?) are supported and expand at registration time.
+  # type: config | sample_info | qc | results | mapping_rates | snakemake_log | other
+  # Note: snakemake_log entries are parsed for runtime automatically.
   files:
     - path: "config/config.yaml"
       type: config
@@ -55,3 +57,7 @@ ngs_tracker:
     - path: "results/mapping_rates.csv"
       type: mapping_rates
       description: "STAR alignment mapping rates"
+
+    - path: "logs/snakemake/*.log"
+      type: snakemake_log
+      description: "Snakemake log"
