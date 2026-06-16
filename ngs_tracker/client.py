@@ -57,6 +57,22 @@ _SETTINGS_FILE = Path.home() / ".ngs-tracker" / "settings.json"
 
 
 _TS_RE = re.compile(r"\[(\w{3} \w{3} +\d+ \d{2}:\d{2}:\d{2} \d{4})\]")
+_FINISHED_JOB_RE = re.compile(r"^Finished job \d+\.", re.MULTILINE)
+
+
+def _log_has_executions(path) -> bool:
+    """Return True if the Snakemake log contains at least one completed job.
+
+    Snakemake writes ``Finished job N.`` for every rule that actually ran.
+    Dry-runs (``-n``), ``--containerize``, ``--touch``, ``--list-*`` and other
+    non-executing modes never write this line, so it is a reliable signal that
+    real work was done.
+    """
+    try:
+        with open(path) as f:
+            return bool(_FINISHED_JOB_RE.search(f.read()))
+    except Exception:
+        return False
 
 
 def _parse_snakemake_log(path) -> int | None:
@@ -184,8 +200,13 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
     log_file (str | Path, optional):
         Path to the Snakemake main log file.  In Snakemake ``onsuccess`` /
         ``onerror`` blocks the built-in ``log`` variable holds this path.
-        When provided, the total pipeline runtime is parsed from the log and
-        stored on the run record.
+        When provided (or inferred from a ``snakemake_log`` file entry),
+        the log is checked for completed-job markers before registration.
+        If none are found the run is silently skipped — this means dry-runs
+        (``-n``), ``--containerize``, ``--touch``, and other non-executing
+        modes are automatically ignored without any special-casing in the
+        Snakefile.  Runtime is also parsed from the log and stored on the
+        run record.
     files (list[dict], optional):
         Files to attach.  Each entry has:
           path (str):        Path to the file (absolute or relative to CWD).
@@ -236,25 +257,31 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
     # Expand globs in the files list once so we can inspect them below
     _expanded_files = _expand_file_entries(cfg.get("files", []))
 
-    # Parse Snakemake log for runtime.
-    # Priority: log_file arg > config log_file key > snakemake_log file entries.
+    # Resolve the primary log file: arg > config key > first snakemake_log entry.
     _log_path = log_file or cfg.get("log_file")
+    if _log_path is None:
+        for entry in _expanded_files:
+            if entry.get("type") == "snakemake_log":
+                _log_path = entry["path"]
+                break
+
+    # Skip registration when a log is available but contains no completed jobs —
+    # this catches dry-runs (-n), --containerize, --touch, --list-*, etc.
+    if _log_path is not None and not _log_has_executions(_log_path):
+        _info(
+            f"No completed jobs found in {Path(_log_path).name} — "
+            "skipping registration (dry-run or non-executing mode)."
+        )
+        return None
+
+    # Parse runtime from the log.
     runtime_seconds = None
     if _log_path:
         runtime_seconds = _parse_snakemake_log(_log_path)
         if runtime_seconds is not None:
-            _info(f"Parsed runtime: {runtime_seconds}s from {_log_path}")
+            _info(f"Parsed runtime: {runtime_seconds}s from {Path(_log_path).name}")
         else:
             _warn(f"Could not parse runtime from log: {_log_path}")
-
-    if runtime_seconds is None:
-        for entry in _expanded_files:
-            if entry.get("type") == "snakemake_log":
-                secs = _parse_snakemake_log(entry["path"])
-                if secs is not None:
-                    runtime_seconds = secs
-                    _info(f"Parsed runtime: {secs}s from {Path(entry['path']).name}")
-                    break
 
     try:
         # ── Create the run ────────────────────────────────────────────────────
