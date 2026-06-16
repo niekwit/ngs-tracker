@@ -284,6 +284,7 @@
             <tr>
               <th>Date &amp; Time</th>
               <th>Uploads</th>
+              <th>Note</th>
               <th></th>
             </tr>
           </thead>
@@ -297,6 +298,15 @@
                 {% else %}
                 <span class="badge bg-secondary">DB only</span>
                 {% endif %}
+              </td>
+              <td class="align-middle" style="min-width:220px;">
+                <form method="POST" class="d-flex gap-1">
+                  <input type="hidden" name="action" value="save_snapshot_comment">
+                  <input type="hidden" name="snapshot_ts" value="{{ snap.ts }}">
+                  <input type="text" name="comment" class="form-control form-control-sm"
+                         value="{{ snap.comment }}" placeholder="Add a note…">
+                  <button type="submit" class="btn btn-xs btn-outline-secondary flex-shrink-0">Save</button>
+                </form>
               </td>
               <td class="text-end align-middle">
                 <form method="POST"

@@ -1,4 +1,5 @@
 import gzip
+import json
 import shutil
 import sqlite3
 import subprocess
@@ -105,6 +106,35 @@ def _prune_upload_snapshots(uploads_dir: Path) -> None:
         shutil.rmtree(str(old), ignore_errors=True)
 
 
+def _meta_path(backup_dir: str) -> Path:
+    return Path(backup_dir) / "db" / "snapshots_meta.json"
+
+
+def _load_meta(backup_dir: str) -> dict:
+    p = _meta_path(backup_dir)
+    if p.exists():
+        try:
+            return json.loads(p.read_text())
+        except Exception:
+            pass
+    return {}
+
+
+def _save_meta(backup_dir: str, meta: dict) -> None:
+    p = _meta_path(backup_dir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(meta, indent=2))
+
+
+def set_snapshot_comment(ts: str, comment: str) -> None:
+    backup_dir = get_snapshot_backup_dir()
+    if not backup_dir:
+        return
+    meta = _load_meta(backup_dir)
+    meta[ts] = comment.strip()
+    _save_meta(backup_dir, meta)
+
+
 def list_snapshots() -> list[dict]:
     """Return available snapshots, newest first, with metadata."""
     backup_dir = get_snapshot_backup_dir()
@@ -124,6 +154,8 @@ def list_snapshots() -> list[dict]:
     # Non-rsync: single tar.gz counts as uploads for every snapshot
     uploads_tar = (dest_root / "uploads.tar.gz").exists()
 
+    meta = _load_meta(backup_dir)
+
     result = []
     for f in sorted(db_dir.glob("ngs_tracker_*.db.gz"), reverse=True):
         ts = f.name.replace("ngs_tracker_", "").replace(".db.gz", "")
@@ -132,7 +164,7 @@ def list_snapshots() -> list[dict]:
         except ValueError:
             label = ts
         has_uploads = ts in upload_tss or uploads_tar
-        result.append({"ts": ts, "label": label, "has_uploads": has_uploads})
+        result.append({"ts": ts, "label": label, "has_uploads": has_uploads, "comment": meta.get(ts, "")})
     return result
 
 

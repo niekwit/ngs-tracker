@@ -280,6 +280,14 @@ def register(app):
                     flash(f"Snapshot failed: {e}", "danger")
                 return redirect(url_for("setup"))
 
+            if action == "save_snapshot_comment":
+                from backup import set_snapshot_comment
+                ts = request.form.get("snapshot_ts", "").strip()
+                comment = request.form.get("comment", "").strip()
+                if ts:
+                    set_snapshot_comment(ts, comment)
+                return redirect(url_for("setup") + "#snapshot-backup")
+
             if action == "restore_snapshot":
                 from backup import restore_snapshot, run_snapshot
                 from models import db
