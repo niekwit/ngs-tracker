@@ -453,6 +453,12 @@ To upgrade to the latest version:
 pip install --upgrade git+https://github.com/niekwit/ngs-tracker.git
 ```
 
+If the version number has not changed but you need to pick up a bug fix, use `--force-reinstall`:
+
+```bash
+pip install --force-reinstall git+https://github.com/niekwit/ngs-tracker.git
+```
+
 **Step 1 — add an `ngs_tracker` block to your workflow's `config.yaml`**
 
 ```yaml
