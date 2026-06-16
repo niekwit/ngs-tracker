@@ -257,31 +257,34 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
     # Expand globs in the files list once so we can inspect them below
     _expanded_files = _expand_file_entries(cfg.get("files", []))
 
-    # Resolve the primary log file: arg > config key > first snakemake_log entry.
-    _log_path = log_file or cfg.get("log_file")
-    if _log_path is None:
-        for entry in _expanded_files:
-            if entry.get("type") == "snakemake_log":
-                _log_path = entry["path"]
-                break
+    # Collect all log paths: explicit arg/config key first, then snakemake_log entries.
+    # Using a list preserves order and allows multiple logs (e.g. restarted runs).
+    _explicit_log = log_file or cfg.get("log_file")
+    _log_file_paths = (
+        [str(_explicit_log)]
+        if _explicit_log
+        else [e["path"] for e in _expanded_files if e.get("type") == "snakemake_log"]
+    )
 
-    # Skip registration when a log is available but contains no completed jobs —
+    # Skip registration when logs are available but contain no completed jobs —
     # this catches dry-runs (-n), --containerize, --touch, --list-*, etc.
-    if _log_path is not None and not _log_has_executions(_log_path):
+    if _log_file_paths and not any(_log_has_executions(p) for p in _log_file_paths):
         _info(
-            f"No completed jobs found in {Path(_log_path).name} — "
+            "No completed jobs found in any Snakemake log — "
             "skipping registration (dry-run or non-executing mode)."
         )
         return None
 
-    # Parse runtime from the log.
+    # Parse runtime from the explicit log_file arg if provided.
+    # When snakemake_log file entries are used instead, the server accumulates
+    # each file's runtime as they are attached (summation happens server-side).
     runtime_seconds = None
-    if _log_path:
-        runtime_seconds = _parse_snakemake_log(_log_path)
+    if _explicit_log:
+        runtime_seconds = _parse_snakemake_log(_explicit_log)
         if runtime_seconds is not None:
-            _info(f"Parsed runtime: {runtime_seconds}s from {Path(_log_path).name}")
+            _info(f"Parsed runtime: {runtime_seconds}s from {Path(_explicit_log).name}")
         else:
-            _warn(f"Could not parse runtime from log: {_log_path}")
+            _warn(f"Could not parse runtime from log: {_explicit_log}")
 
     try:
         # ── Create the run ────────────────────────────────────────────────────

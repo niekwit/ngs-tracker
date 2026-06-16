@@ -321,7 +321,7 @@ def register(app):
             parsed_config = None
             secs = _parse_snakemake_log(stored_path)
             if secs is not None:
-                run.runtime_seconds = secs
+                run.runtime_seconds = (run.runtime_seconds or 0) + secs
         else:
             parsed_config = None
 
