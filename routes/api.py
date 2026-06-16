@@ -320,8 +320,8 @@ def register(app):
         elif file_type == "snakemake_log":
             parsed_config = None
             secs = _parse_snakemake_log(stored_path)
-            if secs is not None:
-                run.runtime_seconds = (run.runtime_seconds or 0) + secs
+            if secs is not None and run.runtime_seconds is None:
+                run.runtime_seconds = secs
         else:
             parsed_config = None
 

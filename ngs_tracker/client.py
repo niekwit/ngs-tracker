@@ -254,17 +254,31 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
         os.environ.get("NGS_TRACKER_USER") or _local_user or cfg.get("created_by", "")
     )
 
-    # Expand globs in the files list once so we can inspect them below
+    # Expand globs in the files list and deduplicate by resolved path.
     _expanded_files = _expand_file_entries(cfg.get("files", []))
+    _seen_paths: set[str] = set()
+    _deduped_files = []
+    for _e in _expanded_files:
+        if _e["path"] not in _seen_paths:
+            _seen_paths.add(_e["path"])
+            _deduped_files.append(_e)
+    _expanded_files = _deduped_files
 
-    # Collect all log paths: explicit arg/config key first, then snakemake_log entries.
-    # Using a list preserves order and allows multiple logs (e.g. restarted runs).
+    # Build a deduplicated ordered list of all Snakemake log paths.
+    # Sources: explicit log_file arg/config key + snakemake_log file entries.
+    # Deduplication prevents the same file being counted twice for runtime or
+    # dry-run detection when log_file= points to a file already in the entries.
     _explicit_log = log_file or cfg.get("log_file")
-    _log_file_paths = (
-        [str(_explicit_log)]
-        if _explicit_log
-        else [e["path"] for e in _expanded_files if e.get("type") == "snakemake_log"]
-    )
+    _explicit_resolved = str(Path(_explicit_log).resolve()) if _explicit_log else None
+    _log_file_paths: list[str] = []
+    _seen_logs: set[str] = set()
+    if _explicit_resolved:
+        _log_file_paths.append(_explicit_resolved)
+        _seen_logs.add(_explicit_resolved)
+    for _e in _expanded_files:
+        if _e.get("type") == "snakemake_log" and _e["path"] not in _seen_logs:
+            _log_file_paths.append(_e["path"])
+            _seen_logs.add(_e["path"])
 
     # Skip registration when logs are available but contain no completed jobs —
     # this catches dry-runs (-n), --containerize, --touch, --list-*, etc.
@@ -275,16 +289,23 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
         )
         return None
 
-    # Parse runtime from the explicit log_file arg if provided.
-    # When snakemake_log file entries are used instead, the server accumulates
-    # each file's runtime as they are attached (summation happens server-side).
+    # Sum runtime from all unique log files.
+    # The total goes in the initial POST so the run record always shows the
+    # correct value, even before file attachments are processed.
     runtime_seconds = None
-    if _explicit_log:
-        runtime_seconds = _parse_snakemake_log(_explicit_log)
-        if runtime_seconds is not None:
-            _info(f"Parsed runtime: {runtime_seconds}s from {Path(_explicit_log).name}")
-        else:
-            _warn(f"Could not parse runtime from log: {_explicit_log}")
+    if _log_file_paths:
+        _total_secs = 0
+        _parsed_count = 0
+        for _p in _log_file_paths:
+            _secs = _parse_snakemake_log(_p)
+            if _secs is not None:
+                _total_secs += _secs
+                _parsed_count += 1
+                _info(f"  + {_secs}s from {Path(_p).name}")
+        if _parsed_count:
+            runtime_seconds = _total_secs
+            if _parsed_count > 1:
+                _info(f"Total runtime: {runtime_seconds}s from {_parsed_count} log(s)")
 
     try:
         # ── Create the run ────────────────────────────────────────────────────
