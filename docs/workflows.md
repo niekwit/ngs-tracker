@@ -41,6 +41,12 @@ When a workflow with a GitHub URL is selected, NGS Tracker fetches its releases 
 
 If the GitHub API is unreachable the dropdown falls back to a plain text input.
 
+## Mapping rate cutoff
+
+Each workflow has a configurable **mapping rate cutoff** (default: **60 %**). This threshold is used when a [Mapping Rates](runs.md#mapping-rates) CSV is attached to a run of that workflow — samples whose alignment rate falls below the cutoff are highlighted in a warning banner and marked in red on the chart.
+
+Change the cutoff for any workflow from the **Workflows** page by editing the percentage field next to the workflow name. The value is stored in `workflows.yaml` as `mapping_rate_cutoff`.
+
 ## Run templates
 
 Any workflow run can be saved as a reusable template via the **Save as Template** button on its detail page. A template stores:

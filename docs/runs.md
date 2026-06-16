@@ -84,12 +84,31 @@ Multiple files can be uploaded at once. Each batch is assigned a **type** and an
 | Type | Typical contents |
 |---|---|
 | Config | YAML/JSON pipeline config or params file |
+| Mapping Rates | CSV with per-sample alignment mapping rates (see below) |
 | Sample Info | Metadata spreadsheets |
 | QC | MultiQC HTML, FastQC reports |
 | Results | Count matrices, VCF files, peak calls |
 | Other | Anything else |
 
 Images (PNG, JPG, SVG, WEBP, …) and PDFs open in an **inline lightbox** — no download required.
+
+### Mapping rates
+
+Upload a CSV file with exactly two columns — `sample` and `mapping_rate` — to get an interactive bar chart directly on the run detail page:
+
+```csv
+sample,mapping_rate
+Sample_A,87.3
+Sample_B,82.1
+Sample_C,45.6
+```
+
+NGS Tracker renders a **bar chart** for each mapping rates file attached to the run. A red dashed line marks the workflow's mapping rate cutoff:
+
+- If all samples meet the cutoff, a green banner confirms this.
+- If any samples fall below it, an orange warning banner lists the failing sample names.
+
+The cutoff threshold is configured **per workflow** on the [Workflows](workflows.md) page (default: 60 %). Multiple mapping rates files can be attached to the same run — each produces its own chart.
 
 ## Tags
 
