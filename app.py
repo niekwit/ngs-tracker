@@ -118,25 +118,6 @@ def inject_current_user():
 
 
 @app.context_processor
-def inject_sidebar_counts():
-    from models import Project, ResearchGroup, Researcher, WorkflowRun
-    try:
-        return {
-            "sidebar_counts": {
-                "groups": ResearchGroup.query.filter_by(trashed=False).count(),
-                "researchers": Researcher.query.filter_by(trashed=False).count(),
-                "projects": Project.query.filter_by(trashed=False).count(),
-                "runs": WorkflowRun.query.filter_by(trashed=False).count(),
-            }
-        }
-    except Exception:
-        return {"sidebar_counts": {}}
-
-
-
-
-
-@app.context_processor
 def inject_tag_context():
     return {
         "tag_colors": get_tag_colors(),
