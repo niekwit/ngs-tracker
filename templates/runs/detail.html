@@ -363,78 +363,12 @@
       All {{ mr.samples|length }} samples meet the {{ mapping_rate_cutoff }}% mapping rate cutoff.
     </div>
     {% endif %}
-    <canvas id="mrChart{{ mf.id }}"></canvas>
+    <canvas id="mrChart{{ mf.id }}"
+            data-samples='{{ mr.samples | tojson }}'
+            data-rates='{{ mr.rates | tojson }}'
+            data-cutoff="{{ mapping_rate_cutoff }}"></canvas>
   </div>
 </div>
-<script>
-(function () {
-  var samples = {{ mr.samples | tojson }};
-  var rates   = {{ mr.rates   | tojson }};
-  var cutoff  = {{ mapping_rate_cutoff }};
-  var ctx = document.getElementById('mrChart{{ mf.id }}');
-  var cutoffPlugin = {
-    id: 'cutoffLine',
-    afterDraw: function (chart) {
-      var c = chart.ctx, y = chart.scales.y, x = chart.scales.x;
-      var py = y.getPixelForValue(cutoff);
-      c.save();
-      c.beginPath();
-      c.moveTo(x.left, py);
-      c.lineTo(x.right, py);
-      c.lineWidth = 2;
-      c.strokeStyle = 'rgba(220,53,69,0.85)';
-      c.setLineDash([6, 4]);
-      c.stroke();
-      c.fillStyle = 'rgba(220,53,69,0.85)';
-      c.font = 'bold 11px sans-serif';
-      c.fillText(cutoff + '%', x.right + 6, py + 4);
-      c.restore();
-    }
-  };
-  new Chart(ctx, {
-    type: 'bar',
-    plugins: [cutoffPlugin],
-    data: {
-      labels: samples,
-      datasets: [{
-        label: 'Mapping Rate (%)',
-        data: rates,
-        backgroundColor: rates.map(function (r) {
-          return r < cutoff ? 'rgba(220,53,69,0.75)' : 'rgba(32,201,151,0.75)';
-        }),
-        borderColor: rates.map(function (r) {
-          return r < cutoff ? 'rgb(220,53,69)' : 'rgb(32,201,151)';
-        }),
-        borderWidth: 1,
-        borderRadius: 3,
-      }]
-    },
-    options: {
-      responsive: true,
-      layout: { padding: { right: 48 } },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function (ctx) {
-              var v = ctx.parsed.y;
-              return v.toFixed(1) + '%' + (v < cutoff ? '  ⚠ below cutoff' : '');
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          min: 0, max: 100,
-          title: { display: true, text: 'Mapping Rate (%)' },
-          ticks: { callback: function (v) { return v + '%'; } }
-        },
-        x: { ticks: { maxRotation: 45, minRotation: 30 } }
-      }
-    }
-  });
-})();
-</script>
 {% endfor %}
 
 <!-- Attached files -->
@@ -707,8 +641,82 @@
 {% endblock %}
 
 {% block scripts %}
-{% if run.attached_files | selectattr('file_type', 'eq', 'mapping_rates') | selectattr('parsed_config') | list %}
+{% set mr_files_scripts = run.attached_files | selectattr('file_type', 'eq', 'mapping_rates') | selectattr('parsed_config') | list %}
+{% if mr_files_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var cutoffPlugin = {
+    id: 'cutoffLine',
+    afterDraw: function (chart) {
+      var cutoff = chart.options.plugins.cutoffLine && chart.options.plugins.cutoffLine.value;
+      if (cutoff == null) return;
+      var c = chart.ctx, y = chart.scales.y, x = chart.scales.x;
+      var py = y.getPixelForValue(cutoff);
+      c.save();
+      c.beginPath();
+      c.moveTo(x.left, py);
+      c.lineTo(x.right, py);
+      c.lineWidth = 2;
+      c.strokeStyle = 'rgba(220,53,69,0.85)';
+      c.setLineDash([6, 4]);
+      c.stroke();
+      c.fillStyle = 'rgba(220,53,69,0.85)';
+      c.font = 'bold 11px sans-serif';
+      c.fillText(cutoff + '%', x.right + 6, py + 4);
+      c.restore();
+    }
+  };
+  document.querySelectorAll('canvas[id^="mrChart"]').forEach(function (canvas) {
+    var samples = JSON.parse(canvas.getAttribute('data-samples'));
+    var rates   = JSON.parse(canvas.getAttribute('data-rates'));
+    var cutoff  = parseFloat(canvas.getAttribute('data-cutoff'));
+    new Chart(canvas, {
+      type: 'bar',
+      plugins: [cutoffPlugin],
+      data: {
+        labels: samples,
+        datasets: [{
+          label: 'Mapping Rate (%)',
+          data: rates,
+          backgroundColor: rates.map(function (r) {
+            return r < cutoff ? 'rgba(220,53,69,0.75)' : 'rgba(32,201,151,0.75)';
+          }),
+          borderColor: rates.map(function (r) {
+            return r < cutoff ? 'rgb(220,53,69)' : 'rgb(32,201,151)';
+          }),
+          borderWidth: 1,
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        responsive: true,
+        layout: { padding: { right: 48 } },
+        plugins: {
+          legend: { display: false },
+          cutoffLine: { value: cutoff },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = ctx.parsed.y;
+                return v.toFixed(1) + '%' + (v < cutoff ? '  ⚠ below cutoff' : '');
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            min: 0, max: 100,
+            title: { display: true, text: 'Mapping Rate (%)' },
+            ticks: { callback: function (v) { return v + '%'; } }
+          },
+          x: { ticks: { maxRotation: 45, minRotation: 30 } }
+        }
+      }
+    });
+  });
+})();
+</script>
 {% endif %}
 <style>
 .cfg-summary { cursor: pointer; list-style: none; font-size: .85rem; padding: .1rem 0; }
