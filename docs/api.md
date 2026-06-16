@@ -447,6 +447,12 @@ requires `requests`, nothing from the web server stack:
 pip install git+https://github.com/niekwit/ngs-tracker.git
 ```
 
+To upgrade to the latest version:
+
+```bash
+pip install --upgrade git+https://github.com/niekwit/ngs-tracker.git
+```
+
 **Step 1 — add an `ngs_tracker` block to your workflow's `config.yaml`**
 
 ```yaml
