@@ -57,7 +57,7 @@ _SETTINGS_FILE = Path.home() / ".ngs-tracker" / "settings.json"
 
 
 _TS_RE = re.compile(r"\[(\w{3} \w{3} +\d+ \d{2}:\d{2}:\d{2} \d{4})\]")
-_FINISHED_JOB_RE = re.compile(r"^Finished job \d+\.", re.MULTILINE)
+_FINISHED_JOB_RE = re.compile(r"^Finished job(?:id:)? \d+", re.MULTILINE)
 
 
 def _log_has_executions(path) -> bool:
