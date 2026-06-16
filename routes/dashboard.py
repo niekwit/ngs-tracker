@@ -3,6 +3,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from backup import list_snapshots as _list_snapshots
+
 from flask import flash, redirect, render_template, request, url_for
 
 from config import (
@@ -278,6 +280,21 @@ def register(app):
                     flash(f"Snapshot failed: {e}", "danger")
                 return redirect(url_for("setup"))
 
+            if action == "restore_snapshot":
+                from backup import restore_snapshot, run_snapshot
+                from models import db
+                ts = request.form.get("snapshot_ts", "").strip()
+                if not ts:
+                    flash("No snapshot selected.", "danger")
+                    return redirect(url_for("setup"))
+                try:
+                    run_snapshot()  # safety copy before overwriting
+                    restore_snapshot(ts, db.engine)
+                    flash(f"Restored to snapshot {ts}. A safety snapshot of the previous state was saved first.", "success")
+                except Exception as e:
+                    flash(f"Restore failed: {e}", "danger")
+                return redirect(url_for("setup"))
+
             # Storage settings
             storage_path = request.form.get("storage_path", "").strip()
             db_path = request.form.get("db_path", "").strip()
@@ -316,4 +333,5 @@ def register(app):
             snapshot_interval_hours=get_snapshot_interval_hours(),
             snapshot_keep=get_snapshot_keep(),
             last_snapshot_time=get_last_snapshot_time(),
+            snapshots=_list_snapshots(),
         )
