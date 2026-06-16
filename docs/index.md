@@ -4,6 +4,8 @@ A browser-based web app for tracking bioinformatics projects and workflow analys
 Data is organised as **Research Group → Researcher → Project → Workflow Run**, with support
 for sample tracking, custom scripts, file attachments, backup status, and publication tracking.
 
+![Dashboard](_static/screenshots/Dashboard.png)
+
 ---
 
 ## Features at a glance
