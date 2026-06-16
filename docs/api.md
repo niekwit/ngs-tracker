@@ -278,7 +278,7 @@ The file is **copied** into NGS Tracker's storage directory. The original file i
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `file_path` | string | Yes | — | Absolute path to the file on disk |
-| `file_type` | string | No | `"other"` | One of `config`, `sample_info`, `qc`, `results`, `other` |
+| `file_type` | string | No | `"other"` | One of `config`, `sample_info`, `qc`, `results`, `mapping_rates`, `snakemake_log`, `other` |
 | `description` | string | No | `""` | Short label shown in the UI |
 
 **Response** — a [file object](#file-object), HTTP `201`
@@ -466,8 +466,9 @@ ngs_tracker:
     - RNA-seq
     - timecourse
 
-  # Files to attach — paths relative to the working directory or absolute
-  # type: config | sample_info | qc | results | mapping_rates | other
+  # Files to attach — paths relative to the working directory or absolute.
+  # Glob wildcards (* ?) are supported and expand at registration time.
+  # type: config | sample_info | qc | results | mapping_rates | snakemake_log | other
   files:
     - path: "config/config.yaml"
       type: config
@@ -481,22 +482,57 @@ ngs_tracker:
     - path: "results/mapping_rates.csv"
       type: mapping_rates
       description: "STAR alignment mapping rates"
+    - path: "logs/snakemake/*.log"
+      type: snakemake_log
+      description: "Snakemake log"
 ```
 
 A fully commented template is included in the package at
 `ngs_tracker/example_config.yaml`.
+
+**File types**
+
+| Type | Description |
+|------|-------------|
+| `config` | Workflow configuration file |
+| `sample_info` | Sample sheet or metadata |
+| `qc` | Quality-control reports (MultiQC, FastQC, etc.) |
+| `results` | Result tables, count matrices, peak files |
+| `mapping_rates` | CSV of `sample,mapping_rate` — parsed and displayed as a bar chart |
+| `snakemake_log` | Snakemake main log — runtime is parsed automatically from this file |
+| `other` | Anything else |
+
+**Glob patterns**
+
+File paths may contain `*` or `?` wildcards. They are expanded relative to the
+working directory at registration time. This is useful for Snakemake logs whose
+names include a timestamp:
+
+```yaml
+- path: "logs/snakemake/*.log"
+  type: snakemake_log
+  description: "Snakemake log"
+```
 
 **Step 2 — add `onsuccess` / `onerror` to your `Snakefile`**
 
 ```python
 onsuccess:
     from ngs_tracker import register_run
-    register_run(config)
+    register_run(config, log_file=log)   # 'log' is Snakemake's built-in log path
 
 onerror:
     from ngs_tracker import register_run
-    register_run(config, status="failed")
+    register_run(config, status="failed", log_file=log)
 ```
+
+:::{note}
+Passing `log_file=log` (or including a `snakemake_log` file entry in `config.yaml`)
+enables **automatic dry-run detection**. The client checks the log for `Finished job N.`
+lines before registering. If none are found — because this was a dry-run (`-n`),
+`--containerize`, `--touch`, or any other non-executing mode — registration is silently
+skipped. No special-casing is needed in your `Snakefile`.
+:::
 
 **Step 3 — just run**
 
