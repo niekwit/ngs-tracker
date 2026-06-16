@@ -6,17 +6,19 @@ A Workflow Run is the core record in NGS Tracker. It belongs to a project and ca
 
 When creating or editing a run you can fill in:
 
-| Field | Notes |
-|---|---|
-| **Project** | Required. Cannot be changed after creation. |
-| **Run date** | Defaults to today. |
-| **Status** | Completed / Running / Pending / Failed |
-| **Workflow** | Selected from the registered workflow list |
-| **Release tag** | Fetched live from GitHub after a workflow is chosen |
-| **Description** | Short free-text summary |
-| **Tags** | Tick from the default list; add new tags inline |
-| **Notes** | Long-form Markdown text |
-| **Backup status** | Per-location checkboxes with optional storage path |
+| Field             | Notes                                               |
+| ----------------- | --------------------------------------------------- |
+| **Project**       | Required. Cannot be changed after creation.         |
+| **Run date**      | Defaults to today.                                  |
+| **Status**        | Completed / Running / Pending / Failed              |
+| **Workflow**      | Selected from the registered workflow list          |
+| **Release tag**   | Fetched live from GitHub after a workflow is chosen |
+| **Description**   | Short free-text summary                             |
+| **Tags**          | Tick from the default list; add new tags inline     |
+| **Notes**         | Long-form Markdown text                             |
+| **Backup status** | Per-location checkboxes with optional storage path  |
+
+![Create New Run](_static/screenshots/create_new_run.png)
 
 ## Duplicate detection
 
@@ -57,12 +59,12 @@ Files that do not parse as YAML/JSON (e.g. a Nextflow Groovy `.config` file) are
 
 When a run has a parsed config, a **Compare Config** button appears on the detail page. Select any other run that also has a parsed config and the comparison page shows a three-column table:
 
-| Colour | Meaning |
-|---|---|
+| Colour | Meaning                            |
+| ------ | ---------------------------------- |
 | Yellow | Value changed between the two runs |
-| Red | Key only in run A (removed) |
-| Green | Key only in run B (added) |
-| Plain | Identical in both |
+| Red    | Key only in run A (removed)        |
+| Green  | Key only in run B (added)          |
+| Plain  | Identical in both                  |
 
 Nested keys are flattened to dot-notation (e.g. `params.threads`). A **Hide unchanged** toggle collapses identical rows.
 
@@ -81,14 +83,14 @@ The sample sheet is rendered as a full scrollable table with a sticky header on 
 
 Multiple files can be uploaded at once. Each batch is assigned a **type** and an optional description:
 
-| Type | Typical contents |
-|---|---|
-| Config | YAML/JSON pipeline config or params file |
+| Type          | Typical contents                                        |
+| ------------- | ------------------------------------------------------- |
+| Config        | YAML/JSON pipeline config or params file                |
 | Mapping Rates | CSV with per-sample alignment mapping rates (see below) |
-| Sample Info | Metadata spreadsheets |
-| QC | MultiQC HTML, FastQC reports |
-| Results | Count matrices, VCF files, peak calls |
-| Other | Anything else |
+| Sample Info   | Metadata spreadsheets                                   |
+| QC            | MultiQC HTML, FastQC reports                            |
+| Results       | Count matrices, VCF files, peak calls                   |
+| Other         | Anything else                                           |
 
 Images (PNG, JPG, SVG, WEBP, …) and PDFs open in an **inline lightbox** — no download required.
 
@@ -132,9 +134,9 @@ The notes field supports full **Markdown** formatting — headings, bullet lists
 
 Every project, researcher, and group detail page has an **Export** dropdown. The generated file covers all workflow runs with these columns: Group, Researcher, Project, Run Date, Workflow, Tag, Status, Backup, Tags, Notes, Samples, Files.
 
-| Format | Use case |
-|---|---|
-| **CSV** | Import into Excel, R, or Python for further analysis |
+| Format       | Use case                                                  |
+| ------------ | --------------------------------------------------------- |
+| **CSV**      | Import into Excel, R, or Python for further analysis      |
 | **Markdown** | Paste into a lab notebook, grant report, or email to a PI |
 
 ## Filtering by status
@@ -183,11 +185,11 @@ Select multiple runs on the runs list page and apply an action to all of them at
 1. Tick the checkbox on the left of one or more rows. A batch action bar appears above the table.
 2. The bar shows how many runs are selected and offers three actions:
 
-| Action | How |
-|---|---|
-| **Set Status** | Choose a status from the dropdown and click **Set Status** |
-| **Add Tag** | Type or select a tag and click **Add Tag** |
-| **Mark Backup** | Choose a backup location and click **Mark Backup** |
+| Action          | How                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| **Set Status**  | Choose a status from the dropdown and click **Set Status**                                |
+| **Add Tag**     | Type or select a tag and click **Add Tag**                                                |
+| **Mark Backup** | Choose a backup location and click **Mark Backup**                                        |
 | **Remove Tags** | Click **Remove Tags** and confirm in the dialog — clears every tag from each selected run |
 
 3. Click **Deselect all** to clear the selection without taking an action.
