@@ -299,7 +299,7 @@
     'rgba(8, 145, 178, 0.8)',  'rgba(220, 38, 38, 0.8)',
     'rgba(245, 158, 11, 0.8)', 'rgba(99, 102, 241, 0.8)',
   ];
-  new Chart(document.getElementById('journalChart'), {
+  var journalChart = new Chart(document.getElementById('journalChart'), {
     type: 'doughnut',
     data: {
       labels: jlabels,
@@ -323,9 +323,16 @@
             }
           }
         }
+      },
+      onClick: function (evt, elements) {
+        if (elements.length > 0) {
+          var journal = jlabels[elements[0].index];
+          window.location.href = '/runs?journal=' + encodeURIComponent(journal);
+        }
       }
     }
   });
+  document.getElementById('journalChart').style.cursor = 'pointer';
 })();
 </script>
 {% endif %}

@@ -14,7 +14,7 @@ from config import (
 )
 from markupsafe import Markup
 
-from helpers import _compare_configs, _parse_datetime, extract_samples_from_config, find_duplicate_runs
+from helpers import _compare_configs, _parse_datetime, extract_samples_from_config, find_duplicate_runs, get_journal_name
 from models import (
     FILE_TYPES,
     RUN_STATUSES,
@@ -38,6 +38,7 @@ def register(app):
         status_filter = request.args.get("status", "").strip().lower()
         date_from_str = request.args.get("date_from", "").strip()
         date_to_str = request.args.get("date_to", "").strip()
+        journal_filter = request.args.get("journal", "").strip()
         page = max(1, request.args.get("page", 1, type=int))
         reverse = direction == "desc"
 
@@ -59,6 +60,17 @@ def register(app):
         all_tags = sorted({tag for r in all_runs for tag in r.tag_list})
 
         runs = all_runs
+        if journal_filter:
+            pub_project_ids = {
+                p.id for p in Project.query.filter(
+                    Project.trashed == False,
+                    Project.published == True,
+                    Project.publication_url.isnot(None),
+                    Project.publication_url != "",
+                ).all()
+                if get_journal_name(p.publication_url) == journal_filter
+            }
+            runs = [r for r in runs if r.project_id in pub_project_ids]
         if tag_filter:
             runs = [r for r in runs if tag_filter in r.tag_list]
         if status_filter and status_filter in RUN_STATUSES:
@@ -93,6 +105,7 @@ def register(app):
             status_filter=status_filter,
             date_from=date_from_str,
             date_to=date_to_str,
+            journal_filter=journal_filter,
             all_tags=all_tags,
             run_statuses=RUN_STATUSES,
             page=page,
