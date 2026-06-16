@@ -177,7 +177,7 @@ with app.app_context():
         researcher_id=alice.id,
         created_at=dt(350),
         published=True,
-        publication_url="https://doi.org/10.1038/s41467-024-00001-1",
+        publication_url="https://doi.org/10.1038/nmeth.1923",  # Nature Methods
     )
     proj_atac = Project(
         name="ATAC-seq differentiation timecourse",
@@ -192,12 +192,16 @@ with app.app_context():
         description="Genome-wide loss-of-function screen identifying synthetic lethal interactions with KRAS G12D.",
         researcher_id=ben.id,
         created_at=dt(280),
+        published=True,
+        publication_url="https://doi.org/10.1038/s41588-022-01152-6",  # Nature Genetics
     )
     proj_rnaseq_drug = Project(
         name="RNA-seq after MEK inhibitor treatment",
         description="Transcriptional response to MEK inhibition at 6 h, 24 h, and 72 h time points.",
         researcher_id=ben.id,
         created_at=dt(160),
+        published=True,
+        publication_url="https://doi.org/10.1186/s13059-014-0550-8",  # Genome Biology
     )
 
     # Chloe
@@ -206,6 +210,8 @@ with app.app_context():
         description="High-resolution profiling of H3K4me3, H3K27me3, and H3K9me3 in mouse embryonic stem cells.",
         researcher_id=chloe.id,
         created_at=dt(240),
+        published=True,
+        publication_url="https://doi.org/10.1371/journal.pcbi.1009820",  # PLOS Computational Biology
     )
 
     # David
@@ -214,12 +220,16 @@ with app.app_context():
         description="Benchmarking nf-core/rnaseq against in-house Snakemake pipeline on simulated and real data.",
         researcher_id=david.id,
         created_at=dt(320),
+        published=True,
+        publication_url="https://doi.org/10.1093/bioinformatics/bts635",  # Bioinformatics
     )
     proj_sc = Project(
         name="Single-cell atlas — pancreatic cancer",
         description="scRNA-seq atlas of 12 pancreatic ductal adenocarcinoma samples and matched normal tissue.",
         researcher_id=david.id,
         created_at=dt(130),
+        published=True,
+        publication_url="https://doi.org/10.1038/nature11247",  # Nature
     )
 
     # Emma
@@ -228,6 +238,8 @@ with app.app_context():
         description="GATK best-practices variant calling on 24 trio whole-genome sequences.",
         researcher_id=emma.id,
         created_at=dt(220),
+        published=True,
+        publication_url="https://doi.org/10.1093/nar/gkz173",  # Nucleic Acids Research
     )
 
     # Finn
@@ -999,3 +1011,28 @@ with app.app_context():
     print(f"\nDemo snapshots written to: {snap_dir.parent}")
     print(f"  Snapshot 1 (2026-01-01): 5 runs (Alice's ATAC-seq and ChIP-seq only)")
     print(f"  Snapshot 2 (2026-06-01): {n_runs} runs (full dataset)")
+
+# ── Pre-populate journal cache so stats page renders without CrossRef round-trips ──
+
+from config import SETTINGS_DIR as _SETTINGS_DIR
+
+_demo_journal_cache = {
+    "10.1038/nmeth.1923":             "Nature Methods",
+    "10.1038/s41588-022-01152-6":     "Nature Genetics",
+    "10.1186/s13059-014-0550-8":      "Genome Biology",
+    "10.1371/journal.pcbi.1009820":   "PLOS Computational Biology",
+    "10.1093/bioinformatics/bts635":  "Bioinformatics",
+    "10.1038/nature11247":            "Nature",
+    "10.1093/nar/gkz173":             "Nucleic Acids Research",
+}
+_cache_path = _SETTINGS_DIR / "journal_cache.json"
+_existing: dict = {}
+if _cache_path.exists():
+    try:
+        _existing = json.loads(_cache_path.read_text())
+    except Exception:
+        pass
+_existing.update(_demo_journal_cache)
+_SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+_cache_path.write_text(json.dumps(_existing, indent=2))
+print(f"\nJournal cache seeded: {len(_demo_journal_cache)} entries → {_cache_path}")

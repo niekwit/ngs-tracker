@@ -278,4 +278,55 @@
 })();
 </script>
 {% endif %}
+
+{% if published_by_journal %}
+<div class="card mt-4">
+  <div class="card-header">
+    <i class="bi bi-pie-chart-fill me-1"></i> Publications per Journal
+  </div>
+  <div class="card-body d-flex justify-content-center">
+    <canvas id="journalChart" style="max-height:340px; max-width:500px;"></canvas>
+  </div>
+</div>
+<script>
+(function () {
+  var jdata   = {{ published_by_journal | tojson }};
+  var jlabels = jdata.map(function (d) { return d.journal; });
+  var jcounts = jdata.map(function (d) { return d.count; });
+  var colors  = [
+    'rgba(37, 99, 235, 0.8)',  'rgba(16, 185, 129, 0.8)',
+    'rgba(234, 88, 12, 0.8)',  'rgba(124, 58, 237, 0.8)',
+    'rgba(8, 145, 178, 0.8)',  'rgba(220, 38, 38, 0.8)',
+    'rgba(245, 158, 11, 0.8)', 'rgba(99, 102, 241, 0.8)',
+  ];
+  new Chart(document.getElementById('journalChart'), {
+    type: 'doughnut',
+    data: {
+      labels: jlabels,
+      datasets: [{
+        data: jcounts,
+        backgroundColor: jlabels.map(function (_, i) { return colors[i % colors.length]; }),
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right' },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var n = ctx.parsed;
+              var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+              var pct = total ? Math.round(n / total * 100) : 0;
+              return ctx.label + ': ' + n + ' (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

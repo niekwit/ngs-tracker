@@ -4,9 +4,46 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+import requests
 import yaml
 
+from config import SETTINGS_DIR
 from models import AttachedFile, ProjectScript, ScriptOutputFile, WorkflowRun
+
+_JOURNAL_CACHE = SETTINGS_DIR / "journal_cache.json"
+_CROSSREF_UA = "NGS-Tracker/1.0 (mailto:nw416@cam.ac.uk)"
+
+
+def get_journal_name(doi_url: str) -> str | None:
+    """Resolve a doi.org URL to a journal name via CrossRef API. Results are cached."""
+    if not doi_url or "doi.org/" not in doi_url.lower():
+        return None
+    doi = doi_url.strip().split("doi.org/", 1)[1]
+    cache: dict = {}
+    if _JOURNAL_CACHE.exists():
+        try:
+            cache = json.loads(_JOURNAL_CACHE.read_text())
+        except Exception:
+            pass
+    if doi in cache:
+        return cache[doi] or None
+    try:
+        resp = requests.get(
+            f"https://api.crossref.org/works/{doi}",
+            timeout=5,
+            headers={"User-Agent": _CROSSREF_UA},
+        )
+        titles = resp.json().get("message", {}).get("container-title", []) if resp.ok else []
+        journal = titles[0] if titles else ""
+    except Exception:
+        journal = ""
+    cache[doi] = journal
+    try:
+        _JOURNAL_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        _JOURNAL_CACHE.write_text(json.dumps(cache, indent=2))
+    except Exception:
+        pass
+    return journal or None
 
 
 def _delete_file(path: str) -> None:

@@ -1,10 +1,11 @@
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 
 from flask import render_template
 from sqlalchemy import func
 
+from helpers import get_journal_name
 from models import Project, Researcher, ResearchGroup, WorkflowRun, db
 
 
@@ -85,10 +86,26 @@ def register(app):
             {"group": r.group_name, "count": r.published_count} for r in pub_rows
         ]
 
+        doi_projects = Project.query.filter(
+            Project.trashed == False,
+            Project.published == True,
+            Project.publication_url.isnot(None),
+            Project.publication_url != "",
+        ).all()
+        journal_counts: Counter = Counter()
+        for p in doi_projects:
+            j = get_journal_name(p.publication_url)
+            if j:
+                journal_counts[j] += 1
+        published_by_journal = [
+            {"journal": j, "count": c} for j, c in journal_counts.most_common()
+        ]
+
         return render_template(
             "stats.html",
             workflows=workflows,
             executions=executions,
             timeline_data=timeline_data,
             published_by_group=published_by_group,
+            published_by_journal=published_by_journal,
         )
