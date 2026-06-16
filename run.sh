@@ -22,6 +22,7 @@ if [ "${1:-}" = "demo" ]; then
     conda run -n ngs-tracker python "$SCRIPT_DIR/create_demo_db.py" --out "$DEMO_DB"
     export NGS_DB_PATH="$DEMO_DB"
     export NGS_STORAGE_PATH="$DEMO_STORAGE"
+    export NGS_SNAPSHOT_DIR="$SCRIPT_DIR/demo-snapshots"
     echo "Starting NGS Tracker in DEMO mode — http://127.0.0.1:${NGS_PORT:-5000}"
 fi
 

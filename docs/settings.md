@@ -76,30 +76,57 @@ Only runs with status **Completed** or **Failed** are flagged — Running and Pe
 
 ## Snapshot backup
 
-The snapshot backup creates point-in-time copies of the database and a mirror of the uploads directory in a separate location — for example an external drive, a second cloud path, or a network share. Configure it under **Snapshot Backup** in Settings.
+The snapshot backup creates point-in-time copies of the database and uploads directory in a separate location — for example an external drive, a second cloud path, or a network share. Configure it under **Snapshot Backup** in Settings.
 
 | Field | Description |
 |---|---|
 | **Backup directory** | Full path to the directory where snapshots are written. Leave empty to disable. |
 | **Every (hours)** | How often to run an automatic backup. Set to 0 to disable the schedule (manual only). |
-| **Keep (copies)** | How many DB snapshots to retain; the oldest are pruned automatically. Uploads are mirrored (single copy, overwritten each run). |
+| **Keep (copies)** | How many snapshots to retain (DB and upload snapshots); the oldest are pruned automatically. |
 
-The database snapshot uses SQLite's built-in online backup API, which produces a fully consistent copy even while the app is running — no shutdown required.
+The database snapshot uses SQLite's built-in online backup API, which produces a fully consistent copy even while the app is running — no shutdown required. The snapshot file is gzip-compressed (`.db.gz`).
 
-Each automatic or manual backup writes:
+### Storage structure
+
+**Linux (with rsync):** Each backup writes a timestamped `.db.gz` DB file and a timestamped uploads directory. The uploads snapshot uses `rsync --link-dest` so that unchanged files are stored as hardlinks to the previous snapshot — they use no extra disk space.
 
 ```
 <backup directory>/
   db/
-    ngs_tracker_YYYYMMDD_HHMMSS.db   ← timestamped, up to N kept
-    ngs_tracker_YYYYMMDD_HHMMSS.db
+    ngs_tracker_YYYYMMDD_HHMMSS.db.gz   ← gzip-compressed, up to N kept
+    ngs_tracker_YYYYMMDD_HHMMSS.db.gz
     ...
-  uploads/                            ← mirrored copy, updated each run
+  uploads/
+    YYYYMMDD_HHMMSS/   ← full tree at that point (unchanged files are hardlinks)
+    YYYYMMDD_HHMMSS/
+    ...
+```
+
+**Other platforms:** Uploads are compressed into a single `uploads.tar.gz` archive (overwritten on each backup).
+
+```
+<backup directory>/
+  db/
+    ngs_tracker_YYYYMMDD_HHMMSS.db.gz
+    ...
+  uploads.tar.gz   ← latest uploads, overwritten each run
 ```
 
 The **Snapshot Now** button (visible once a directory is configured) triggers an immediate backup and shows the result as a flash message. The last backup time is displayed next to the status badge.
 
 The scheduler checks every 10 minutes whether a backup is due — so the actual gap between backups is within 10 minutes of the configured interval.
+
+### Restoring a snapshot
+
+The **Restore Snapshot** table in Settings lists all available snapshots, newest first. Each row shows the timestamp and whether an uploads snapshot is included. Click **Restore** to:
+
+1. Automatically take a safety snapshot of the current state first (so you can undo the restore)
+2. Decompress the DB snapshot and write it into the live database — no restart required
+3. On Linux: `rsync` the upload snapshot back over the live uploads directory. On other platforms: extract `uploads.tar.gz`.
+
+```{warning}
+Restoring overwrites the live database and uploads. A safety snapshot is always saved first, but if critical data is at stake verify that snapshot was written before confirming the restore.
+```
 
 ```{note}
 Your database is already inside Dropbox (`/mnt/4TB_SSD/Dropbox/ngs-tracker/`), giving you continuous cloud sync. Snapshot backup is most useful for a second off-Dropbox copy (e.g. an external drive) or for point-in-time recovery in case a corruption syncs to the cloud before you notice.

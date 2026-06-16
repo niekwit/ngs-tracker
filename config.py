@@ -464,6 +464,8 @@ def set_backup_reminder_days(days: int) -> None:
 
 
 def get_snapshot_backup_dir() -> str:
+    if os.environ.get("NGS_SNAPSHOT_DIR"):
+        return os.environ["NGS_SNAPSHOT_DIR"]
     return load_settings().get("snapshot_backup_dir", "")
 
 

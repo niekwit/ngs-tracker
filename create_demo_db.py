@@ -10,9 +10,13 @@ The output file defaults to demo.db in the repo root.
 """
 
 import argparse
+import gzip
 import json
 import os
+import shutil
+import sqlite3
 import sys
+import tempfile
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -61,6 +65,30 @@ def backups(*pairs) -> str:
     """pairs: ('Location', '/some/path') ..."""
     return json.dumps([{"location": loc, "path": path} for loc, path in pairs])
 
+
+def _make_snapshot(src_db: Path, snap_dir: Path, ts: str) -> None:
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    snap_gz = snap_dir / f"ngs_tracker_{ts}.db.gz"
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    try:
+        src = sqlite3.connect(str(src_db))
+        dst = sqlite3.connect(str(tmp_path))
+        with dst:
+            src.backup(dst)
+        src.close()
+        dst.close()
+        with open(tmp_path, "rb") as f_in, gzip.open(snap_gz, "wb", compresslevel=6) as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+    print(f"  Snapshot written: {snap_gz}")
+
+
+# ── Demo snapshot directory ───────────────────────────────────────────────────
+
+snap_dir = demo_db.parent / "demo-snapshots" / "db"
 
 # ── Seed data ─────────────────────────────────────────────────────────────────
 
@@ -446,6 +474,10 @@ with app.app_context():
     db.session.add(run_atac1b)
     db.session.flush()
     link_samples(run_atac1b, atac_samples[:4])
+
+    # ── Snapshot 1: early state (5 Alice ATAC/ChIP runs) ─────────────────────
+    db.session.commit()
+    _make_snapshot(demo_db, snap_dir, "20260101_090000")
 
     run_atac3 = WorkflowRun(
         project_id=proj_atac.id,
@@ -947,6 +979,9 @@ with app.app_context():
 
     db.session.commit()
 
+    # ── Snapshot 2: full state (all groups, projects, and runs) ───────────────
+    _make_snapshot(demo_db, snap_dir, "20260601_120000")
+
     # ── Summary ───────────────────────────────────────────────────────────────
 
     n_groups = ResearchGroup.query.count()
@@ -961,3 +996,6 @@ with app.app_context():
     print(f"  Projects        : {n_projects}")
     print(f"  Workflow runs   : {n_runs}")
     print(f"  Samples         : {n_samples}")
+    print(f"\nDemo snapshots written to: {snap_dir.parent}")
+    print(f"  Snapshot 1 (2026-01-01): 5 runs (Alice's ATAC-seq and ChIP-seq only)")
+    print(f"  Snapshot 2 (2026-06-01): {n_runs} runs (full dataset)")
