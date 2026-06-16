@@ -530,13 +530,26 @@ names include a timestamp:
 
 ```python
 onsuccess:
-    from ngs_tracker import register_run
-    register_run(config, log_file=log)   # 'log' is Snakemake's built-in log path
+    try:
+        from ngs_tracker import register_run
+        register_run(config, log_file=log)   # 'log' is Snakemake's built-in log path
+    except ImportError:
+        pass
 
 onerror:
-    from ngs_tracker import register_run
-    register_run(config, status="failed", log_file=log)
+    try:
+        from ngs_tracker import register_run
+        register_run(config, status="failed", log_file=log)
+    except ImportError:
+        pass
 ```
+
+:::{tip}
+Wrapping the import in `try/except ImportError` lets the workflow run normally in
+environments where ngs-tracker is not installed — for example in CI pipelines
+(GitHub Actions, GitLab CI) or on HPC nodes where the package is not available.
+The rest of the workflow is unaffected.
+:::
 
 :::{note}
 Passing `log_file=log` (or including a `snakemake_log` file entry in `config.yaml`)
