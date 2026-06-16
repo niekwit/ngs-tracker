@@ -707,6 +707,9 @@
 {% endblock %}
 
 {% block scripts %}
+{% if run.attached_files | selectattr('file_type', 'eq', 'mapping_rates') | selectattr('parsed_config') | list %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+{% endif %}
 <style>
 .cfg-summary { cursor: pointer; list-style: none; font-size: .85rem; padding: .1rem 0; }
 .cfg-summary::-webkit-details-marker { display: none; }
