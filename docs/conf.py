@@ -90,3 +90,4 @@ html_css_files = ["custom.css"]
 
 html_title = "NGS Tracker"
 html_short_title = "NGS Tracker"
+html_last_updated_fmt = "%b %d, %Y at %H:%M:%S %Z"
