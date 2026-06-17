@@ -381,16 +381,17 @@
           </div>
         </form>
 
-        {% if slack_token %}
         <hr class="my-3">
         <form method="POST" class="d-flex align-items-center gap-2 flex-wrap">
           <input type="hidden" name="action" value="test_slack_notification">
           <input type="hidden" name="slack_snapshot_channel" value="{{ slack_snapshot_channel }}">
-          <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" {% if not slack_token %}disabled title="Save a Bot Token first"{% endif %}>
             <i class="bi bi-send me-1"></i>Send test message to #{{ slack_snapshot_channel }}
           </button>
+          {% if not slack_token %}
+          <span class="text-muted small">Save a Bot Token first.</span>
+          {% endif %}
         </form>
-        {% endif %}
       </div>
     </div>
 
