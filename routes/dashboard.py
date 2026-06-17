@@ -14,18 +14,12 @@ from config import (
     add_default_tag,
     add_user,
     db_log,
-    get_alert_recipient,
     get_api_key,
     get_backup_locations,
     get_backup_reminder_days,
     get_current_user,
     get_default_tags,
-    get_email_alerts_enabled,
-    get_last_backup_alert_sent,
     get_last_snapshot_time,
-    get_smtp_host,
-    get_smtp_port,
-    get_smtp_user,
     get_snapshot_backup_dir,
     get_snapshot_interval_hours,
     get_snapshot_keep,
@@ -38,15 +32,8 @@ from config import (
     remove_user,
     rotate_api_key,
     save_settings,
-    set_alert_recipient,
     set_backup_reminder_days,
     set_current_user,
-    set_email_alerts_enabled,
-    set_last_backup_alert_sent,
-    set_smtp_host,
-    set_smtp_port,
-    set_smtp_password,
-    set_smtp_user,
     set_snapshot_backup_dir,
     set_snapshot_interval_hours,
     set_snapshot_keep,
@@ -125,27 +112,6 @@ def register(app):
             )
         else:
             unbackedup_runs = []
-
-        # Send backup reminder email at most once per reminder_days interval
-        if unbackedup_runs and get_email_alerts_enabled():
-            from mailer import send_alert
-            last_sent = get_last_backup_alert_sent()
-            due = True
-            if last_sent:
-                try:
-                    delta = datetime.utcnow() - datetime.strptime(last_sent, "%Y-%m-%d %H:%M:%S")
-                    due = delta.total_seconds() >= reminder_days * 86400
-                except ValueError:
-                    pass
-            if due:
-                names = ", ".join(r.workflow_name or f"Run {r.id}" for r in unbackedup_runs[:5])
-                extra = f" (+{len(unbackedup_runs) - 5} more)" if len(unbackedup_runs) > 5 else ""
-                send_alert(
-                    "Backup reminder",
-                    f"{len(unbackedup_runs)} run(s) have no backup recorded:\n\n{names}{extra}\n\n"
-                    f"Log in to NGS Tracker to add backup records.",
-                )
-                set_last_backup_alert_sent(datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
 
         n_runs = len(backup_tracked_runs)
         n_backup = sum(1 for r in backup_tracked_runs if r.backups_list)
@@ -278,33 +244,6 @@ def register(app):
                     flash(f"Backup reminder set to {days} day(s).", "success")
                 return redirect(url_for("setup"))
 
-            if action == "set_email_alerts":
-                set_email_alerts_enabled("enabled" in request.form)
-                set_smtp_host(request.form.get("smtp_host", "").strip())
-                try:
-                    set_smtp_port(int(request.form.get("smtp_port", 587)))
-                except (ValueError, TypeError):
-                    set_smtp_port(587)
-                set_smtp_user(request.form.get("smtp_user", "").strip())
-                pw = request.form.get("smtp_password", "")
-                if pw:
-                    set_smtp_password(pw)
-                set_alert_recipient(request.form.get("alert_recipient", "").strip())
-                flash("Email alert settings saved.", "success")
-                return redirect(url_for("setup") + "#email-alerts")
-
-            if action == "test_email_alert":
-                from mailer import send_alert_with_error
-                ok, err = send_alert_with_error(
-                    "Test alert",
-                    "This is a test alert from NGS Tracker. Email alerts are working correctly.",
-                )
-                if ok:
-                    flash("Test email sent successfully.", "success")
-                else:
-                    flash(f"Failed to send test email: {err}", "danger")
-                return redirect(url_for("setup") + "#email-alerts")
-
             if action == "set_snapshot_backup":
                 bdir = request.form.get("snapshot_backup_dir", "").strip()
                 try:
@@ -405,9 +344,4 @@ def register(app):
             snapshot_keep=get_snapshot_keep(),
             last_snapshot_time=get_last_snapshot_time(),
             snapshots=_list_snapshots(),
-            email_alerts_enabled=get_email_alerts_enabled(),
-            smtp_host=get_smtp_host(),
-            smtp_port=get_smtp_port(),
-            smtp_user=get_smtp_user(),
-            alert_recipient=get_alert_recipient(),
         )

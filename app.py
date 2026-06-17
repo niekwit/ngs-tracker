@@ -172,15 +172,6 @@ def _start_snapshot_scheduler(app: Flask) -> None:
                         db_log("CREATE", "Snapshot", 0, f"Scheduled snapshot: {path}")
                 except Exception as exc:
                     _log.error("Scheduled snapshot failed: %s", exc, exc_info=True)
-                    try:
-                        from mailer import send_alert
-                        send_alert(
-                            "Snapshot failed",
-                            f"The scheduled snapshot failed with the following error:\n\n{exc}\n\n"
-                            "Check the server log for the full traceback.",
-                        )
-                    except Exception:
-                        pass
 
     threading.Thread(target=_loop, daemon=True, name="snapshot-scheduler").start()
 
