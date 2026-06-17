@@ -156,7 +156,10 @@ routes.system.register(app)
 
 def _start_snapshot_scheduler(app: Flask) -> None:
     """Daemon thread: check every 10 minutes and run a snapshot when due."""
+    import logging
     from backup import is_snapshot_due, run_snapshot
+
+    _log = logging.getLogger("ngs_tracker.snapshot")
 
     def _loop():
         while True:
@@ -165,8 +168,8 @@ def _start_snapshot_scheduler(app: Flask) -> None:
                 try:
                     with app.app_context():
                         run_snapshot()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _log.error("Scheduled snapshot failed: %s", exc, exc_info=True)
 
     threading.Thread(target=_loop, daemon=True, name="snapshot-scheduler").start()
 

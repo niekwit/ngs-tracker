@@ -1,5 +1,6 @@
 import gzip
 import json
+import logging
 import shutil
 import sqlite3
 import subprocess
@@ -7,6 +8,8 @@ import sys
 import tarfile
 from datetime import datetime
 from pathlib import Path
+
+_log = logging.getLogger("ngs_tracker.backup")
 
 from config import (
     DEFAULT_DB,
@@ -55,14 +58,17 @@ def run_snapshot() -> str:
         shutil.copyfileobj(f_in, f_out)
     tmp_db.unlink()
 
-    # Uploads backup
+    # Uploads backup — failures are non-fatal so the DB snapshot is always recorded
     if storage_path and Path(storage_path).exists():
-        if _RSYNC_AVAILABLE:
-            _rsync_uploads(storage_path, dest_root, ts)
-        else:
-            uploads_gz = dest_root / "uploads.tar.gz"
-            with tarfile.open(uploads_gz, "w:gz", compresslevel=6) as tar:
-                tar.add(storage_path, arcname="uploads")
+        try:
+            if _RSYNC_AVAILABLE:
+                _rsync_uploads(storage_path, dest_root, ts)
+            else:
+                uploads_gz = dest_root / "uploads.tar.gz"
+                with tarfile.open(uploads_gz, "w:gz", compresslevel=6) as tar:
+                    tar.add(storage_path, arcname="uploads")
+        except Exception as exc:
+            _log.warning("Uploads backup failed (DB snapshot still saved): %s", exc)
 
     _prune_db_snapshots(db_dir)
     if _RSYNC_AVAILABLE:
