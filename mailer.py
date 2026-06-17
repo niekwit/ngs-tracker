@@ -16,11 +16,8 @@ from config import (
 _log = logging.getLogger("ngs_tracker.mailer")
 
 
-def send_alert_with_error(subject: str, body: str) -> tuple[bool, str]:
-    """Send an alert email. Returns (success, error_message)."""
-    if not get_email_alerts_enabled():
-        return False, "Email alerts are disabled."
-
+def _smtp_send(subject: str, body: str) -> tuple[bool, str]:
+    """Attempt SMTP delivery. Returns (success, error_message)."""
     host = get_smtp_host()
     port = get_smtp_port()
     user = get_smtp_user()
@@ -28,7 +25,7 @@ def send_alert_with_error(subject: str, body: str) -> tuple[bool, str]:
     recipient = get_alert_recipient()
 
     if not all([host, user, password, recipient]):
-        return False, "Incomplete SMTP configuration — fill in all fields."
+        return False, "Incomplete SMTP configuration — fill in all fields and save."
 
     try:
         msg = MIMEMultipart()
@@ -50,7 +47,14 @@ def send_alert_with_error(subject: str, body: str) -> tuple[bool, str]:
         return False, str(exc)
 
 
+def send_alert_with_error(subject: str, body: str) -> tuple[bool, str]:
+    """Send a test alert, bypassing the enabled flag. Returns (success, error_message)."""
+    return _smtp_send(subject, body)
+
+
 def send_alert(subject: str, body: str) -> bool:
-    """Send an alert email. Returns True on success."""
-    ok, _ = send_alert_with_error(subject, body)
+    """Send an alert email (only when alerts are enabled). Returns True on success."""
+    if not get_email_alerts_enabled():
+        return False
+    ok, _ = _smtp_send(subject, body)
     return ok
