@@ -65,7 +65,7 @@ data-model
 runs
 workflows
 settings
-search
+searching
 audit-log
 dashboard
 stats
