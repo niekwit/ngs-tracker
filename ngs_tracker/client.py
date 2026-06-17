@@ -176,7 +176,13 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
     ------------------------------------
     enabled (bool, required):
         Set to ``true`` to activate; ``false`` silently skips everything.
-    project_id (int, required):
+    run_id (int, optional):
+        ID of an existing run to update.  When set, the client PATCHes that
+        run (updating status, description, tags, notes, and runtime) and
+        attaches files to it — no new run is created.  Use this when you
+        create the run manually in the UI before starting the workflow.
+        Either ``run_id`` or ``project_id`` must be provided.
+    project_id (int, required unless run_id is set):
         NGS Tracker project ID.  Visible on the project detail page.
     base_url (str, optional):
         API base URL.  Defaults to ``http://127.0.0.1:5000/api``.
@@ -243,8 +249,9 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
         return None
 
     project_id = cfg.get("project_id")
-    if not project_id:
-        _warn("'project_id' is required in config['ngs_tracker'].")
+    existing_run_id = cfg.get("run_id")
+    if not project_id and not existing_run_id:
+        _warn("'project_id' or 'run_id' is required in config['ngs_tracker'].")
         return None
 
     headers = {"X-Api-Key": key}
@@ -290,7 +297,7 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
         return None
 
     # Sum runtime from all unique log files.
-    # The total goes in the initial POST so the run record always shows the
+    # The total goes in the initial POST/PATCH so the run record always shows the
     # correct value, even before file attachments are processed.
     runtime_seconds = None
     if _log_file_paths:
@@ -308,25 +315,46 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
                 _info(f"Total runtime: {runtime_seconds}s from {_parsed_count} log(s)")
 
     try:
-        # ── Create the run ────────────────────────────────────────────────────
-        payload = {
-            "project_id": int(project_id),
-            "workflow_name": cfg.get("workflow_name", ""),
-            "workflow_tag": cfg.get("workflow_tag", ""),
-            "workflow_system": cfg.get("workflow_system", "snakemake"),
-            "status": status,
-            "description": cfg.get("description", ""),
-            "tags": cfg.get("tags", []),
-            "notes": cfg.get("notes", ""),
-            "created_by": created_by,
-        }
-        if runtime_seconds is not None:
-            payload["runtime_seconds"] = runtime_seconds
+        if existing_run_id:
+            # ── Update an existing run ────────────────────────────────────────
+            patch: dict = {"status": status}
+            if cfg.get("description"):
+                patch["description"] = cfg["description"]
+            if cfg.get("tags"):
+                patch["tags"] = cfg["tags"]
+            if cfg.get("notes"):
+                patch["notes"] = cfg["notes"]
+            if runtime_seconds is not None:
+                patch["runtime_seconds"] = runtime_seconds
+            resp = _requests.patch(
+                f"{base}/runs/{existing_run_id}",
+                headers=headers,
+                json=patch,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            run_id = int(existing_run_id)
+            _info(f"Run {run_id} updated (status={status}) — {base}/runs/{run_id}")
+        else:
+            # ── Create a new run ──────────────────────────────────────────────
+            payload = {
+                "project_id": int(project_id),
+                "workflow_name": cfg.get("workflow_name", ""),
+                "workflow_tag": cfg.get("workflow_tag", ""),
+                "workflow_system": cfg.get("workflow_system", "snakemake"),
+                "status": status,
+                "description": cfg.get("description", ""),
+                "tags": cfg.get("tags", []),
+                "notes": cfg.get("notes", ""),
+                "created_by": created_by,
+            }
+            if runtime_seconds is not None:
+                payload["runtime_seconds"] = runtime_seconds
 
-        resp = _requests.post(f"{base}/runs", headers=headers, json=payload, timeout=30)
-        resp.raise_for_status()
-        run_id = resp.json()["id"]
-        _info(f"Run {run_id} registered (status={status}) — {base}/runs/{run_id}")
+            resp = _requests.post(f"{base}/runs", headers=headers, json=payload, timeout=30)
+            resp.raise_for_status()
+            run_id = resp.json()["id"]
+            _info(f"Run {run_id} registered (status={status}) — {base}/runs/{run_id}")
 
         # ── Attach files ──────────────────────────────────────────────────────
         for entry in _expanded_files:

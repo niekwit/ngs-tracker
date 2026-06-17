@@ -566,6 +566,37 @@ lines before registering. If none are found — because this was a dry-run (`-n`
 skipped. No special-casing is needed in your `Snakefile`.
 :::
 
+**Attaching files to a run you created in advance**
+
+If you create the run manually in the UI (to add notes, set the project, etc.)
+before the analysis starts, you can have the client update that run and attach
+files to it instead of creating a new one. Add `run_id` to your config block —
+the value is the run ID shown in the URL on the run detail page:
+
+```yaml
+ngs_tracker:
+  enabled: true
+  base_url: "http://127.0.0.1:5000/api"
+  run_id: 42          # update this existing run instead of creating a new one
+  # project_id is not needed when run_id is set
+  workflow_name: "rna-seq-pipeline"
+  workflow_tag: "v2.1.0"
+  files:
+    - path: "results/qc/multiqc_report.html"
+      type: qc
+    - path: "logs/snakemake/*.log"
+      type: snakemake_log
+```
+
+When `run_id` is present the client:
+
+1. PATCHes the existing run — updating `status`, `description`, `tags`, `notes`,
+   and runtime (parsed from the Snakemake log).
+2. Attaches any files listed under `files`.
+
+Fields you set in the UI (e.g. long-form notes written before the run) are only
+overwritten if the same key is also present in the config YAML.
+
 **Step 3 — just run**
 
 ```bash
