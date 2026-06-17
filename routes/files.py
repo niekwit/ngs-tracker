@@ -32,6 +32,7 @@ def register(app):
 
         saved = []
         parsed_runtime = None
+        new_log_paths = []
         for file in files:
             original_name = secure_filename(file.filename)
             stored_path = run_dir / f"{uuid.uuid4().hex}_{original_name}"
@@ -43,10 +44,7 @@ def register(app):
                 parsed_config = _parse_mapping_rates(stored_path)
             elif file_type == "snakemake_log":
                 parsed_config = None
-                secs = _parse_snakemake_log(stored_path)
-                if secs is not None:
-                    run.runtime_seconds = secs
-                    parsed_runtime = secs
+                new_log_paths.append(stored_path)
             else:
                 parsed_config = None
 
@@ -67,6 +65,18 @@ def register(app):
                 f"{original_name} [{file_type}] on run id={id}",
             )
             saved.append(original_name)
+
+        if new_log_paths:
+            all_log_files = AttachedFile.query.filter_by(
+                workflow_run_id=id, file_type="snakemake_log"
+            ).all()
+            total = sum(
+                s for f in all_log_files
+                if (s := _parse_snakemake_log(Path(f.stored_path))) is not None
+            )
+            if total > 0:
+                run.runtime_seconds = total
+                parsed_runtime = total
 
         db.session.commit()
         label = f'File "{saved[0]}"' if len(saved) == 1 else f"{len(saved)} files"
