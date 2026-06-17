@@ -167,7 +167,9 @@ def _start_snapshot_scheduler(app: Flask) -> None:
             if is_snapshot_due():
                 try:
                     with app.app_context():
-                        run_snapshot()
+                        from config import db_log
+                        path = run_snapshot()
+                        db_log("CREATE", "Snapshot", 0, f"Scheduled snapshot: {path}")
                 except Exception as exc:
                     _log.error("Scheduled snapshot failed: %s", exc, exc_info=True)
 

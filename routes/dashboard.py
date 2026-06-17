@@ -275,6 +275,7 @@ def register(app):
                 from backup import run_snapshot
                 try:
                     path = run_snapshot()
+                    db_log("CREATE", "Snapshot", 0, f"Manual snapshot: {path}")
                     flash(f"Snapshot saved to {path}.", "success")
                 except Exception as e:
                     flash(f"Snapshot failed: {e}", "danger")
@@ -298,6 +299,7 @@ def register(app):
                 try:
                     run_snapshot()  # safety copy before overwriting
                     restore_snapshot(ts, db.engine)
+                    db_log("UPDATE", "Snapshot", 0, f"Restored to snapshot {ts} (safety copy saved first)")
                     flash(f"Restored to snapshot {ts}. A safety snapshot of the previous state was saved first.", "success")
                 except Exception as e:
                     flash(f"Restore failed: {e}", "danger")
