@@ -131,6 +131,16 @@ def register(app):
             str(stored), as_attachment=True, download_name=out.original_filename
         )
 
+    @app.route("/script-outputs/<int:id>/view")
+    def script_output_view(id):
+        out = db.get_or_404(ScriptOutputFile, id)
+        stored = Path(out.stored_path)
+        if not stored.exists():
+            abort(404)
+        return send_file(
+            str(stored), as_attachment=False, download_name=out.original_filename
+        )
+
     @app.route("/script-outputs/<int:id>/edit", methods=["POST"])
     def script_output_edit(id):
         out = db.get_or_404(ScriptOutputFile, id)

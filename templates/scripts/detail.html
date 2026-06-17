@@ -101,6 +101,15 @@
           <td class="text-muted small">{{ out.description or '—' }}</td>
           <td class="text-muted small">{{ out.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
           <td class="text-end">
+            {% if out.is_viewable %}
+            <button class="btn btn-xs btn-outline-info"
+                    data-bs-toggle="modal" data-bs-target="#imgModal"
+                    data-src="{{ url_for('script_output_view', id=out.id) }}"
+                    data-name="{{ out.original_filename }}"
+                    data-type="{{ 'pdf' if out.is_pdf else 'image' }}">
+              <i class="bi bi-eye"></i>
+            </button>
+            {% endif %}
             <a href="{{ url_for('script_output_download', id=out.id) }}" class="btn btn-xs btn-outline-primary">
               <i class="bi bi-download"></i>
             </a>
@@ -126,6 +135,27 @@
     <p class="mt-2 mb-0">No output files attached yet.</p>
   </div>
   {% endif %}
+</div>
+
+<!-- Image / PDF lightbox modal -->
+<div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0" id="imgModalLabel"></h6>
+        <div class="ms-auto d-flex gap-2 align-items-center">
+          <a id="imgModalDownload" href="#" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-download me-1"></i>Download
+          </a>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="modal-body text-center p-2">
+        <img id="imgModalImg" src="" alt="" class="img-fluid rounded" style="max-height:80vh; display:none;">
+        <iframe id="imgModalPdf" src="" style="width:100%; height:80vh; border:none; display:none;"></iframe>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Edit description modal -->
@@ -158,6 +188,33 @@ document.querySelectorAll('.edit-desc-btn').forEach(btn => {
     document.getElementById('editDescForm').action = `/script-outputs/${btn.dataset.id}/edit`;
     document.getElementById('editDescInput').value = btn.dataset.desc;
   });
+});
+
+var imgModal = document.getElementById('imgModal');
+imgModal.addEventListener('show.bs.modal', function(e) {
+  var btn = e.relatedTarget;
+  var src = btn.getAttribute('data-src');
+  var name = btn.getAttribute('data-name');
+  var type = btn.getAttribute('data-type');
+  var img = document.getElementById('imgModalImg');
+  var pdf = document.getElementById('imgModalPdf');
+  document.getElementById('imgModalLabel').textContent = name;
+  document.getElementById('imgModalDownload').href = src.replace('/view', '/download');
+  if (type === 'pdf') {
+    img.style.display = 'none';
+    img.src = '';
+    pdf.style.display = '';
+    pdf.src = src;
+  } else {
+    pdf.style.display = 'none';
+    pdf.src = '';
+    img.style.display = '';
+    img.src = src;
+  }
+});
+imgModal.addEventListener('hidden.bs.modal', function() {
+  document.getElementById('imgModalImg').src = '';
+  document.getElementById('imgModalPdf').src = '';
 });
 </script>
 {% endblock %}

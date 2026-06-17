@@ -168,6 +168,20 @@ class ScriptOutputFile(db.Model):
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
 
+    _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".tif", ".tiff"}
+
+    @property
+    def is_image(self):
+        return Path(self.original_filename).suffix.lower() in self._IMAGE_EXTENSIONS
+
+    @property
+    def is_pdf(self):
+        return Path(self.original_filename).suffix.lower() == ".pdf"
+
+    @property
+    def is_viewable(self):
+        return self.is_image or self.is_pdf
+
 
 FILE_TYPES = {
     "config": ("Config", "primary"),
