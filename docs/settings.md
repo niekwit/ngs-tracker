@@ -132,6 +132,74 @@ Restoring overwrites the live database and uploads. A safety snapshot is always 
 Your database is already inside Dropbox (`/mnt/4TB_SSD/Dropbox/ngs-tracker/`), giving you continuous cloud sync. Snapshot backup is most useful for a second off-Dropbox copy (e.g. an external drive) or for point-in-time recovery in case a corruption syncs to the cloud before you notice.
 ```
 
+## Slack notifications
+
+NGS Tracker can post snapshot success and failure messages to a Slack channel via a Slack Bot Token.
+
+### One-time Slack app setup
+
+**1. Create the app**
+
+Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From scratch**. Give it a name (e.g. *NGS Tracker*) and select your workspace.
+
+**2. Add Bot Token Scopes**
+
+Under **OAuth & Permissions** → **Bot Token Scopes**, add:
+
+| Scope | Purpose |
+|---|---|
+| `chat:write` | Post messages to channels and DMs |
+| `chat:write.public` | Post to public channels without joining them |
+
+If an `incoming-webhook` scope was added automatically, remove it — it is not needed.
+
+**3. Install the app**
+
+Click **Install to Workspace** and approve the permissions. Once installed, copy the **Bot User OAuth Token** (starts with `xoxb-`) from the **OAuth & Permissions** page.
+
+**4. Create the Slack channel**
+
+Create a `#snapshots` channel (or any name you prefer) in your Slack workspace.
+
+**5. Configure NGS Tracker**
+
+Go to **Settings → Slack Notifications**:
+
+- Paste the `xoxb-…` token into **Bot Token**
+- Set the **Snapshots channel** name (without `#`)
+- Enable the toggle
+- Click **Save**
+- Click **Send test message** to verify
+
+### Private channels
+
+`chat:write.public` only covers public channels. If your channel is private, invite the bot from within the channel:
+
+```
+/invite @NGS Tracker
+```
+
+This must be done for every private channel the bot should post to.
+
+### What is notified
+
+| Event | Channel |
+|---|---|
+| Snapshot succeeded | Configured snapshots channel |
+| Snapshot failed | Configured snapshots channel |
+
+Notifications fire on both manual snapshots ("Snapshot Now" button) and scheduled automatic snapshots.
+
+### Settings stored
+
+Slack settings are saved to `~/.ngs-tracker/settings.json`:
+
+| Key | Description |
+|---|---|
+| `slack_enabled` | Whether notifications are active |
+| `slack_token` | Bot User OAuth Token (`xoxb-…`) |
+| `slack_snapshot_channel` | Channel name for snapshot events (without `#`) |
+
 ## Backup locations
 
 Backup locations are the named destinations shown on every run form. Each location has a **type**:
