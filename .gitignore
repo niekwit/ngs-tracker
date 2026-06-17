@@ -6,3 +6,4 @@ __pycache__/
 .env
 docs/_build/
 demo-snapshots/
+SUGGESTIONS.md
