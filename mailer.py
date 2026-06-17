@@ -16,10 +16,10 @@ from config import (
 _log = logging.getLogger("ngs_tracker.mailer")
 
 
-def send_alert(subject: str, body: str) -> bool:
-    """Send an alert email via SMTP. Returns True on success."""
+def send_alert_with_error(subject: str, body: str) -> tuple[bool, str]:
+    """Send an alert email. Returns (success, error_message)."""
     if not get_email_alerts_enabled():
-        return False
+        return False, "Email alerts are disabled."
 
     host = get_smtp_host()
     port = get_smtp_port()
@@ -28,8 +28,7 @@ def send_alert(subject: str, body: str) -> bool:
     recipient = get_alert_recipient()
 
     if not all([host, user, password, recipient]):
-        _log.warning("Email alert skipped: incomplete SMTP configuration.")
-        return False
+        return False, "Incomplete SMTP configuration — fill in all fields."
 
     try:
         msg = MIMEMultipart()
@@ -45,7 +44,13 @@ def send_alert(subject: str, body: str) -> bool:
             smtp.login(user, password)
             smtp.sendmail(user, recipient, msg.as_string())
         _log.info("Alert email sent: %s", subject)
-        return True
+        return True, ""
     except Exception as exc:
         _log.error("Failed to send alert email: %s", exc)
-        return False
+        return False, str(exc)
+
+
+def send_alert(subject: str, body: str) -> bool:
+    """Send an alert email. Returns True on success."""
+    ok, _ = send_alert_with_error(subject, body)
+    return ok

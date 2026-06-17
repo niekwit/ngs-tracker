@@ -294,15 +294,15 @@ def register(app):
                 return redirect(url_for("setup") + "#email-alerts")
 
             if action == "test_email_alert":
-                from mailer import send_alert
-                ok = send_alert(
+                from mailer import send_alert_with_error
+                ok, err = send_alert_with_error(
                     "Test alert",
                     "This is a test alert from NGS Tracker. Email alerts are working correctly.",
                 )
                 if ok:
                     flash("Test email sent successfully.", "success")
                 else:
-                    flash("Failed to send test email — check your SMTP settings and server log.", "danger")
+                    flash(f"Failed to send test email: {err}", "danger")
                 return redirect(url_for("setup") + "#email-alerts")
 
             if action == "set_snapshot_backup":
