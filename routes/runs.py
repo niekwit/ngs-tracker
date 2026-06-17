@@ -451,6 +451,14 @@ def register(app):
         flash(f'Workflow run "{run.workflow_name}" moved to trash.', "success")
         return redirect(url_for("project_detail", id=run.project_id))
 
+    @app.route("/runs/<int:id>/clear-runtime", methods=["POST"])
+    def run_clear_runtime(id):
+        run = db.get_or_404(WorkflowRun, id)
+        run.runtime_seconds = None
+        db.session.commit()
+        flash("Runtime cleared.", "success")
+        return redirect(url_for("run_detail", id=id))
+
     @app.route("/runs/batch", methods=["POST"])
     def runs_batch():
         run_ids = request.form.getlist("run_ids", type=int)

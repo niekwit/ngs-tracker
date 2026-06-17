@@ -81,6 +81,11 @@
       &nbsp;·&nbsp;<span title="Run ID (use this with the REST API)">ID&nbsp;{{ run.id }}</span>
       {% if run.runtime_display %}
       &nbsp;·&nbsp;<i class="bi bi-stopwatch me-1"></i>{{ run.runtime_display }}
+      <form method="POST" action="{{ url_for('run_clear_runtime', id=run.id) }}" class="d-inline ms-1">
+        <button type="submit" class="btn btn-link btn-sm p-0 text-muted" style="font-size:.75rem; line-height:1;" title="Clear runtime">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </form>
       {% endif %}
     </span>
   </div>
