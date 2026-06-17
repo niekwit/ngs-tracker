@@ -237,6 +237,9 @@ def register(app):
         db.session.add(run)
         db.session.commit()
         db_log("CREATE", "WorkflowRun", run.id, f"{run.workflow_name} via API")
+        from notifier import send_run_notification
+
+        send_run_notification(run)
         resp = _run_dict(run)
         duplicates = find_duplicate_runs(
             run.project_id, run.workflow_name, run.run_date, exclude_id=run.id

@@ -21,6 +21,7 @@ from config import (
     get_default_tags,
     get_last_snapshot_time,
     get_slack_enabled,
+    get_slack_runs_channel,
     get_slack_snapshot_channel,
     get_slack_token,
     get_snapshot_backup_dir,
@@ -38,6 +39,7 @@ from config import (
     set_backup_reminder_days,
     set_current_user,
     set_slack_enabled,
+    set_slack_runs_channel,
     set_slack_snapshot_channel,
     set_slack_token,
     set_snapshot_backup_dir,
@@ -304,10 +306,16 @@ def register(app):
                     .strip()
                     .lstrip("#")
                 )
+                runs_channel = (
+                    request.form.get("slack_runs_channel", "workflow_runs")
+                    .strip()
+                    .lstrip("#")
+                )
                 enabled = request.form.get("slack_enabled") == "1"
                 if token:
                     set_slack_token(token)
                 set_slack_snapshot_channel(channel)
+                set_slack_runs_channel(runs_channel)
                 set_slack_enabled(enabled)
                 flash("Slack settings saved.", "success")
                 return redirect(url_for("setup") + "#slack-notifications")
@@ -418,4 +426,5 @@ def register(app):
             slack_enabled=get_slack_enabled(),
             slack_token=get_slack_token(),
             slack_snapshot_channel=get_slack_snapshot_channel(),
+            slack_runs_channel=get_slack_runs_channel(),
         )

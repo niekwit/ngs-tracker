@@ -609,3 +609,13 @@ def set_slack_snapshot_channel(v: str) -> None:
     s = load_settings()
     s["slack_snapshot_channel"] = v.strip().lstrip("#")
     save_settings(s)
+
+
+def get_slack_runs_channel() -> str:
+    return load_settings().get("slack_runs_channel", "workflow_runs")
+
+
+def set_slack_runs_channel(v: str) -> None:
+    s = load_settings()
+    s["slack_runs_channel"] = v.strip().lstrip("#")
+    save_settings(s)

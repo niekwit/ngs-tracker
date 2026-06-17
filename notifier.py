@@ -2,6 +2,7 @@ import logging
 
 from config import (
     get_slack_enabled,
+    get_slack_runs_channel,
     get_slack_snapshot_channel,
     get_slack_token,
 )
@@ -65,6 +66,58 @@ def send_snapshot_notification(success: bool, detail: str) -> bool:
     ok, err = _post(channel, text, _snapshot_blocks(success, detail))
     if not ok:
         _log.warning("Could not send snapshot notification: %s", err)
+    return ok
+
+
+_STATUS_ICON = {
+    "completed": ":white_check_mark:",
+    "failed": ":x:",
+    "running": ":arrows_counterclockwise:",
+    "pending": ":hourglass_flowing_sand:",
+}
+
+
+def _run_blocks(run) -> list:
+    icon = _STATUS_ICON.get(run.status, ":bell:")
+    header = f"{icon} *{run.workflow_name}* — {run.status.capitalize()}"
+
+    lines = []
+    lines.append(f"*Project:* {run.project.name}")
+    lines.append(f"*Researcher:* {run.project.researcher.name}")
+    if run.workflow_tag:
+        lines.append(f"*Tag:* `{run.workflow_tag}`")
+    lines.append(f"*System:* {run.workflow_system or 'snakemake'}")
+    if run.created_by:
+        lines.append(f"*Submitted by:* {run.created_by}")
+    if run.runtime_seconds:
+        h, rem = divmod(run.runtime_seconds, 3600)
+        m, s = divmod(rem, 60)
+        rt = f"{h}h {m}m {s}s" if h else (f"{m}m {s}s" if m else f"{s}s")
+        lines.append(f"*Runtime:* {rt}")
+    if run.description:
+        lines.append(f"*Description:* {run.description}")
+    if run.tag_list:
+        tags = "  ".join(f"`{t}`" for t in run.tag_list)
+        lines.append(f"*Tags:* {tags}")
+
+    return [
+        {"type": "section", "text": {"type": "mrkdwn", "text": header}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(lines)}},
+    ]
+
+
+def send_run_notification(run) -> bool:
+    """Post a workflow run submission notification to the runs channel.
+
+    Only sends when Slack is enabled. Returns True on success.
+    """
+    if not get_slack_enabled():
+        return False
+    channel = get_slack_runs_channel()
+    text = f"Workflow run: {run.workflow_name} — {run.status} (project: {run.project.name})"
+    ok, err = _post(channel, text, _run_blocks(run))
+    if not ok:
+        _log.warning("Could not send run notification: %s", err)
     return ok
 
 

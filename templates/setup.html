@@ -369,6 +369,18 @@
             <div class="form-text">Snapshot success and failure messages will be posted here.</div>
           </div>
 
+          <div class="mb-3">
+            <label class="form-label fw-semibold mb-1" for="slackRunsChannel">Workflow runs channel</label>
+            <div class="input-group input-group-sm" style="max-width:280px;">
+              <span class="input-group-text">#</span>
+              <input type="text" id="slackRunsChannel" class="form-control"
+                     name="slack_runs_channel"
+                     value="{{ slack_runs_channel }}"
+                     placeholder="workflow_runs">
+            </div>
+            <div class="form-text">Posted when a run is registered via the REST API.</div>
+          </div>
+
           <div class="d-flex gap-2 align-items-center flex-wrap">
             <button type="submit" class="btn btn-sm btn-primary">
               <i class="bi bi-save me-1"></i>Save
