@@ -157,9 +157,9 @@ If an `incoming-webhook` scope was added automatically, remove it — it is not 
 
 Click **Install to Workspace** and approve the permissions. Once installed, copy the **Bot User OAuth Token** (starts with `xoxb-`) from the **OAuth & Permissions** page.
 
-**4. Create the Slack channel**
+**4. Create the Slack channels**
 
-Create a `#snapshots` channel (or any name you prefer) in your Slack workspace.
+Create the channels you want NGS Tracker to post to — for example `#snapshots` and `#workflow_runs`.
 
 **5. Configure NGS Tracker**
 
@@ -167,13 +167,14 @@ Go to **Settings → Slack Notifications**:
 
 - Paste the `xoxb-…` token into **Bot Token**
 - Set the **Snapshots channel** name (without `#`)
+- Set the **Workflow runs channel** name (without `#`)
 - Enable the toggle
 - Click **Save**
 - Click **Send test message** to verify
 
 ### Private channels
 
-`chat:write.public` only covers public channels. If your channel is private, invite the bot from within the channel:
+`chat:write.public` only covers public channels. If a channel is private, invite the bot from within that channel:
 
 ```
 /invite @NGS Tracker
@@ -183,12 +184,15 @@ This must be done for every private channel the bot should post to.
 
 ### What is notified
 
-| Event | Channel |
+| Event | Channel setting |
 |---|---|
-| Snapshot succeeded | Configured snapshots channel |
-| Snapshot failed | Configured snapshots channel |
+| Snapshot succeeded | Snapshots channel |
+| Snapshot failed | Snapshots channel |
+| Workflow run registered via REST API | Workflow runs channel |
 
-Notifications fire on both manual snapshots ("Snapshot Now" button) and scheduled automatic snapshots.
+Snapshot notifications fire on both manual snapshots ("Snapshot Now" button) and scheduled automatic snapshots.
+
+The workflow run message includes: project name, researcher, workflow name and tag, workflow system, submitted by, runtime (if available), description, and tags.
 
 ### Settings stored
 
@@ -199,6 +203,7 @@ Slack settings are saved to `~/.ngs-tracker/settings.json`:
 | `slack_enabled` | Whether notifications are active |
 | `slack_token` | Bot User OAuth Token (`xoxb-…`) |
 | `slack_snapshot_channel` | Channel name for snapshot events (without `#`) |
+| `slack_runs_channel` | Channel name for workflow run registrations (without `#`) |
 
 ## Backup locations
 
