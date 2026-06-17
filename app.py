@@ -168,10 +168,20 @@ def _start_snapshot_scheduler(app: Flask) -> None:
                 try:
                     with app.app_context():
                         from config import db_log
+                        from notifier import send_snapshot_notification
+
                         path = run_snapshot()
                         db_log("CREATE", "Snapshot", 0, f"Scheduled snapshot: {path}")
+                        send_snapshot_notification(True, path)
                 except Exception as exc:
                     _log.error("Scheduled snapshot failed: %s", exc, exc_info=True)
+                    try:
+                        with app.app_context():
+                            from notifier import send_snapshot_notification
+
+                            send_snapshot_notification(False, str(exc))
+                    except Exception:
+                        pass
 
     threading.Thread(target=_loop, daemon=True, name="snapshot-scheduler").start()
 

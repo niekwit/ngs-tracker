@@ -20,6 +20,9 @@ from config import (
     get_current_user,
     get_default_tags,
     get_last_snapshot_time,
+    get_slack_enabled,
+    get_slack_snapshot_channel,
+    get_slack_token,
     get_snapshot_backup_dir,
     get_snapshot_interval_hours,
     get_snapshot_keep,
@@ -34,6 +37,9 @@ from config import (
     save_settings,
     set_backup_reminder_days,
     set_current_user,
+    set_slack_enabled,
+    set_slack_snapshot_channel,
+    set_slack_token,
     set_snapshot_backup_dir,
     set_snapshot_interval_hours,
     set_snapshot_keep,
@@ -264,25 +270,65 @@ def register(app):
                 set_snapshot_interval_hours(hours)
                 set_snapshot_keep(keep)
                 if bdir and hours > 0:
-                    flash(f"Snapshot backup enabled: every {hours}h to {bdir}, keeping {keep} copies.", "success")
+                    flash(
+                        f"Snapshot backup enabled: every {hours}h to {bdir}, keeping {keep} copies.",
+                        "success",
+                    )
                 elif bdir:
-                    flash(f"Snapshot backup directory set to {bdir} (automatic schedule disabled).", "success")
+                    flash(
+                        f"Snapshot backup directory set to {bdir} (automatic schedule disabled).",
+                        "success",
+                    )
                 else:
                     flash("Snapshot backup disabled.", "success")
                 return redirect(url_for("setup"))
 
             if action == "run_snapshot_now":
                 from backup import run_snapshot
+                from notifier import send_snapshot_notification
+
                 try:
                     path = run_snapshot()
                     db_log("CREATE", "Snapshot", 0, f"Manual snapshot: {path}")
                     flash(f"Snapshot saved to {path}.", "success")
+                    send_snapshot_notification(True, path)
                 except Exception as e:
                     flash(f"Snapshot failed: {e}", "danger")
+                    send_snapshot_notification(False, str(e))
                 return redirect(url_for("setup"))
+
+            if action == "set_slack_settings":
+                token = request.form.get("slack_token", "").strip()
+                channel = (
+                    request.form.get("slack_snapshot_channel", "snapshots")
+                    .strip()
+                    .lstrip("#")
+                )
+                enabled = request.form.get("slack_enabled") == "1"
+                if token:
+                    set_slack_token(token)
+                set_slack_snapshot_channel(channel)
+                set_slack_enabled(enabled)
+                flash("Slack settings saved.", "success")
+                return redirect(url_for("setup") + "#slack-notifications")
+
+            if action == "test_slack_notification":
+                from notifier import test_notification
+
+                channel = (
+                    request.form.get("slack_snapshot_channel", "").strip().lstrip("#")
+                    or get_slack_snapshot_channel()
+                )
+                ok, err = test_notification(channel)
+                if ok:
+                    flash(f"Test message sent to #{channel}.", "success")
+                else:
+                    flash(f"Slack test failed: {err}", "danger")
+                return redirect(url_for("setup") + "#slack-notifications")
 
             if action == "save_snapshot_comment":
                 from backup import set_snapshot_comment
+
                 ts = request.form.get("snapshot_ts", "").strip()
                 comment = request.form.get("comment", "").strip()
                 if ts:
@@ -292,6 +338,7 @@ def register(app):
             if action == "restore_snapshot":
                 from backup import restore_snapshot, run_snapshot
                 from models import db
+
                 ts = request.form.get("snapshot_ts", "").strip()
                 if not ts:
                     flash("No snapshot selected.", "danger")
@@ -299,8 +346,16 @@ def register(app):
                 try:
                     run_snapshot()  # safety copy before overwriting
                     restore_snapshot(ts, db.engine)
-                    db_log("UPDATE", "Snapshot", 0, f"Restored to snapshot {ts} (safety copy saved first)")
-                    flash(f"Restored to snapshot {ts}. A safety snapshot of the previous state was saved first.", "success")
+                    db_log(
+                        "UPDATE",
+                        "Snapshot",
+                        0,
+                        f"Restored to snapshot {ts} (safety copy saved first)",
+                    )
+                    flash(
+                        f"Restored to snapshot {ts}. A safety snapshot of the previous state was saved first.",
+                        "success",
+                    )
                 except Exception as e:
                     flash(f"Restore failed: {e}", "danger")
                 return redirect(url_for("setup"))
@@ -336,7 +391,9 @@ def register(app):
         if snap_interval > 0 and snap_dir:
             if last_snap:
                 try:
-                    next_dt = datetime.strptime(last_snap, "%Y-%m-%d %H:%M") + timedelta(hours=snap_interval)
+                    next_dt = datetime.strptime(
+                        last_snap, "%Y-%m-%d %H:%M"
+                    ) + timedelta(hours=snap_interval)
                     next_snapshot_time = next_dt.strftime("%Y-%m-%d %H:%M")
                 except ValueError:
                     pass
@@ -358,4 +415,7 @@ def register(app):
             last_snapshot_time=last_snap,
             next_snapshot_time=next_snapshot_time,
             snapshots=_list_snapshots(),
+            slack_enabled=get_slack_enabled(),
+            slack_token=get_slack_token(),
+            slack_snapshot_channel=get_slack_snapshot_channel(),
         )

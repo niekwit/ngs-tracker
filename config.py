@@ -576,3 +576,36 @@ def set_last_backup_alert_sent(ts: str) -> None:
     s = load_settings()
     s["last_backup_alert_sent"] = ts
     save_settings(s)
+
+
+# ── Slack notifications ───────────────────────────────────────────────────────
+
+
+def get_slack_enabled() -> bool:
+    return bool(load_settings().get("slack_enabled", False))
+
+
+def set_slack_enabled(v: bool) -> None:
+    s = load_settings()
+    s["slack_enabled"] = bool(v)
+    save_settings(s)
+
+
+def get_slack_token() -> str:
+    return load_settings().get("slack_token", "")
+
+
+def set_slack_token(v: str) -> None:
+    s = load_settings()
+    s["slack_token"] = v.strip()
+    save_settings(s)
+
+
+def get_slack_snapshot_channel() -> str:
+    return load_settings().get("slack_snapshot_channel", "snapshots")
+
+
+def set_slack_snapshot_channel(v: str) -> None:
+    s = load_settings()
+    s["slack_snapshot_channel"] = v.strip().lstrip("#")
+    save_settings(s)

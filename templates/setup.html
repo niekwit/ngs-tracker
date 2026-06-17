@@ -329,6 +329,71 @@
     </div>
     {% endif %}
 
+    <!-- Slack notifications -->
+    <h5 class="fw-bold mt-4 mb-2" id="slack-notifications"><i class="bi bi-slack me-1"></i> Slack Notifications</h5>
+    <p class="text-muted mb-3">
+      Post snapshot results to a Slack channel using a Bot Token
+      (<code>xoxb-…</code>). Create a Slack App at
+      <a href="https://api.slack.com/apps" target="_blank">api.slack.com/apps</a>,
+      add the <code>chat:write</code> and <code>chat:write.public</code> scopes,
+      install it to your workspace, and paste the Bot Token below.
+    </p>
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="action" value="set_slack_settings">
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="slackEnabled"
+                   name="slack_enabled" value="1" {% if slack_enabled %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="slackEnabled">Enable Slack notifications</label>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold mb-1" for="slackToken">Bot Token</label>
+            <input type="password" id="slackToken" class="form-control font-monospace form-control-sm"
+                   name="slack_token" placeholder="xoxb-…"
+                   value="{{ slack_token }}">
+            <div class="form-text">Leave blank to keep the existing token.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold mb-1" for="slackSnapshotChannel">Snapshots channel</label>
+            <div class="input-group input-group-sm" style="max-width:280px;">
+              <span class="input-group-text">#</span>
+              <input type="text" id="slackSnapshotChannel" class="form-control"
+                     name="slack_snapshot_channel"
+                     value="{{ slack_snapshot_channel }}"
+                     placeholder="snapshots">
+            </div>
+            <div class="form-text">Snapshot success and failure messages will be posted here.</div>
+          </div>
+
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="bi bi-save me-1"></i>Save
+            </button>
+            {% if slack_enabled %}
+            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Enabled</span>
+            {% else %}
+            <span class="badge bg-secondary">Disabled</span>
+            {% endif %}
+          </div>
+        </form>
+
+        {% if slack_token %}
+        <hr class="my-3">
+        <form method="POST" class="d-flex align-items-center gap-2 flex-wrap">
+          <input type="hidden" name="action" value="test_slack_notification">
+          <input type="hidden" name="slack_snapshot_channel" value="{{ slack_snapshot_channel }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-send me-1"></i>Send test message to #{{ slack_snapshot_channel }}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- API key -->
     <h5 class="fw-bold mt-4 mb-2"><i class="bi bi-key me-1"></i> REST API Key</h5>
     <div class="card">
