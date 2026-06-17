@@ -503,3 +503,76 @@ def set_last_snapshot_time(ts: str) -> None:
     s = load_settings()
     s["last_snapshot_time"] = ts
     save_settings(s)
+
+
+# ── Email alerts ──────────────────────────────────────────────────────────────
+
+
+def get_email_alerts_enabled() -> bool:
+    return bool(load_settings().get("email_alerts_enabled", False))
+
+
+def set_email_alerts_enabled(v: bool) -> None:
+    s = load_settings()
+    s["email_alerts_enabled"] = bool(v)
+    save_settings(s)
+
+
+def get_smtp_host() -> str:
+    return load_settings().get("smtp_host", "")
+
+
+def set_smtp_host(v: str) -> None:
+    s = load_settings()
+    s["smtp_host"] = v.strip()
+    save_settings(s)
+
+
+def get_smtp_port() -> int:
+    return int(load_settings().get("smtp_port", 587))
+
+
+def set_smtp_port(v: int) -> None:
+    s = load_settings()
+    s["smtp_port"] = int(v)
+    save_settings(s)
+
+
+def get_smtp_user() -> str:
+    return load_settings().get("smtp_user", "")
+
+
+def set_smtp_user(v: str) -> None:
+    s = load_settings()
+    s["smtp_user"] = v.strip()
+    save_settings(s)
+
+
+def get_smtp_password() -> str:
+    return load_settings().get("smtp_password", "")
+
+
+def set_smtp_password(v: str) -> None:
+    s = load_settings()
+    s["smtp_password"] = v
+    save_settings(s)
+
+
+def get_alert_recipient() -> str:
+    return load_settings().get("alert_recipient", "")
+
+
+def set_alert_recipient(v: str) -> None:
+    s = load_settings()
+    s["alert_recipient"] = v.strip()
+    save_settings(s)
+
+
+def get_last_backup_alert_sent() -> str:
+    return load_settings().get("last_backup_alert_sent", "")
+
+
+def set_last_backup_alert_sent(ts: str) -> None:
+    s = load_settings()
+    s["last_backup_alert_sent"] = ts
+    save_settings(s)

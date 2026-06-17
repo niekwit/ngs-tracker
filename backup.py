@@ -69,6 +69,15 @@ def run_snapshot() -> str:
                     tar.add(storage_path, arcname="uploads")
         except Exception as exc:
             _log.warning("Uploads backup failed (DB snapshot still saved): %s", exc)
+            try:
+                from mailer import send_alert
+                send_alert(
+                    "Uploads backup failed",
+                    f"The uploads backup failed with the following error:\n\n{exc}\n\n"
+                    "The database snapshot was still saved successfully.",
+                )
+            except Exception:
+                pass
 
     _prune_db_snapshots(db_dir)
     if _RSYNC_AVAILABLE:
