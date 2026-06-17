@@ -329,6 +329,19 @@ def register(app):
             "storage_path": settings.get("storage_path", str(get_storage_path())),
             "db_path": settings.get("db_path", str(DEFAULT_DB)),
         }
+        snap_interval = get_snapshot_interval_hours()
+        snap_dir = get_snapshot_backup_dir()
+        last_snap = get_last_snapshot_time()
+        next_snapshot_time = None
+        if snap_interval > 0 and snap_dir:
+            if last_snap:
+                try:
+                    next_dt = datetime.strptime(last_snap, "%Y-%m-%d %H:%M") + timedelta(hours=snap_interval)
+                    next_snapshot_time = next_dt.strftime("%Y-%m-%d %H:%M")
+                except ValueError:
+                    pass
+            else:
+                next_snapshot_time = "Due now"
         return render_template(
             "setup.html",
             settings=defaults,
@@ -339,9 +352,10 @@ def register(app):
             backup_locations=get_backup_locations(),
             api_key=get_api_key(),
             backup_reminder_days=get_backup_reminder_days(),
-            snapshot_backup_dir=get_snapshot_backup_dir(),
-            snapshot_interval_hours=get_snapshot_interval_hours(),
+            snapshot_backup_dir=snap_dir,
+            snapshot_interval_hours=snap_interval,
             snapshot_keep=get_snapshot_keep(),
-            last_snapshot_time=get_last_snapshot_time(),
+            last_snapshot_time=last_snap,
+            next_snapshot_time=next_snapshot_time,
             snapshots=_list_snapshots(),
         )

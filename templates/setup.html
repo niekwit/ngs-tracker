@@ -259,6 +259,9 @@
           {% if last_snapshot_time %}
           <span class="text-muted small"><i class="bi bi-clock me-1"></i>Last snapshot: {{ last_snapshot_time }}</span>
           {% endif %}
+          {% if next_snapshot_time %}
+          <span class="text-muted small"><i class="bi bi-clock-history me-1"></i>Next snapshot: {{ next_snapshot_time }}</span>
+          {% endif %}
           {% if snapshot_backup_dir %}
           <form method="POST" class="ms-auto">
             <button type="submit" name="action" value="run_snapshot_now" class="btn btn-sm btn-outline-secondary">
