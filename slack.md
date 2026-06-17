@@ -38,7 +38,20 @@ This is required for every private channel the bot should post to.
 
 ## Future plans
 
-- Add an optional **Slack channel** field to each **Researcher** and/or **Project** record.
-- When a workflow run is registered (via the REST API), post a notification to the relevant channel.
-- This requires the bot to be invited to each project/user channel before it can post.
-- No additional OAuth scopes are needed — the same bot token handles all channels.
+Notify researchers when a workflow run is registered for their project. Rather than creating a channel per user/project, notifications can be sent as **Direct Messages** from the bot.
+
+### Option A — Manual Slack Member ID
+
+Add an optional `Slack Member ID` field to each Researcher record. Users find their own ID in Slack via **Profile → ⋮ → Copy Member ID** (format: `U01ABCDEF`). The bot sends a DM by using this ID as the channel in `chat.postMessage`.
+
+- No extra scopes needed — `chat:write` already covers DMs
+- One-time manual lookup per researcher
+- Researchers without an ID set simply don't receive DMs
+
+### Option B — Automatic email lookup
+
+Researchers already have an email field. The bot looks up the Slack Member ID automatically via the `users.lookupByEmail` API, so researchers never need to do anything.
+
+- Requires two additional scopes: `users:read` and `users:read.email`
+- Requires reinstalling the app to the workspace after adding the scopes
+- Seamless — works as long as the researcher's email matches their Slack account
