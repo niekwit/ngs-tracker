@@ -157,13 +157,22 @@ def extract_samples_from_config(workflow_name: str, config: dict) -> list[dict] 
         conditions = config.get("conditions")
         if not isinstance(conditions, dict):
             return None
+        bin_number = int(config.get("bin_number", 1))
         seen: dict[str, str] = {}
         for condition, value in conditions.items():
             names = value if isinstance(value, list) else str(value).split()
             for name in names:
                 name = str(name).strip()
-                if name and name not in seen:
-                    seen[name] = str(condition)
+                if not name:
+                    continue
+                if bin_number > 1:
+                    for b in range(1, bin_number + 1):
+                        binned = f"{name}_{b}"
+                        if binned not in seen:
+                            seen[binned] = str(condition)
+                else:
+                    if name not in seen:
+                        seen[name] = str(condition)
         return [{"name": name, "description": cond} for name, cond in seen.items()]
 
     return None
