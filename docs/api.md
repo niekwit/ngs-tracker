@@ -535,6 +535,8 @@ onsuccess:
         register_run(config, log_file=log)   # 'log' is Snakemake's built-in log path
     except ImportError:
         pass
+    except Exception as exc:
+        logger.warning(f"NGS Tracker registration skipped: {exc}")
 
 onerror:
     try:
@@ -542,13 +544,18 @@ onerror:
         register_run(config, status="failed", log_file=log)
     except ImportError:
         pass
+    except Exception as exc:
+        logger.warning(f"NGS Tracker failure registration skipped: {exc}")
 ```
 
 :::{tip}
-Wrapping the import in `try/except ImportError` lets the workflow run normally in
-environments where ngs-tracker is not installed — for example in CI pipelines
-(GitHub Actions, GitLab CI) or on HPC nodes where the package is not available.
-The rest of the workflow is unaffected.
+The two-clause `except` block keeps your workflow safe in all failure modes:
+
+- `ImportError` — ngs-tracker is not installed (e.g. CI pipelines, HPC nodes without
+  the package). Silently skipped; the rest of the workflow is unaffected.
+- `Exception` — ngs-tracker is installed but registration fails at runtime (e.g. server
+  unreachable, bad config). Logged as a warning so you are informed without aborting
+  the workflow.
 :::
 
 :::{note}
