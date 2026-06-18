@@ -30,6 +30,7 @@ from config import db_log, get_api_key, get_storage_path
 from helpers import (
     _parse_mapping_rates,
     _parse_snakemake_config,
+    _parse_snakemake_errors,
     _parse_snakemake_log,
     find_duplicate_runs,
 )
@@ -325,6 +326,7 @@ def register(app):
         shutil.copy2(src, stored_path)
 
         runtime_updated = False
+        run_errors: list[str] = []
         if file_type == "config":
             parsed_config = _parse_snakemake_config(stored_path)
         elif file_type == "mapping_rates":
@@ -335,6 +337,8 @@ def register(app):
             if secs is not None and run.runtime_seconds is None:
                 run.runtime_seconds = secs
                 runtime_updated = True
+            if run.status == "failed":
+                run_errors = _parse_snakemake_errors(stored_path)
         else:
             parsed_config = None
 
@@ -355,10 +359,10 @@ def register(app):
             f"{original_name} [{file_type}] on run id={id} via API",
         )
         db.session.commit()
-        if runtime_updated:
+        if runtime_updated or run_errors:
             from notifier import send_run_notification
 
-            send_run_notification(run)
+            send_run_notification(run, errors=run_errors)
         return jsonify(_file_dict(attached)), 201
 
     # ── Projects ──────────────────────────────────────────────────────────────

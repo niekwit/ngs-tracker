@@ -77,7 +77,9 @@ _STATUS_ICON = {
 }
 
 
-def _run_blocks(run, wf_url: str | None = None) -> list:
+def _run_blocks(
+    run, wf_url: str | None = None, errors: list[str] | None = None
+) -> list:
     icon = _STATUS_ICON.get(run.status, ":bell:")
     header = f"{icon} *{run.workflow_name}* — {run.status.capitalize()}"
 
@@ -102,13 +104,28 @@ def _run_blocks(run, wf_url: str | None = None) -> list:
         tags = "  ".join(f"`{t}`" for t in run.tag_list)
         lines.append(f"*Tags:* {tags}")
 
-    return [
+    blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text": header}},
         {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(lines)}},
     ]
 
+    if errors:
+        blocks.append({"type": "divider"})
+        for err in errors:
+            # Slack section text limit: 3000 chars
+            if len(err) > 2900:
+                err = err[:2900] + "\n…(truncated)"
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"```{err}```"},
+                }
+            )
 
-def send_run_notification(run) -> bool:
+    return blocks
+
+
+def send_run_notification(run, errors: list[str] | None = None) -> bool:
     """Post a workflow run submission notification to the runs channel.
 
     Only sends when Slack is enabled. Returns True on success.
@@ -116,11 +133,12 @@ def send_run_notification(run) -> bool:
     if not get_slack_enabled():
         return False
     from config import load_workflows
+
     workflows = load_workflows()
     wf_url = next((w["url"] for w in workflows if w["name"] == run.workflow_name), None)
     channel = get_slack_runs_channel()
     text = f"Workflow run: {run.workflow_name} — {run.status} (project: {run.project.name})"
-    ok, err = _post(channel, text, _run_blocks(run, wf_url=wf_url))
+    ok, err = _post(channel, text, _run_blocks(run, wf_url=wf_url, errors=errors))
     if not ok:
         _log.warning("Could not send run notification: %s", err)
     return ok
@@ -156,10 +174,16 @@ def channel_from_group_name(name: str) -> str:
     return slug
 
 
-def build_run_message(run, samples: list | None = None, wf_url: str | None = None) -> str:
+def build_run_message(
+    run, samples: list | None = None, wf_url: str | None = None
+) -> str:
     """Build the default mrkdwn message for a manual run notification."""
     researcher = run.project.researcher
-    mention = f"<@{researcher.slack_user_id}>" if researcher.slack_user_id else researcher.name
+    mention = (
+        f"<@{researcher.slack_user_id}>"
+        if researcher.slack_user_id
+        else researcher.name
+    )
 
     icon = _STATUS_ICON.get(run.status, ":bell:")
     lines = [

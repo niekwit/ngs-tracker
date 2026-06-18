@@ -33,7 +33,9 @@ def get_journal_name(doi_url: str) -> str | None:
             timeout=5,
             headers={"User-Agent": _CROSSREF_UA},
         )
-        titles = resp.json().get("message", {}).get("container-title", []) if resp.ok else []
+        titles = (
+            resp.json().get("message", {}).get("container-title", []) if resp.ok else []
+        )
         journal = titles[0] if titles else ""
     except Exception:
         journal = ""
@@ -115,6 +117,9 @@ def _parse_mapping_rates(path: Path) -> str | None:
 
 
 _SNAKEMAKE_TS_RE = re.compile(r"\[(\w{3} \w{3} +\d+ \d{2}:\d{2}:\d{2} \d{4})\]")
+_SNAKEMAKE_TS_LINE_RE = re.compile(r"^\[\w{3} \w{3}\s+\d+ \d{2}:\d{2}:\d{2} \d{4}\]$")
+_ERROR_RULE_RE = re.compile(r"^Error in rule (\S+):")
+_SEP_LINE_RE = re.compile(r"^={20,}")
 
 
 def _parse_snakemake_log(path: Path) -> int | None:
@@ -137,6 +142,80 @@ def _parse_snakemake_log(path: Path) -> int | None:
     if len(timestamps) < 2:
         return None
     return int((timestamps[-1] - timestamps[0]).total_seconds())
+
+
+def _parse_snakemake_errors(path: Path) -> list[str]:
+    """Return deduplicated Snakemake error blocks from a log file.
+
+    Each entry is one unique failed rule (by rule name). Parallel jobs failing
+    with the same rule produce only one entry.
+    """
+    try:
+        lines = Path(path).read_text(errors="replace").splitlines()
+    except Exception:
+        return []
+
+    seen_rules: set[str] = set()
+    blocks: list[str] = []
+    i = 0
+    n = len(lines)
+
+    while i < n:
+        if lines[i] == "RuleException:":
+            # Collect exception description lines until the timestamp line
+            exc_start = i + 1
+            i += 1
+            while i < n and not _SNAKEMAKE_TS_LINE_RE.match(lines[i]):
+                i += 1
+            exc_lines = [l for l in lines[exc_start:i] if l.strip()]
+
+            # Skip timestamp line
+            if i < n and _SNAKEMAKE_TS_LINE_RE.match(lines[i]):
+                i += 1
+
+            # Parse "Error in rule <name>:" block
+            if i < n:
+                m = _ERROR_RULE_RE.match(lines[i])
+                if m:
+                    rule_name = m.group(1)
+                    block_lines = [lines[i]]
+                    i += 1
+
+                    # Indented detail lines (jobid, input, output, log, conda-env)
+                    while i < n and (
+                        lines[i].startswith("    ") or lines[i].startswith("\t")
+                    ):
+                        block_lines.append(lines[i])
+                        i += 1
+
+                    # Optional logfile line and inline content
+                    if i < n and lines[i].startswith("Logfile "):
+                        block_lines.append(lines[i])
+                        i += 1
+                        if block_lines[-1].rstrip().endswith(":"):
+                            # Opening === separator
+                            if i < n and _SEP_LINE_RE.match(lines[i]):
+                                block_lines.append(lines[i])
+                                i += 1
+                                while i < n and not _SEP_LINE_RE.match(lines[i]):
+                                    block_lines.append(lines[i])
+                                    i += 1
+                                if i < n:
+                                    block_lines.append(lines[i])  # closing ===
+                                    i += 1
+
+                    if rule_name not in seen_rules:
+                        seen_rules.add(rule_name)
+                        exc_text = "\n".join(exc_lines)
+                        rule_text = "\n".join(block_lines)
+                        combined = (
+                            f"{exc_text}\n\n{rule_text}" if exc_text else rule_text
+                        )
+                        blocks.append(combined.strip())
+        else:
+            i += 1
+
+    return blocks
 
 
 def extract_samples_from_config(workflow_name: str, config: dict) -> list[dict] | None:
