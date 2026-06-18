@@ -146,6 +146,12 @@ Every project, researcher, and group detail page has an **Export** dropdown. The
 | **CSV**      | Import into Excel, R, or Python for further analysis      |
 | **Markdown** | Paste into a lab notebook, grant report, or email to a PI |
 
+## Filtering by workflow
+
+A **Filter by workflow** row appears above the runs table when more than one workflow is present in the database. Click a workflow name to show only runs from that workflow; click **All** to clear the filter. The row only shows workflows that have at least one run recorded — it is not drawn from the full workflow registry.
+
+A blue banner confirms the active filter and provides a **clear filter** link.
+
 ## Filtering by status
 
 The runs list can be filtered to show only runs with a specific status. Click any segment of the **Status breakdown** donut on the [Dashboard](dashboard.md), or navigate directly:

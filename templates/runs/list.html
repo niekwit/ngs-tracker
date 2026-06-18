@@ -18,7 +18,7 @@
 
 {% macro sort_link(col, label) %}
 {% set next_dir = 'desc' if sort == col and dir == 'asc' else 'asc' %}
-<a href="{{ url_for('runs_list', sort=col, dir=next_dir, tag=tag_filter, status=status_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="text-decoration-none text-dark">
+<a href="{{ url_for('runs_list', sort=col, dir=next_dir, tag=tag_filter, status=status_filter, workflow=workflow_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="text-decoration-none text-dark">
   {{ label }}
   {% if sort == col %}
   <i class="bi bi-arrow-{{ 'up' if dir == 'asc' else 'down' }}-short"></i>
@@ -34,6 +34,7 @@
   <input type="hidden" name="dir" value="{{ dir }}">
   {% if tag_filter %}<input type="hidden" name="tag" value="{{ tag_filter }}">{% endif %}
   {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+  {% if workflow_filter %}<input type="hidden" name="workflow" value="{{ workflow_filter }}">{% endif %}
   {% if journal_filter %}<input type="hidden" name="journal" value="{{ journal_filter }}">{% endif %}
   <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>Date:</span>
   <input type="date" class="form-control form-control-sm" name="date_from"
@@ -43,7 +44,7 @@
          value="{{ date_to }}" style="width:148px;">
   <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
   {% if date_from or date_to %}
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, journal=journal_filter) }}"
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, workflow=workflow_filter, journal=journal_filter) }}"
      class="btn btn-sm btn-link text-muted p-0 text-decoration-none">
     <i class="bi bi-x-circle me-1"></i>Clear dates
   </a>
@@ -53,15 +54,31 @@
 {% if all_tags %}
 <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
   <span class="text-muted small">Filter by tag:</span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}"
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter, workflow=workflow_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}"
      class="badge text-decoration-none {% if not tag_filter %}bg-dark{% else %}bg-secondary opacity-75{% endif %}">
     All
   </a>
   {% for tag in all_tags %}
   {% set tc = tag_colors.get(tag, 'warning') %}
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag, status=status_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}"
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag, status=status_filter, workflow=workflow_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}"
      class="badge text-decoration-none {% if tag == tag_filter %}bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %}{% else %}bg-secondary opacity-75{% endif %}">
     <i class="bi bi-tag me-1"></i>{{ tag }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if all_workflows | length > 1 %}
+<div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+  <span class="text-muted small">Filter by workflow:</span>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}"
+     class="badge text-decoration-none {% if not workflow_filter %}bg-dark{% else %}bg-secondary opacity-75{% endif %}">
+    All
+  </a>
+  {% for wf in all_workflows %}
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, workflow=wf, date_from=date_from, date_to=date_to, journal=journal_filter) }}"
+     class="badge text-decoration-none {% if wf == workflow_filter %}bg-primary{% else %}bg-secondary opacity-75{% endif %}">
+    <i class="bi bi-play-circle me-1"></i>{{ wf }}
   </a>
   {% endfor %}
 </div>
@@ -74,7 +91,7 @@
     <i class="bi bi-funnel me-1"></i>
     Showing <span class="badge bg-{{ status_meta[1] }} ms-1">{{ status_meta[0] }}</span> runs
   </span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="alert-link small">clear filter</a>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, workflow=workflow_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="alert-link small">clear filter</a>
 </div>
 {% endif %}
 
@@ -84,7 +101,17 @@
     <i class="bi bi-funnel me-1"></i>
     Showing runs tagged <strong>{{ tag_filter }}</strong>
   </span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="alert-link small">clear filter</a>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, status=status_filter, workflow=workflow_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="alert-link small">clear filter</a>
+</div>
+{% endif %}
+
+{% if workflow_filter %}
+<div class="alert alert-primary py-2 mb-3 d-flex align-items-center justify-content-between">
+  <span>
+    <i class="bi bi-play-circle me-1"></i>
+    Showing runs for workflow <strong>{{ workflow_filter }}</strong>
+  </span>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, date_from=date_from, date_to=date_to, journal=journal_filter) }}" class="alert-link small">clear filter</a>
 </div>
 {% endif %}
 
@@ -100,7 +127,7 @@
       Showing runs up to <strong>{{ date_to }}</strong>
     {% endif %}
   </span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, journal=journal_filter) }}" class="alert-link small">clear filter</a>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, workflow=workflow_filter, journal=journal_filter) }}" class="alert-link small">clear filter</a>
 </div>
 {% endif %}
 
@@ -110,7 +137,7 @@
     <i class="bi bi-journal-check me-1"></i>
     Showing runs published in <strong>{{ journal_filter }}</strong>
   </span>
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, date_from=date_from, date_to=date_to) }}" class="alert-link small">clear filter</a>
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, workflow=workflow_filter, date_from=date_from, date_to=date_to) }}" class="alert-link small">clear filter</a>
 </div>
 {% endif %}
 
@@ -120,6 +147,7 @@
   <input type="hidden" name="dir" value="{{ dir }}">
   <input type="hidden" name="tag" value="{{ tag_filter }}">
   <input type="hidden" name="status" value="{{ status_filter }}">
+  <input type="hidden" name="workflow" value="{{ workflow_filter }}">
   <input type="hidden" name="date_from" value="{{ date_from }}">
   <input type="hidden" name="date_to" value="{{ date_to }}">
   <input type="hidden" name="journal" value="{{ journal_filter }}">

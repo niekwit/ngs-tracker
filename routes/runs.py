@@ -37,6 +37,7 @@ def register(app):
         direction = request.args.get("dir", "desc")
         tag_filter = request.args.get("tag", "").strip()
         status_filter = request.args.get("status", "").strip().lower()
+        workflow_filter = request.args.get("workflow", "").strip()
         date_from_str = request.args.get("date_from", "").strip()
         date_to_str = request.args.get("date_to", "").strip()
         journal_filter = request.args.get("journal", "").strip()
@@ -59,8 +60,11 @@ def register(app):
 
         all_runs = WorkflowRun.query.filter_by(trashed=False).all()
         all_tags = sorted({tag for r in all_runs for tag in r.tag_list})
+        all_workflows = sorted({r.workflow_name for r in all_runs})
 
         runs = all_runs
+        if workflow_filter:
+            runs = [r for r in runs if r.workflow_name == workflow_filter]
         if journal_filter:
             pub_project_ids = {
                 p.id for p in Project.query.filter(
@@ -104,10 +108,12 @@ def register(app):
             dir=direction,
             tag_filter=tag_filter,
             status_filter=status_filter,
+            workflow_filter=workflow_filter,
             date_from=date_from_str,
             date_to=date_to_str,
             journal_filter=journal_filter,
             all_tags=all_tags,
+            all_workflows=all_workflows,
             run_statuses=RUN_STATUSES,
             page=page,
             total_pages=total_pages,
