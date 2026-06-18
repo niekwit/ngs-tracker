@@ -150,6 +150,12 @@ Every project, researcher, and group detail page has an **Export** dropdown. The
 
 A **Filter by workflow** row appears above the runs table when more than one workflow is present in the database. Click a workflow name to show only runs from that workflow; click **All** to clear the filter. The row only shows workflows that have at least one run recorded — it is not drawn from the full workflow registry.
 
+## Filtering by mapping rate
+
+A **Mapping rate** row appears when at least one run has any sample below that workflow's configured cutoff. Click **Below cutoff (N)** to show only those runs. The badge shows the total count. Workflows with no mapping rate file attached are excluded from this check entirely.
+
+The cutoff per workflow is configured on the [Workflows](workflows.md) page (default: 60 %). Click a workflow name to show only runs from that workflow; click **All** to clear the filter. The row only shows workflows that have at least one run recorded — it is not drawn from the full workflow registry.
+
 A blue banner confirms the active filter and provides a **clear filter** link.
 
 ## Filtering by status

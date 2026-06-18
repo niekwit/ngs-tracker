@@ -38,6 +38,7 @@ def register(app):
         tag_filter = request.args.get("tag", "").strip()
         status_filter = request.args.get("status", "").strip().lower()
         workflow_filter = request.args.get("workflow", "").strip()
+        low_mapping_filter = bool(request.args.get("low_mapping", ""))
         date_from_str = request.args.get("date_from", "").strip()
         date_to_str = request.args.get("date_to", "").strip()
         journal_filter = request.args.get("journal", "").strip()
@@ -62,9 +63,22 @@ def register(app):
         all_tags = sorted({tag for r in all_runs for tag in r.tag_list})
         all_workflows = sorted({r.workflow_name for r in all_runs})
 
+        # Runs with at least one sample below the workflow's mapping rate cutoff
+        _wf_cutoffs = {w["name"]: float(w.get("mapping_rate_cutoff", 60.0)) for w in load_workflows()}
+        def _has_low_mapping(run):
+            cutoff = _wf_cutoffs.get(run.workflow_name, 60.0)
+            for f in run.attached_files:
+                if f.file_type == "mapping_rates" and f.config_dict:
+                    if any(r < cutoff for r in f.config_dict.get("rates", [])):
+                        return True
+            return False
+        low_mapping_run_ids = {r.id for r in all_runs if _has_low_mapping(r)}
+
         runs = all_runs
         if workflow_filter:
             runs = [r for r in runs if r.workflow_name == workflow_filter]
+        if low_mapping_filter:
+            runs = [r for r in runs if r.id in low_mapping_run_ids]
         if journal_filter:
             pub_project_ids = {
                 p.id for p in Project.query.filter(
@@ -109,6 +123,8 @@ def register(app):
             tag_filter=tag_filter,
             status_filter=status_filter,
             workflow_filter=workflow_filter,
+            low_mapping_filter=low_mapping_filter,
+            low_mapping_run_ids=low_mapping_run_ids,
             date_from=date_from_str,
             date_to=date_to_str,
             journal_filter=journal_filter,
@@ -477,7 +493,7 @@ def register(app):
         value = request.form.get("value", "").strip()
         redir_kw = {
             k: request.form.get(k, "")
-            for k in ("sort", "dir", "tag", "status", "date_from", "date_to")
+            for k in ("sort", "dir", "tag", "status", "workflow", "low_mapping", "date_from", "date_to")
         }
         redir_kw = {k: v for k, v in redir_kw.items() if v}
 
