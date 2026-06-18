@@ -70,6 +70,15 @@ def register(app):
         script = db.get_or_404(ProjectScript, id)
         return render_template("scripts/detail.html", script=script)
 
+    @app.route("/scripts/<int:id>/edit", methods=["POST"])
+    def script_edit(id):
+        script = db.get_or_404(ProjectScript, id)
+        script.shared_storage_path = request.form.get("shared_storage_path", "").strip()
+        db.session.commit()
+        db_log("UPDATE", "ProjectScript", id, f"{script.original_filename} shared storage path updated")
+        flash("Shared storage path updated.", "success")
+        return redirect(url_for("script_detail", id=id))
+
     @app.route("/scripts/<int:id>/delete", methods=["POST"])
     def script_delete(id):
         script = db.get_or_404(ProjectScript, id)

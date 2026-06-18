@@ -200,6 +200,7 @@ def register(app):
             workflow_tag = request.form.get("workflow_tag", "").strip()
             description = request.form.get("description", "").strip()
             notes = request.form.get("notes", "").strip()
+            shared_storage_path = request.form.get("shared_storage_path", "").strip()
             status = request.form.get("status", "completed")
             run_date = _parse_datetime(request.form.get("run_date", ""))
             selected_locs = set(request.form.getlist("backup_loc"))
@@ -250,6 +251,7 @@ def register(app):
                 notes=notes,
                 status=status,
                 backups=json.dumps(backups),
+                shared_storage_path=shared_storage_path,
                 workflow_system=workflow_system,
                 created_by=get_current_user(),
             )
@@ -318,6 +320,7 @@ def register(app):
             run.workflow_tag = request.form.get("workflow_tag", "").strip()
             run.description = request.form.get("description", "").strip()
             run.notes = request.form.get("notes", "").strip()
+            run.shared_storage_path = request.form.get("shared_storage_path", "").strip()
             run.status = request.form.get("status", "completed")
             run.run_date = _parse_datetime(request.form.get("run_date", ""))
             selected_locs = set(request.form.getlist("backup_loc"))

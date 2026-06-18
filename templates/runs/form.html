@@ -222,6 +222,14 @@
             </div>
           </div>
 
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Shared storage path</label>
+            <input type="text" class="form-control font-monospace" name="shared_storage_path"
+                   value="{{ run.shared_storage_path if run else '' }}"
+                   placeholder="e.g. /OneDrive/LabShare/runs/project_name">
+            <div class="form-text">Cloud or network path where results are shared with the researcher. Separate from backup locations.</div>
+          </div>
+
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-save me-1"></i> {{ 'Save Changes' if run else 'Create Run' }}

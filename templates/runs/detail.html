@@ -154,6 +154,13 @@
         {% if not run.backup_labels %}
         <p class="text-warning small mt-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Not backed up anywhere.</p>
         {% endif %}
+        {% if run.shared_storage_path %}
+        <hr class="my-2">
+        <div>
+          <span class="text-muted small"><i class="bi bi-cloud-arrow-up me-1"></i>Shared storage</span>
+          <div class="font-monospace small mt-1">{{ run.shared_storage_path }}</div>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>

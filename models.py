@@ -142,6 +142,7 @@ class ProjectScript(db.Model):
     stored_path = db.Column(db.String(500), nullable=False)
     language = db.Column(db.String(50), default="")
     description = db.Column(db.String(255), default="")
+    shared_storage_path = db.Column(db.String(500), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
     trashed = db.Column(db.Boolean, default=False, nullable=False)
     created_by = db.Column(db.String(100), default="")
@@ -224,6 +225,7 @@ class WorkflowRun(db.Model):
     backup_rfs = db.Column(db.Boolean, default=False)
     backup_rfs_path = db.Column(db.String(500), default="")
     backups = db.Column(db.Text, nullable=True)  # JSON list of {location, path}
+    shared_storage_path = db.Column(db.String(500), default="")
     workflow_system = db.Column(db.String(20), default="snakemake")
     tags = db.Column(db.String(500), default="")
     runtime_seconds = db.Column(db.Integer, nullable=True)

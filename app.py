@@ -71,6 +71,8 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN workflow_system VARCHAR(20) DEFAULT 'snakemake'",
             "ALTER TABLE workflow_run ADD COLUMN runtime_seconds INTEGER",
             "ALTER TABLE researcher ADD COLUMN slack_user_id VARCHAR(20) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN shared_storage_path VARCHAR(500) DEFAULT ''",
+            "ALTER TABLE project_script ADD COLUMN shared_storage_path VARCHAR(500) DEFAULT ''",
         ]:
             try:
                 db.session.execute(db.text(stmt))

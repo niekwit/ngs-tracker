@@ -45,6 +45,24 @@
   </div>
 </div>
 
+<!-- Shared storage path -->
+<div class="card mb-3">
+  <div class="card-header"><i class="bi bi-cloud-arrow-up me-1"></i> Shared Storage Path</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('script_edit', id=script.id) }}" class="d-flex gap-2 align-items-end">
+      <div class="flex-grow-1">
+        <input type="text" class="form-control font-monospace" name="shared_storage_path"
+               value="{{ script.shared_storage_path or '' }}"
+               placeholder="e.g. /OneDrive/LabShare/scripts/project_name">
+        <div class="form-text">Cloud or network path where results are shared with the researcher. Separate from backup locations.</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+        <i class="bi bi-save me-1"></i>Save
+      </button>
+    </form>
+  </div>
+</div>
+
 <!-- Output files -->
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
