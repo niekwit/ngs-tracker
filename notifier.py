@@ -77,7 +77,7 @@ _STATUS_ICON = {
 }
 
 
-def _run_blocks(run) -> list:
+def _run_blocks(run, wf_url: str | None = None) -> list:
     icon = _STATUS_ICON.get(run.status, ":bell:")
     header = f"{icon} *{run.workflow_name}* — {run.status.capitalize()}"
 
@@ -87,6 +87,8 @@ def _run_blocks(run) -> list:
     if run.workflow_tag:
         lines.append(f"*Tag:* `{run.workflow_tag}`")
     lines.append(f"*System:* {run.workflow_system or 'snakemake'}")
+    if wf_url:
+        lines.append(f"*Workflow:* {wf_url}")
     if run.created_by:
         lines.append(f"*Submitted by:* {run.created_by}")
     if run.runtime_seconds:
@@ -113,9 +115,12 @@ def send_run_notification(run) -> bool:
     """
     if not get_slack_enabled():
         return False
+    from config import load_workflows
+    workflows = load_workflows()
+    wf_url = next((w["url"] for w in workflows if w["name"] == run.workflow_name), None)
     channel = get_slack_runs_channel()
     text = f"Workflow run: {run.workflow_name} — {run.status} (project: {run.project.name})"
-    ok, err = _post(channel, text, _run_blocks(run))
+    ok, err = _post(channel, text, _run_blocks(run, wf_url=wf_url))
     if not ok:
         _log.warning("Could not send run notification: %s", err)
     return ok

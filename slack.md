@@ -5,27 +5,32 @@
 NGS Tracker posts notifications to Slack via a **Bot Token** (`xoxb-…`).
 
 ### Slack app
+
 - App name: **NGS Tracker** (workspace: NGS Tracker)
 - App ID: `A0BBELQNL5S`
 - Created at: [api.slack.com/apps](https://api.slack.com/apps)
 - Bot Token Scopes: `chat:write`, `chat:write.public`
 
 ### What is notified
-| Event | Channel |
-|---|---|
+
+| Event              | Channel      |
+| ------------------ | ------------ |
 | Snapshot succeeded | `#snapshots` |
-| Snapshot failed | `#snapshots` |
+| Snapshot failed    | `#snapshots` |
 
 Notifications fire on both manual ("Snapshot Now" button) and scheduled snapshots.
 
 ### Settings
+
 Configured in NGS Tracker → Settings → Slack Notifications:
+
 - Bot Token (stored in `~/.ngs-tracker/settings.json` as `slack_token`)
 - Snapshots channel (default: `snapshots`)
 - Enable/disable toggle
 - Test button
 
 ### Important: private channels
+
 `chat:write.public` only works for public channels. For private channels, the bot must be invited explicitly:
 
 ```
@@ -38,7 +43,6 @@ This is required for every private channel the bot should post to.
 
 ## Future plans
 
-Notify researchers when a workflow run is registered for their project. Rather than creating a channel per user/project, notifications can be sent as **Direct Messages** from the bot.
 
 ### Option A — Manual Slack Member ID
 
