@@ -1,10 +1,12 @@
 import os
+import subprocess
 import threading
 import time
 import uuid
 from datetime import datetime
+from pathlib import Path
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, url_for
 from markupsafe import Markup, escape
 
 from config import (
@@ -19,7 +21,15 @@ from config import (
     load_workflows,
     save_workflows,
 )
-from models import Project, ProjectScript, ResearchGroup, Researcher, Sample, WorkflowRun, db
+from models import (
+    Project,
+    ProjectScript,
+    ResearchGroup,
+    Researcher,
+    Sample,
+    WorkflowRun,
+    db,
+)
 
 
 def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
@@ -60,6 +70,7 @@ def register(app):
             if action == "add":
                 name = request.form.get("name", "").strip()
                 url = request.form.get("url", "").strip()
+                local_path = request.form.get("local_path", "").strip()
                 system = request.form.get("system", "snakemake")
                 if system not in WORKFLOW_SYSTEMS:
                     system = "other"
@@ -68,8 +79,12 @@ def register(app):
                     cutoff = max(0.0, min(100.0, cutoff))
                 except ValueError:
                     cutoff = 60.0
-                if not name or not url:
-                    flash("Name and URL are required.", "danger")
+                if not name:
+                    flash("Workflow name is required.", "danger")
+                elif not url and not local_path:
+                    flash("Provide a GitHub URL, a local repo path, or both.", "danger")
+                elif local_path and not Path(local_path).is_dir():
+                    flash(f"Local path not found: {local_path}", "danger")
                 elif any(w["name"] == name for w in workflows):
                     flash(f'Workflow "{name}" already exists.', "warning")
                 else:
@@ -77,6 +92,7 @@ def register(app):
                         {
                             "name": name,
                             "url": url,
+                            "local_path": local_path,
                             "system": system,
                             "mapping_rate_cutoff": cutoff,
                         }
@@ -256,6 +272,58 @@ def register(app):
             all_users=all_users,
             all_actions=all_actions,
         )
+
+    @app.route("/workflows/<name>/tags")
+    def workflow_tags(name):
+        """Return git tags (or recent commits) for a workflow with a local_path set."""
+        wf = next((w for w in load_workflows() if w["name"] == name), None)
+        if not wf:
+            return jsonify({"error": "Workflow not found"}), 404
+        local_path = wf.get("local_path", "").strip()
+        if not local_path:
+            return jsonify({"error": "No local path configured for this workflow"}), 400
+        if not Path(local_path).is_dir():
+            return jsonify({"error": f"Local path not found: {local_path}"}), 400
+        try:
+            tag_result = subprocess.run(
+                ["git", "-C", local_path, "tag", "--sort=-version:refname"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            tags = [t.strip() for t in tag_result.stdout.splitlines() if t.strip()]
+            if tags:
+                return jsonify({"type": "tags", "items": tags})
+
+            # No tags — fall back to recent commits
+            log_result = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    local_path,
+                    "log",
+                    "--oneline",
+                    "-10",
+                    "--format=%H\t%as\t%s",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            commits = []
+            for line in log_result.stdout.splitlines():
+                parts = line.split("\t", 2)
+                if len(parts) == 3:
+                    commits.append(
+                        {
+                            "sha": parts[0][:7],
+                            "date": parts[1],
+                            "subject": parts[2][:80],
+                        }
+                    )
+            return jsonify({"type": "commits", "items": commits})
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/restart", methods=["POST"])
     def restart():

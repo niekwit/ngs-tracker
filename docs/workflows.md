@@ -2,20 +2,20 @@
 
 ## Workflow registry
 
-Workflows are stored in `~/.ngs-tracker/workflows.yaml` and pre-populated from a built-in default list (all Snakemake pipelines) on first run. Each entry has three fields:
+Workflows are stored in `~/.ngs-tracker/workflows.yaml` and pre-populated from a built-in default list (all Snakemake pipelines) on first run. Each entry has the following fields:
 
 ```yaml
 - name: rna-seq-star-deseq2
   url: https://github.com/niekwit/rna-seq-star-deseq2
+  local_path: ""
   system: snakemake
+  mapping_rate_cutoff: 60.0
 
-- name: my-nf-pipeline
-  url: https://github.com/some-org/my-nf-pipeline
-  system: nextflow
-
-- name: variant-calling-cwl
-  url: https://github.com/some-org/variant-calling-cwl
-  system: cwl
+- name: private-chip-seq
+  url: ""
+  local_path: /home/you/repos/chip-seq-pipeline
+  system: snakemake
+  mapping_rate_cutoff: 60.0
 ```
 
 Manage workflows from the **Workflows** page in the sidebar or by editing the YAML file directly.
@@ -35,15 +35,30 @@ Existing entries in `workflows.yaml` that predate this field are automatically m
 
 When a workflow is selected in the new/edit run form, the matching coloured badge appears immediately below the dropdown. The same badge is shown on the run detail page next to the workflow name, and in the workflow list table on the Workflows page.
 
-## GitHub release tags
+## Private repository support
 
-When a workflow with a GitHub URL is selected, NGS Tracker fetches its releases (or tags if no releases exist) live from the GitHub API and populates a **Release tag** dropdown. The selected tag is stored with the run and shown as a linked badge on the detail page — clicking it opens that release on GitHub.
+For workflows hosted in private GitHub repositories, provide a **local path** to a clone of the repo instead of (or in addition to) a GitHub URL:
 
-If the GitHub API is unreachable the dropdown falls back to a plain text input.
+- Leave the **GitHub URL** field blank.
+- Enter the full absolute path to the local clone in **Local repo path** (e.g. `/home/you/repos/chip-seq-pipeline`).
+- The path must exist and be a valid git repository. NGS Tracker validates this when you save the workflow.
+
+The folder icon appears next to the workflow name in the Workflows table for local-path entries. On the run detail page, no clickable badge link is shown (since there is no public URL).
+
+## Release tag selection
+
+When creating or editing a run, NGS Tracker automatically populates the **Release tag** dropdown depending on how the workflow is configured:
+
+- **GitHub URL (public repos):** tags are fetched live from the GitHub API (releases, then tags, then recent commits as a fallback).
+- **Local path (private repos):** tags are read locally from the cloned repo via `git tag`. If the repo has no tags, the 10 most recent commits are shown instead.
+
+The selected tag is stored with the run. For public repos it is shown as a linked badge on the detail page — clicking it opens that release on GitHub. For local-path repos it is shown as a plain badge.
+
+If neither source is available the dropdown shows an explanatory message.
 
 ## Mapping rate cutoff
 
-Each workflow has a configurable **mapping rate cutoff** (default: **60 %**). This threshold is used when a [Mapping Rates](runs.md#mapping-rates) CSV is attached to a run of that workflow — samples whose alignment rate falls below the cutoff are highlighted in a warning banner and marked in red on the chart.
+Each workflow has a configurable **mapping rate cutoff** (default: **60 %**). This threshold is used when a [Mapping Rates](runs.md) CSV is attached to a run of that workflow — samples whose alignment rate falls below the cutoff are highlighted in a warning banner and marked in red on the chart.
 
 Change the cutoff for any workflow from the **Workflows** page by editing the percentage field next to the workflow name. The value is stored in `workflows.yaml` as `mapping_rate_cutoff`.
 

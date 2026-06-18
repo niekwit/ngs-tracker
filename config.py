@@ -386,6 +386,9 @@ def load_workflows() -> list:
         if "mapping_rate_cutoff" not in wf:
             wf["mapping_rate_cutoff"] = 60.0
             changed = True
+        if "local_path" not in wf:
+            wf["local_path"] = ""
+            changed = True
     if changed:
         save_workflows(workflows)
     return workflows

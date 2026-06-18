@@ -108,7 +108,8 @@
                 <option value="">— select workflow —</option>
                 {% for wf in workflows %}
                 <option value="{{ wf.name }}"
-                        data-url="{{ wf.url }}"
+                        data-url="{{ wf.url or '' }}"
+                        data-local="{{ 'true' if wf.get('local_path') else '' }}"
                         data-system="{{ wf.get('system', 'snakemake') }}"
                   {% if (run and run.workflow_name == wf.name) or (not run and prefill and prefill.workflow_name == wf.name) %}selected{% endif %}>
                   {{ wf.name }}
@@ -277,13 +278,74 @@
     return m ? m[1].replace(/\.git$/, '') : null;
   }
 
-  async function fetchTags(repoUrl) {
+  function _startTagFetch() {
     const tagLabel = document.getElementById('tag-label');
     tagSelect.disabled = true;
     tagSelect.innerHTML = '<option value="">Loading…</option>';
     spinner.classList.remove('d-none');
     hint.textContent = '';
     tagLabel.textContent = 'Release tag';
+  }
+
+  function _populateTags(items, preselected) {
+    const tagLabel = document.getElementById('tag-label');
+    tagSelect.innerHTML = '<option value="">— select tag —</option>';
+    items.forEach(tag => {
+      const opt = document.createElement('option');
+      opt.value = tag;
+      opt.textContent = tag;
+      if (tag === preselected) opt.selected = true;
+      tagSelect.appendChild(opt);
+    });
+    tagSelect.disabled = false;
+    spinner.classList.add('d-none');
+  }
+
+  function _populateCommits(commits, preselected, hint_text) {
+    const tagLabel = document.getElementById('tag-label');
+    tagLabel.textContent = 'Latest commit';
+    hint.textContent = hint_text;
+    tagSelect.innerHTML = '<option value="">— select commit —</option>';
+    commits.forEach(c => {
+      const sha = c.sha.substring(0, 7);
+      const date = (c.date || c.commit?.author?.date || '').substring(0, 10);
+      const subject = (c.subject || c.commit?.message?.split('\n')[0] || '').substring(0, 72);
+      const opt = document.createElement('option');
+      opt.value = sha;
+      opt.textContent = `${sha}  ${date}  ${subject}`;
+      if (preselected && sha === preselected.substring(0, 7)) opt.selected = true;
+      tagSelect.appendChild(opt);
+    });
+    tagSelect.disabled = false;
+    spinner.classList.add('d-none');
+  }
+
+  async function fetchLocalTags(wfName) {
+    _startTagFetch();
+    const preselected = tagSelect.dataset.preselected || '';
+    try {
+      const resp = await fetch(`/workflows/${encodeURIComponent(wfName)}/tags`);
+      const data = await resp.json();
+      if (data.error) {
+        tagSelect.innerHTML = `<option value="">Error: ${data.error}</option>`;
+        tagSelect.disabled = false;
+        spinner.classList.add('d-none');
+        return;
+      }
+      if (data.type === 'tags') {
+        _populateTags(data.items, preselected);
+      } else {
+        _populateCommits(data.items, preselected, 'No tags found — showing 10 latest commits.');
+      }
+    } catch (e) {
+      tagSelect.innerHTML = '<option value="">Could not read local repo</option>';
+      tagSelect.disabled = false;
+      spinner.classList.add('d-none');
+    }
+  }
+
+  async function fetchTags(repoUrl) {
+    _startTagFetch();
 
     const preselected = tagSelect.dataset.preselected || '';
     const repo = repoFromUrl(repoUrl);
@@ -322,61 +384,52 @@
         if (commitResp.ok) {
           const commits = await commitResp.json();
           if (commits.length > 0) {
-            tagLabel.textContent = 'Latest commit';
-            hint.textContent = 'No releases found — showing 5 latest commits.';
-            tagSelect.innerHTML = '<option value="">— select commit —</option>';
-            commits.forEach(c => {
-              const sha = c.sha.substring(0, 7);
-              const date = c.commit.author.date.substring(0, 10);
-              const subject = c.commit.message.split('\n')[0].substring(0, 72);
-              const opt = document.createElement('option');
-              opt.value = sha;
-              opt.textContent = `${sha}  ${date}  ${subject}`;
-              if (preselected && sha === preselected.substring(0, 7)) opt.selected = true;
-              tagSelect.appendChild(opt);
-            });
-            tagSelect.disabled = false;
-            spinner.classList.add('d-none');
+            _populateCommits(
+              commits.map(c => ({sha: c.sha, date: c.commit.author.date, subject: c.commit.message.split('\n')[0]})),
+              preselected,
+              'No releases found — showing 5 latest commits.'
+            );
             return;
           }
         }
         tagSelect.innerHTML = '<option value="">— no releases or commits found —</option>';
         hint.textContent = 'Could not find releases or commits for this workflow.';
+        tagSelect.disabled = false;
+        spinner.classList.add('d-none');
       } else {
-        tagSelect.innerHTML = '<option value="">— select tag —</option>';
-        items.forEach(tag => {
-          const opt = document.createElement('option');
-          opt.value = tag;
-          opt.textContent = tag;
-          if (tag === preselected) opt.selected = true;
-          tagSelect.appendChild(opt);
-        });
+        _populateTags(items, preselected);
       }
     } catch (e) {
       tagSelect.innerHTML = '<option value="">Could not fetch tags</option>';
       hint.textContent = 'Check your internet connection.';
+      tagSelect.disabled = false;
+      spinner.classList.add('d-none');
     }
-
-    tagSelect.disabled = false;
-    spinner.classList.add('d-none');
   }
 
-  wfSelect.addEventListener('change', function () {
-    updateSystemBadge(this.value);
-    const url = this.options[this.selectedIndex]?.dataset.url || '';
-    if (url) {
+  function loadTagsForOption(opt) {
+    const name = opt?.value || '';
+    const url = opt?.dataset.url || '';
+    const isLocal = opt?.dataset.local === 'true';
+    if (isLocal) {
+      fetchLocalTags(name);
+    } else if (url) {
       fetchTags(url);
     } else {
       tagSelect.innerHTML = '<option value="">— select workflow first —</option>';
       tagSelect.disabled = true;
       hint.textContent = '';
     }
+  }
+
+  wfSelect.addEventListener('change', function () {
+    updateSystemBadge(this.value);
+    loadTagsForOption(this.options[this.selectedIndex]);
   });
 
   // On edit page: workflow is already selected — load its tags immediately
   if (wfSelect.value) {
-    const url = wfSelect.options[wfSelect.selectedIndex]?.dataset.url || '';
-    if (url) fetchTags(url);
+    loadTagsForOption(wfSelect.options[wfSelect.selectedIndex]);
   }
 })();
 

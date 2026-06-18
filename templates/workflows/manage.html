@@ -18,18 +18,32 @@
   <div class="card-body">
     <form method="POST" class="row g-2 align-items-end">
       <input type="hidden" name="action" value="add">
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label fw-semibold mb-1">Name <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-sm" name="name"
                placeholder="e.g. rna-seq-star-deseq2" required>
       </div>
-      <div class="col-md-4">
-        <label class="form-label fw-semibold mb-1">GitHub / Repository URL <span class="text-danger">*</span></label>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">
+          GitHub URL
+          <span class="text-muted fw-normal small">(public repos)</span>
+        </label>
         <input type="url" class="form-control form-control-sm" name="url"
-               placeholder="https://github.com/owner/repo" required>
+               placeholder="https://github.com/owner/repo">
       </div>
-      <div class="col-md-2">
-        <label class="form-label fw-semibold mb-1">Workflow system</label>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">
+          Local repo path
+          <span class="text-muted fw-normal small">(private repos)</span>
+          <i class="bi bi-info-circle text-muted ms-1"
+             title="Absolute path to a local clone of the repo. Used to read git tags when the GitHub URL is not accessible."
+             data-bs-toggle="tooltip"></i>
+        </label>
+        <input type="text" class="form-control form-control-sm" name="local_path"
+               placeholder="/home/you/repos/my-workflow">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label fw-semibold mb-1">System</label>
         <select class="form-select form-select-sm" name="system">
           {% for key, meta in workflow_systems.items() %}
           <option value="{{ key }}">{{ meta.label }}</option>
@@ -52,6 +66,9 @@
         </button>
       </div>
     </form>
+    <p class="text-muted small mt-2 mb-0">
+      Provide a GitHub URL, a local path, or both. For private repos, leave the URL empty and enter the local clone path — NGS Tracker will read tags directly from it.
+    </p>
   </div>
 </div>
 
@@ -68,7 +85,7 @@
         <tr>
           <th>Name</th>
           <th>System</th>
-          <th>Repository URL</th>
+          <th>Repository</th>
           <th>Mapping cutoff</th>
           <th></th>
         </tr>
@@ -84,11 +101,21 @@
               {{ sys.label }}
             </span>
           </td>
-          <td class="align-middle">
+          <td class="align-middle small">
+            {% if wf.url %}
             <a href="{{ wf.url }}" target="_blank" rel="noopener"
-               class="text-decoration-none text-muted small">
+               class="text-decoration-none text-muted d-block">
               <i class="bi bi-github me-1"></i>{{ wf.url }}
             </a>
+            {% endif %}
+            {% if wf.get('local_path') %}
+            <span class="text-muted">
+              <i class="bi bi-folder me-1"></i>{{ wf.local_path }}
+            </span>
+            {% endif %}
+            {% if not wf.url and not wf.get('local_path') %}
+            <span class="text-muted fst-italic">—</span>
+            {% endif %}
           </td>
           <td class="align-middle">
             <form method="POST" class="d-flex align-items-center gap-1">

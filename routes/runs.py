@@ -15,7 +15,13 @@ from config import (
 )
 from markupsafe import Markup
 
-from helpers import _compare_configs, _parse_datetime, extract_samples_from_config, find_duplicate_runs, get_journal_name
+from helpers import (
+    _compare_configs,
+    _parse_datetime,
+    extract_samples_from_config,
+    find_duplicate_runs,
+    get_journal_name,
+)
 from models import (
     FILE_TYPES,
     RUN_STATUSES,
@@ -64,7 +70,11 @@ def register(app):
         all_workflows = sorted({r.workflow_name for r in all_runs})
 
         # Runs with at least one sample below the workflow's mapping rate cutoff
-        _wf_cutoffs = {w["name"]: float(w.get("mapping_rate_cutoff", 60.0)) for w in load_workflows()}
+        _wf_cutoffs = {
+            w["name"]: float(w.get("mapping_rate_cutoff", 60.0))
+            for w in load_workflows()
+        }
+
         def _has_low_mapping(run):
             cutoff = _wf_cutoffs.get(run.workflow_name, 60.0)
             for f in run.attached_files:
@@ -72,6 +82,7 @@ def register(app):
                     if any(r < cutoff for r in f.config_dict.get("rates", [])):
                         return True
             return False
+
         low_mapping_run_ids = {r.id for r in all_runs if _has_low_mapping(r)}
 
         runs = all_runs
@@ -81,7 +92,8 @@ def register(app):
             runs = [r for r in runs if r.id in low_mapping_run_ids]
         if journal_filter:
             pub_project_ids = {
-                p.id for p in Project.query.filter(
+                p.id
+                for p in Project.query.filter(
                     Project.trashed == False,
                     Project.published == True,
                     Project.publication_url.isnot(None),
@@ -142,7 +154,7 @@ def register(app):
     def run_detail(id):
         run = db.get_or_404(WorkflowRun, id)
         workflows = load_workflows()
-        wf_urls = {w["name"]: w["url"] for w in workflows}
+        wf_urls = {w["name"]: w.get("url") or None for w in workflows}
         wf_entry = next((w for w in workflows if w["name"] == run.workflow_name), {})
         mapping_rate_cutoff = float(wf_entry.get("mapping_rate_cutoff", 60.0))
 
@@ -176,7 +188,9 @@ def register(app):
         config_samples = None
         for f in run.attached_files:
             if f.file_type == "config" and f.config_dict:
-                extracted = extract_samples_from_config(run.workflow_name, f.config_dict)
+                extracted = extract_samples_from_config(
+                    run.workflow_name, f.config_dict
+                )
                 if extracted:
                     config_samples = extracted
                     break
@@ -344,7 +358,9 @@ def register(app):
             run.workflow_tag = request.form.get("workflow_tag", "").strip()
             run.description = request.form.get("description", "").strip()
             run.notes = request.form.get("notes", "").strip()
-            run.shared_storage_path = request.form.get("shared_storage_path", "").strip()
+            run.shared_storage_path = request.form.get(
+                "shared_storage_path", ""
+            ).strip()
             run.status = request.form.get("status", "completed")
             run.run_date = _parse_datetime(request.form.get("run_date", ""))
             selected_locs = set(request.form.getlist("backup_loc"))
@@ -493,7 +509,16 @@ def register(app):
         value = request.form.get("value", "").strip()
         redir_kw = {
             k: request.form.get(k, "")
-            for k in ("sort", "dir", "tag", "status", "workflow", "low_mapping", "date_from", "date_to")
+            for k in (
+                "sort",
+                "dir",
+                "tag",
+                "status",
+                "workflow",
+                "low_mapping",
+                "date_from",
+                "date_to",
+            )
         }
         redir_kw = {k: v for k, v in redir_kw.items() if v}
 
@@ -580,7 +605,11 @@ def register(app):
 
     @app.route("/runs/<int:id>/slack", methods=["GET", "POST"])
     def run_slack(id):
-        from notifier import build_run_message, channel_from_group_name, send_manual_run_message
+        from notifier import (
+            build_run_message,
+            channel_from_group_name,
+            send_manual_run_message,
+        )
 
         run = db.get_or_404(WorkflowRun, id)
 
@@ -589,20 +618,26 @@ def register(app):
 
         # Workflow URL from registry
         wf_list = load_workflows()
-        wf_url = next((w["url"] for w in wf_list if w["name"] == run.workflow_name), None)
+        wf_url = next(
+            (w["url"] for w in wf_list if w["name"] == run.workflow_name), None
+        )
 
         # Extract samples for the default message
         samples = None
         for f in run.attached_files:
             if f.file_type == "config" and f.config_dict:
-                extracted = extract_samples_from_config(run.workflow_name, f.config_dict)
+                extracted = extract_samples_from_config(
+                    run.workflow_name, f.config_dict
+                )
                 if extracted:
                     samples = extracted
                     break
 
         if request.method == "POST":
             message = request.form.get("message", "").strip()
-            override_channel = request.form.get("channel", "").strip().lstrip("#") or channel
+            override_channel = (
+                request.form.get("channel", "").strip().lstrip("#") or channel
+            )
             if not message:
                 flash("Message cannot be empty.", "danger")
                 return render_template(
