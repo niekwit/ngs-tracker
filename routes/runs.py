@@ -9,6 +9,7 @@ from config import (
     get_backup_locations,
     get_current_user,
     get_default_tags,
+    get_slack_enabled,
     load_run_templates,
     load_workflows,
 )
@@ -170,6 +171,7 @@ def register(app):
             mapping_rate_cutoff=mapping_rate_cutoff,
             duplicate_runs=duplicate_runs,
             config_samples=config_samples,
+            slack_enabled=get_slack_enabled(),
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
@@ -553,3 +555,59 @@ def register(app):
             flash("Unknown batch action.", "danger")
 
         return redirect(url_for("runs_list", **redir_kw))
+
+    @app.route("/runs/<int:id>/slack", methods=["GET", "POST"])
+    def run_slack(id):
+        from notifier import build_run_message, channel_from_group_name, send_manual_run_message
+
+        run = db.get_or_404(WorkflowRun, id)
+
+        # Derive channel from research group name
+        channel = channel_from_group_name(run.project.researcher.group.name)
+
+        # Extract samples for the default message
+        samples = None
+        for f in run.attached_files:
+            if f.file_type == "config" and f.config_dict:
+                extracted = extract_samples_from_config(run.workflow_name, f.config_dict)
+                if extracted:
+                    samples = extracted
+                    break
+
+        if request.method == "POST":
+            message = request.form.get("message", "").strip()
+            override_channel = request.form.get("channel", "").strip().lstrip("#") or channel
+            if not message:
+                flash("Message cannot be empty.", "danger")
+                return render_template(
+                    "runs/slack_compose.html",
+                    run=run,
+                    channel=override_channel,
+                    message=message,
+                )
+            ok, err = send_manual_run_message(override_channel, message)
+            if ok:
+                db_log(
+                    "CREATE",
+                    "SlackMessage",
+                    run.id,
+                    f"Slack message sent to #{override_channel} for run {run.workflow_name} #{run.id}",
+                )
+                flash(f"Message sent to #{override_channel}.", "success")
+                return redirect(url_for("run_detail", id=id))
+            else:
+                flash(f"Failed to send Slack message: {err}", "danger")
+                return render_template(
+                    "runs/slack_compose.html",
+                    run=run,
+                    channel=override_channel,
+                    message=message,
+                )
+
+        default_message = build_run_message(run, samples)
+        return render_template(
+            "runs/slack_compose.html",
+            run=run,
+            channel=channel,
+            message=default_message,
+        )

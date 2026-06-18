@@ -105,6 +105,11 @@
         <i class="bi bi-copy me-1"></i> Clone
       </button>
     </form>
+    {% if slack_enabled %}
+    <a href="{{ url_for('run_slack', id=run.id) }}" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-slack me-1"></i> Notify
+    </a>
+    {% endif %}
     <a href="{{ url_for('run_edit', id=run.id) }}" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-pencil me-1"></i> Edit
     </a>

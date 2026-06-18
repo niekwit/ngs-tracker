@@ -133,3 +133,59 @@ def test_notification(channel: str) -> tuple[bool, str]:
         }
     ]
     return _post(channel, "NGS Tracker test message.", blocks)
+
+
+import re as _re
+
+
+def channel_from_group_name(name: str) -> str:
+    """Derive a Slack channel slug from a research group name.
+
+    e.g. "James Nathan" → "james-nathan"
+         "Nathan Lab (Cambridge)" → "nathan-lab-cambridge"
+    """
+    slug = name.lower()
+    slug = _re.sub(r"[^a-z0-9\s-]", "", slug)
+    slug = _re.sub(r"[\s]+", "-", slug.strip())
+    slug = _re.sub(r"-+", "-", slug)
+    return slug
+
+
+def build_run_message(run, samples: list | None = None) -> str:
+    """Build the default mrkdwn message for a manual run notification."""
+    researcher = run.project.researcher
+    mention = f"<@{researcher.slack_user_id}>" if researcher.slack_user_id else researcher.name
+
+    icon = _STATUS_ICON.get(run.status, ":bell:")
+    lines = [
+        f"Hi {mention},",
+        "",
+        f"Your *{run.project.name}* analysis (*{run.workflow_name}* — Run #{run.id}) is ready. {icon}",
+        "",
+    ]
+
+    lines.append(f"• *Status:* {run.status.capitalize()}")
+    lines.append(f"• *Date:* {run.run_date.strftime('%Y-%m-%d')}")
+
+    if run.workflow_tag:
+        lines.append(f"• *Version:* `{run.workflow_tag}`")
+
+    if run.description:
+        lines.append(f"• *Description:* {run.description}")
+
+    if samples:
+        sample_names = ", ".join(s["name"] for s in samples[:10])
+        if len(samples) > 10:
+            sample_names += f" (+{len(samples) - 10} more)"
+        lines.append(f"• *Samples:* {sample_names}")
+
+    if run.shared_storage_path:
+        lines.append(f"• *Data location:* `{run.shared_storage_path}`")
+
+    lines += ["", "Please let me know if you have any questions."]
+    return "\n".join(lines)
+
+
+def send_manual_run_message(channel: str, message: str) -> tuple[bool, str]:
+    """Post a manually composed run message. Bypasses the enabled flag."""
+    return _post(channel, message)
