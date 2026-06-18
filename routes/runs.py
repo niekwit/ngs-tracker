@@ -565,6 +565,10 @@ def register(app):
         # Derive channel from research group name
         channel = channel_from_group_name(run.project.researcher.group.name)
 
+        # Workflow URL from registry
+        wf_list = load_workflows()
+        wf_url = next((w["url"] for w in wf_list if w["name"] == run.workflow_name), None)
+
         # Extract samples for the default message
         samples = None
         for f in run.attached_files:
@@ -604,7 +608,7 @@ def register(app):
                     message=message,
                 )
 
-        default_message = build_run_message(run, samples)
+        default_message = build_run_message(run, samples, wf_url=wf_url)
         return render_template(
             "runs/slack_compose.html",
             run=run,

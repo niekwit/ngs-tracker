@@ -151,7 +151,7 @@ def channel_from_group_name(name: str) -> str:
     return slug
 
 
-def build_run_message(run, samples: list | None = None) -> str:
+def build_run_message(run, samples: list | None = None, wf_url: str | None = None) -> str:
     """Build the default mrkdwn message for a manual run notification."""
     researcher = run.project.researcher
     mention = f"<@{researcher.slack_user_id}>" if researcher.slack_user_id else researcher.name
@@ -166,6 +166,9 @@ def build_run_message(run, samples: list | None = None) -> str:
 
     lines.append(f"• *Status:* {run.status.capitalize()}")
     lines.append(f"• *Date:* {run.run_date.strftime('%Y-%m-%d')}")
+
+    if wf_url:
+        lines.append(f"• *Workflow code:* {wf_url}")
 
     if run.workflow_tag:
         lines.append(f"• *Version:* `{run.workflow_tag}`")

@@ -220,6 +220,7 @@ The compose page pre-fills a message in [Slack mrkdwn](https://api.slack.com/ref
 - A @mention of the researcher (using their Slack user ID if set — see [Researcher Slack user ID](settings.md#researcher-slack-user-id))
 - Project name, workflow name, and run ID
 - Run status with an emoji indicator
+- Workflow code URL (from the [workflow registry](workflows.md), if the workflow is registered)
 - Workflow version/tag (if set)
 - Short description (if set)
 - Sample names from the parsed config file (if available)
