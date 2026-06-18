@@ -182,7 +182,7 @@ Go to **Settings → Slack Notifications**:
 
 This must be done for every private channel the bot should post to.
 
-### What is notified
+### What is notified automatically
 
 | Event | Channel setting |
 |---|---|
@@ -193,6 +193,18 @@ This must be done for every private channel the bot should post to.
 Snapshot notifications fire on both manual snapshots ("Snapshot Now" button) and scheduled automatic snapshots.
 
 The workflow run message includes: project name, researcher, workflow name and tag, workflow system, submitted by, runtime (if available), description, and tags.
+
+### Manual run notifications
+
+In addition to automatic notifications, NGS Tracker supports composing and sending a message manually from any workflow run detail page — see [Slack notification](runs.md#slack-notification) in the runs documentation.
+
+### Researcher Slack user ID
+
+To include a proper `@mention` in manual run notification messages, store each researcher's Slack member ID on their profile. To find it in Slack: open the researcher's profile → click **More** → **Copy member ID**. The ID looks like `U012AB3CD`.
+
+Set it by going to the researcher's edit page (**Groups → Researcher → Edit**). Once set, the ID is shown on the researcher detail page and is used automatically when composing a Slack message for any of their runs.
+
+If no Slack user ID is set for a researcher, their plain display name is used in the message instead.
 
 ### Settings stored
 

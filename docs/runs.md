@@ -15,8 +15,9 @@ When creating or editing a run you can fill in:
 | **Release tag**   | Fetched live from GitHub after a workflow is chosen |
 | **Description**   | Short free-text summary                             |
 | **Tags**          | Tick from the default list; add new tags inline     |
-| **Notes**         | Long-form Markdown text                             |
-| **Backup status** | Per-location checkboxes with optional storage path  |
+| **Notes**                | Long-form Markdown text                                    |
+| **Backup status**        | Per-location checkboxes with optional storage path         |
+| **Shared storage path**  | Cloud/network path shared with the researcher (optional)   |
 
 ![Create New Run](_static/screenshots/create_new_run.png)
 
@@ -120,6 +121,12 @@ Tags are free-text labels shared across all runs. A default list is maintained i
 - Type a new tag to add it to the defaults automatically and select it
 - Tags appear as clickable badges on the run detail page and link to a filtered view of all runs with that tag
 
+## Shared storage path
+
+The **Shared storage path** field stores the cloud or network location where results are made available to the researcher — for example a OneDrive folder, a shared network drive, or an HPC project directory. It is separate from the [backup status](#backup-status) fields, which record internal copies for data safety.
+
+The path is shown on the run detail page in the Backup Status card and is included in the [Slack notification](#slack-notification) message if set.
+
 ## Backup status
 
 Each run records which backup locations hold a copy, along with an optional storage path for each. Locations are configured in [Settings](settings.md).
@@ -201,6 +208,48 @@ Select multiple runs on the runs list page and apply an action to all of them at
 - **Mark Backup** records the location without a path. To add a path, edit the run individually.
 - All batch actions are written to the [audit log](audit-log.md).
 - Filters and sort order are preserved after a batch action.
+
+## Slack notification
+
+Once [Slack is configured](settings.md#slack-notifications), a green **Notify** button appears on every run detail page. Clicking it opens a compose page where you can review and edit a message before sending — useful for cases where the data needs to be checked before sharing with a researcher.
+
+### Compose page
+
+The compose page pre-fills a message in [Slack mrkdwn](https://api.slack.com/reference/surfaces/formatting) format containing:
+
+- A @mention of the researcher (using their Slack user ID if set — see [Researcher Slack user ID](settings.md#researcher-slack-user-id))
+- Project name, workflow name, and run ID
+- Run status with an emoji indicator
+- Workflow version/tag (if set)
+- Short description (if set)
+- Sample names from the parsed config file (if available)
+- Shared storage path (if set)
+
+All of this text is fully editable before sending.
+
+### Channel name
+
+The destination channel is automatically derived from the **research group name** — spaces become hyphens and the name is lowercased:
+
+| Research group | Derived channel |
+|---|---|
+| James Nathan | `#james-nathan` |
+| Nathan Lab (Cambridge) | `#nathan-lab-cambridge` |
+| RNA-seq Core | `#rna-seq-core` |
+
+The derived channel is shown in an editable field on the compose page, so you can correct it if the actual Slack channel name differs.
+
+### Private channels
+
+If the target channel is private, invite the bot from within Slack before sending:
+
+```
+/invite @NGS Tracker
+```
+
+### Audit log
+
+Every message sent is written to the [audit log](audit-log.md) as a `CREATE SlackMessage` entry recording the channel name and run.
 
 ## Pagination
 
