@@ -188,9 +188,12 @@ This must be done for every private channel the bot should post to.
 |---|---|
 | Snapshot succeeded | Snapshots channel |
 | Snapshot failed | Snapshots channel |
-| Workflow run registered via REST API | Workflow runs channel |
+| Workflow run created via REST API | Workflow runs channel |
+| Workflow run status changed via REST API | Workflow runs channel |
 
 Snapshot notifications fire on both manual snapshots ("Snapshot Now" button) and scheduled automatic snapshots.
+
+The workflow run message is sent when a run is created via the API **or** when its status is changed via a PATCH request — so runs created via the web form still get a notification when `register_run()` marks them as completed or failed.
 
 The workflow run message includes: project name, researcher, workflow name and tag, workflow system, submitted by, runtime (if available), description, and tags.
 

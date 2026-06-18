@@ -257,10 +257,13 @@ def register(app):
         run = db.get_or_404(WorkflowRun, id)
         data = request.get_json(force=True, silent=True) or {}
 
+        status_changed = False
         if "status" in data:
             if data["status"] not in RUN_STATUSES:
                 return jsonify({"error": f"Invalid status '{data['status']}'"}), 400
-            run.status = data["status"]
+            if data["status"] != run.status:
+                run.status = data["status"]
+                status_changed = True
         if "description" in data:
             run.description = data["description"]
         if "notes" in data:
@@ -275,6 +278,9 @@ def register(app):
 
         db.session.commit()
         db_log("UPDATE", "WorkflowRun", run.id, f"{run.workflow_name} via API")
+        if status_changed:
+            from notifier import send_run_notification
+            send_run_notification(run)
         return jsonify(_run_dict(run))
 
     # ── Files — attach from disk path ─────────────────────────────────────────
