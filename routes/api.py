@@ -44,7 +44,6 @@ from models import (
     db,
 )
 
-
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 
@@ -208,9 +207,11 @@ def register(app):
             description=data.get("description", ""),
             status=status,
             notes=data.get("notes", ""),
-            tags=",".join(data["tags"])
-            if isinstance(data.get("tags"), list)
-            else data.get("tags", ""),
+            tags=(
+                ",".join(data["tags"])
+                if isinstance(data.get("tags"), list)
+                else data.get("tags", "")
+            ),
             created_by=data.get("created_by", ""),
             backups=json.dumps(data.get("backups", [])),
         )
@@ -280,6 +281,7 @@ def register(app):
         db_log("UPDATE", "WorkflowRun", run.id, f"{run.workflow_name} via API")
         if status_changed:
             from notifier import send_run_notification
+
             send_run_notification(run)
         return jsonify(_run_dict(run))
 
@@ -322,6 +324,7 @@ def register(app):
         stored_path = run_dir / f"{uuid.uuid4().hex}_{original_name}"
         shutil.copy2(src, stored_path)
 
+        runtime_updated = False
         if file_type == "config":
             parsed_config = _parse_snakemake_config(stored_path)
         elif file_type == "mapping_rates":
@@ -331,6 +334,7 @@ def register(app):
             secs = _parse_snakemake_log(stored_path)
             if secs is not None and run.runtime_seconds is None:
                 run.runtime_seconds = secs
+                runtime_updated = True
         else:
             parsed_config = None
 
@@ -351,6 +355,10 @@ def register(app):
             f"{original_name} [{file_type}] on run id={id} via API",
         )
         db.session.commit()
+        if runtime_updated:
+            from notifier import send_run_notification
+
+            send_run_notification(run)
         return jsonify(_file_dict(attached)), 201
 
     # ── Projects ──────────────────────────────────────────────────────────────
