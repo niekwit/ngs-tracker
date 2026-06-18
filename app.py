@@ -192,6 +192,65 @@ def _start_snapshot_scheduler(app: Flask) -> None:
 _start_snapshot_scheduler(app)
 
 
+def _start_backup_reminder_scheduler(app: Flask) -> None:
+    """Daemon thread: send a Slack backup-overdue alert at most once per day."""
+    import logging
+
+    _log = logging.getLogger("ngs_tracker.backup_reminder")
+
+    def _loop():
+        while True:
+            time.sleep(3600)
+            try:
+                with app.app_context():
+                    from datetime import datetime, timedelta
+
+                    from config import (
+                        get_backup_reminder_days,
+                        get_last_backup_alert_sent,
+                        get_slack_enabled,
+                        set_last_backup_alert_sent,
+                    )
+                    from notifier import send_backup_reminder_notification
+
+                    reminder_days = get_backup_reminder_days()
+                    if reminder_days == 0 or not get_slack_enabled():
+                        continue
+
+                    today = datetime.utcnow().strftime("%Y-%m-%d")
+                    if get_last_backup_alert_sent() == today:
+                        continue
+
+                    from models import Project, Researcher, WorkflowRun
+
+                    cutoff = datetime.utcnow() - timedelta(days=reminder_days)
+                    all_runs = WorkflowRun.query.filter_by(trashed=False).all()
+                    overdue = sorted(
+                        [
+                            r
+                            for r in all_runs
+                            if not r.backups_list
+                            and r.run_date < cutoff
+                            and r.status in ("completed", "failed")
+                            and "published-data" not in r.tag_list
+                        ],
+                        key=lambda r: r.run_date,
+                    )
+                    if overdue:
+                        ok = send_backup_reminder_notification(overdue, reminder_days)
+                        if ok:
+                            set_last_backup_alert_sent(today)
+            except Exception as exc:
+                _log.error("Backup reminder check failed: %s", exc, exc_info=True)
+
+    threading.Thread(
+        target=_loop, daemon=True, name="backup-reminder-scheduler"
+    ).start()
+
+
+_start_backup_reminder_scheduler(app)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("NGS_PORT", 5000))
     host = os.environ.get("NGS_HOST", "127.0.0.1")

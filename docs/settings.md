@@ -72,7 +72,11 @@ The backup reminder flags runs that have been completed or failed for longer tha
 
 The default threshold is **30 days**. Change it from the Settings page under **Backup Reminder**. The setting persists in `settings.json` as `backup_reminder_days`.
 
-Only runs with status **Completed** or **Failed** are flagged — Running and Pending runs are excluded because they have not yet produced data worth backing up.
+Only runs with status **Completed** or **Failed** are flagged — Running and Pending runs are excluded because they have not yet produced data worth backing up. Runs tagged `published-data` are also excluded.
+
+### Slack alert
+
+If Slack notifications are enabled, NGS Tracker also posts a daily summary to the **Workflow runs channel** whenever there are overdue runs. The alert fires at most once per calendar day (UTC) and is skipped on days when there are no overdue runs. The date of the last alert is stored in `settings.json` as `last_backup_alert_sent`.
 
 ## Snapshot backup
 
@@ -190,16 +194,19 @@ This must be done for every private channel the bot should post to.
 | Snapshot failed | Snapshots channel |
 | Workflow run created via REST API | Workflow runs channel |
 | Workflow run status changed via REST API | Workflow runs channel |
+| Daily backup-overdue reminder (when runs need backup) | Workflow runs channel |
 
 Snapshot notifications fire on both manual snapshots ("Snapshot Now" button) and scheduled automatic snapshots.
 
 The workflow run message is sent when a run is created via the API **or** when its status is changed via a PATCH request — so runs created via the web form still get a notification when `register_run()` marks them as completed or failed.
 
-The workflow run message includes: project name, researcher, workflow name and tag, workflow system, submitted by, runtime (if available), description, and tags.
+The workflow run message includes: project name, researcher, workflow name and tag, workflow system, submitted by, runtime (if available), description, and tags. For failed runs, the Snakemake error block is appended.
+
+The backup reminder lists all overdue runs (project, workflow, status, age in days). It fires at most once per calendar day (UTC) and is skipped on days when there are no overdue runs. Runs tagged `published-data` are excluded.
 
 ### Manual run notifications
 
-In addition to automatic notifications, NGS Tracker supports composing and sending a message manually from any workflow run detail page — see [Slack notification](runs.md#slack-notification) in the runs documentation.
+In addition to automatic notifications, NGS Tracker supports composing and sending a message manually from any workflow run detail page — see [Slack notification](runs.md) in the runs documentation.
 
 ### Researcher Slack user ID
 

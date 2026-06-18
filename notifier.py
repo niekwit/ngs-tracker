@@ -69,6 +69,46 @@ def send_snapshot_notification(success: bool, detail: str) -> bool:
     return ok
 
 
+def send_backup_reminder_notification(runs: list, reminder_days: int) -> bool:
+    """Post a backup-overdue reminder to the workflow_runs channel.
+
+    Only sends when Slack is enabled. Returns True on success.
+    """
+    if not get_slack_enabled():
+        return False
+    if not runs:
+        return False
+
+    from datetime import datetime
+
+    now = datetime.utcnow()
+    n = len(runs)
+    header = f":warning: *Backup reminder* — {n} run{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} no backup"
+
+    lines = []
+    for run in runs:
+        days_old = (now - run.run_date).days
+        lines.append(
+            f"• *{run.project.name}* — `{run.workflow_name}` — "
+            f"{run.status} {days_old} day{'s' if days_old != 1 else ''} ago"
+        )
+
+    body = "\n".join(lines)
+    if len(body) > 2900:
+        body = body[:2900] + "\n…(list truncated)"
+
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": header}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": body}},
+    ]
+    text = f"Backup reminder: {n} run(s) overdue (>{reminder_days} days, no backup recorded)"
+    channel = get_slack_runs_channel()
+    ok, err = _post(channel, text, blocks)
+    if not ok:
+        _log.warning("Could not send backup reminder notification: %s", err)
+    return ok
+
+
 _STATUS_ICON = {
     "completed": ":white_check_mark:",
     "failed": ":x:",
