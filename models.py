@@ -54,6 +54,7 @@ class Researcher(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(150), default="")
+    slack_user_id = db.Column(db.String(20), default="")
     group_id = db.Column(db.Integer, db.ForeignKey("research_group.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=_now)
     trashed = db.Column(db.Boolean, default=False, nullable=False)

@@ -20,6 +20,9 @@
       {% if researcher.email %}
       &nbsp;·&nbsp;<i class="bi bi-envelope me-1"></i>{{ researcher.email }}
       {% endif %}
+      {% if researcher.slack_user_id %}
+      &nbsp;·&nbsp;<i class="bi bi-slack me-1"></i><span class="font-monospace">{{ researcher.slack_user_id }}</span>
+      {% endif %}
     </span>
   </div>
   <div class="d-flex gap-2">

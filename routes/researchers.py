@@ -47,6 +47,7 @@ def register(app):
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             email = request.form.get("email", "").strip()
+            slack_user_id = request.form.get("slack_user_id", "").strip()
             group_id = request.form.get("group_id", type=int)
             if not name or not group_id:
                 flash("Name and group are required.", "danger")
@@ -56,7 +57,7 @@ def register(app):
                     groups=groups,
                     preselected=preselected,
                 )
-            researcher = Researcher(name=name, email=email, group_id=group_id)
+            researcher = Researcher(name=name, email=email, slack_user_id=slack_user_id, group_id=group_id)
             db.session.add(researcher)
             db.session.commit()
             db_log(
@@ -86,6 +87,7 @@ def register(app):
         if request.method == "POST":
             researcher.name = request.form.get("name", "").strip()
             researcher.email = request.form.get("email", "").strip()
+            researcher.slack_user_id = request.form.get("slack_user_id", "").strip()
             researcher.group_id = request.form.get("group_id", type=int)
             db.session.commit()
             db_log("UPDATE", "Researcher", id, researcher.name)

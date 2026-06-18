@@ -38,10 +38,17 @@
             <input type="text" class="form-control" name="name"
                    value="{{ researcher.name if researcher else '' }}" required autofocus>
           </div>
-          <div class="mb-4">
+          <div class="mb-3">
             <label class="form-label fw-semibold">Email</label>
             <input type="email" class="form-control" name="email"
                    value="{{ researcher.email if researcher else '' }}">
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Slack user ID</label>
+            <input type="text" class="form-control font-monospace" name="slack_user_id"
+                   value="{{ researcher.slack_user_id if researcher else '' }}"
+                   placeholder="e.g. U012AB3CD">
+            <div class="form-text">Optional. Find it in Slack: click the member's profile → <em>More</em> → <em>Copy member ID</em>.</div>
           </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">
