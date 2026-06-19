@@ -292,7 +292,7 @@
 {% macro render_cfg(d, depth) %}
   {% for key, val in d.items() %}
     {% if val is mapping %}
-    <details class="cfg-section mb-1" {% if depth == 0 %}open{% endif %}>
+    <details class="cfg-section mb-1">
       <summary class="cfg-summary">
         <i class="bi bi-chevron-right cfg-arrow me-1"></i>
         <span class="fw-semibold">{{ key }}</span>
@@ -329,7 +329,7 @@
     <span class="text-muted small ms-1">— {{ cf.original_filename }}</span>
     <div class="ms-auto d-flex gap-2">
       <button class="btn btn-xs btn-outline-secondary" onclick="toggleCfg(this)">
-        <i class="bi bi-arrows-collapse me-1"></i>Collapse all
+        <i class="bi bi-arrows-expand me-1"></i>Expand all
       </button>
       <a href="{{ url_for('file_download', id=cf.id) }}" class="btn btn-xs btn-outline-secondary">
         <i class="bi bi-download me-1"></i>Download
