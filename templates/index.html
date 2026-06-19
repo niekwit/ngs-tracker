@@ -213,6 +213,7 @@
               <th>Project</th>
               <th>Date</th>
               <th>Status</th>
+              <th>Tags</th>
             </tr>
           </thead>
           <tbody>
@@ -222,6 +223,12 @@
               <td><a href="{{ url_for('project_detail', id=run.project.id) }}" class="text-decoration-none text-secondary">{{ run.project.name }}</a></td>
               <td class="text-muted small">{{ run.run_date.strftime('%Y-%m-%d') }}</td>
               <td><span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span></td>
+              <td>
+                {% for tag in run.tag_list %}
+                {% set tc = tag_colors.get(tag, 'secondary') %}
+                <span class="badge bg-{{ tc }}{% if tc in TAG_LIGHT_COLORS %} text-dark{% endif %}" style="font-size:.7rem;">{{ tag }}</span>
+                {% endfor %}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
