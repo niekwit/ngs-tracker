@@ -4,7 +4,7 @@ from pathlib import Path
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
 
-from config import db_log, get_current_user, get_storage_path
+from config import db_log, get_current_user, get_storage_path, resolve_stored_path
 from helpers import _delete_file
 from models import SCRIPT_LANGUAGES, Project, ProjectScript, ScriptOutputFile, db
 
@@ -58,7 +58,7 @@ def register(app):
     @app.route("/scripts/<int:id>/download")
     def script_download(id):
         script = db.get_or_404(ProjectScript, id)
-        stored = Path(script.stored_path)
+        stored = resolve_stored_path(script.stored_path)
         if not stored.exists():
             abort(404)
         return send_file(
@@ -133,7 +133,7 @@ def register(app):
     @app.route("/script-outputs/<int:id>/download")
     def script_output_download(id):
         out = db.get_or_404(ScriptOutputFile, id)
-        stored = Path(out.stored_path)
+        stored = resolve_stored_path(out.stored_path)
         if not stored.exists():
             abort(404)
         return send_file(
@@ -143,7 +143,7 @@ def register(app):
     @app.route("/script-outputs/<int:id>/view")
     def script_output_view(id):
         out = db.get_or_404(ScriptOutputFile, id)
-        stored = Path(out.stored_path)
+        stored = resolve_stored_path(out.stored_path)
         if not stored.exists():
             abort(404)
         return send_file(

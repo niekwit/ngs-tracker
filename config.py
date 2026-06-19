@@ -189,6 +189,32 @@ def get_storage_path() -> Path:
     return SETTINGS_DIR / "uploads"
 
 
+# Known top-level subdirectories under storage_path
+_STORAGE_SUBDIRS = {"runs", "samples", "scripts", "outputs"}
+
+
+def resolve_stored_path(stored_path: str) -> Path:
+    """Return the real path for a stored file, handling cross-machine mounts.
+
+    When the database is shared via Dropbox (or similar) across machines with
+    different mount points, stored_path may contain an absolute prefix that
+    doesn't exist here. If the path is missing, we re-anchor it under the
+    current storage root by finding the first path component that matches a
+    known storage subdirectory (runs/, samples/, scripts/, outputs/).
+    """
+    p = Path(stored_path)
+    if p.exists():
+        return p
+    parts = p.parts
+    for i, part in enumerate(parts):
+        if part in _STORAGE_SUBDIRS:
+            candidate = get_storage_path() / Path(*parts[i:])
+            if candidate.exists():
+                return candidate
+            break
+    return p
+
+
 # ── Users ────────────────────────────────────────────────────────────────────
 
 

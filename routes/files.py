@@ -4,7 +4,7 @@ from pathlib import Path
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
 
-from config import db_log, get_storage_path
+from config import db_log, get_storage_path, resolve_stored_path
 from helpers import (
     _delete_file,
     _parse_csv,
@@ -89,7 +89,7 @@ def register(app):
     @app.route("/files/<int:id>/download")
     def file_download(id):
         f = db.get_or_404(AttachedFile, id)
-        stored = Path(f.stored_path)
+        stored = resolve_stored_path(f.stored_path)
         if not stored.exists():
             abort(404)
         return send_file(
@@ -99,7 +99,7 @@ def register(app):
     @app.route("/files/<int:id>/view")
     def file_view(id):
         f = db.get_or_404(AttachedFile, id)
-        stored = Path(f.stored_path)
+        stored = resolve_stored_path(f.stored_path)
         if not stored.exists():
             abort(404)
         return send_file(
@@ -195,7 +195,7 @@ def register(app):
         run = db.get_or_404(WorkflowRun, id)
         if not run.sample_sheet:
             abort(404)
-        stored = Path(run.sample_sheet.stored_path)
+        stored = resolve_stored_path(run.sample_sheet.stored_path)
         if not stored.exists():
             abort(404)
         return send_file(
