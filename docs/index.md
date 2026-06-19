@@ -29,13 +29,22 @@ for sample tracking, custom scripts, file attachments, backup status, and public
 : Save a run as a named template (workflow + tag + description) and load it when creating future runs.
 
 **Export**
-: Download project, researcher, or group summaries as CSV or Markdown — ready for grant reports or PI emails.
+: Download project, researcher, or group summaries as CSV or Markdown — ready for grant reports or PI emails. Backup entries include the storage path.
+
+**Slack notifications**
+: Automatic messages to a Slack channel when runs are registered or their status changes, and when snapshots succeed or fail. A manual **Notify** button on each run opens a compose page to review and send a custom message to the researcher's group channel, with a `@mention` if their Slack member ID is set.
+
+**Shared storage path**
+: Each workflow run and custom script can record the cloud or network path where data is shared with the researcher — separate from backup locations.
+
+**Dark mode**
+: A toggle in the page header switches between light and dark themes. The preference is remembered across sessions.
 
 **Dashboard**
-: Live stats, status breakdown donut (click any slice to filter runs), backup coverage panel, and file-type pie chart.
+: Live stats (including total file size), status breakdown donut (click any slice to filter runs), backup coverage panel with a modal listing all unprotected runs, and a file-type pie chart.
 
 **Statistics**
-: Cross-run charts showing execution counts and average wall-clock runtime per registered workflow, populated automatically when `register_run()` is called with the Snakemake log file.
+: Cross-run charts: runs per month, executions per workflow, average runtime, runtime trend per workflow, published projects per group, and publications per journal (clickable to filter the runs list).
 
 **Full-text search**
 : The navbar search box searches across groups, researchers, projects, run names/descriptions/tags, and run notes — with highlighted excerpts showing where in the notes a match was found.

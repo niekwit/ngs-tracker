@@ -48,6 +48,19 @@ If no runs have runtime data yet, the average runtime chart is not shown and an
 informational message is displayed instead.
 ```
 
+## Publications per Journal
+
+A doughnut chart showing how many published projects used each journal, derived from
+DOI/URL links stored on projects marked as **Published**. The journal name is extracted
+automatically from the publication URL.
+
+Each slice is labelled with the journal name, count, and percentage. **Clicking a slice**
+navigates to the runs list filtered to show only runs belonging to projects published in
+that journal — useful for compiling a methods summary for a specific venue.
+
+Groups or projects without a publication URL, or without a recognised journal domain, are
+excluded. The chart is not shown when there are no published projects with a URL.
+
 ## Runtime Trend per Workflow
 
 A line chart showing how the runtime of a single workflow evolves across successive runs,

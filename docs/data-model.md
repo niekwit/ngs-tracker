@@ -25,6 +25,8 @@ A Research Group is the top-level container. Each group shows a summary of its r
 
 A Researcher belongs to one group. The researcher detail page lists all their projects with per-project disk usage and links to export the researcher's full run history.
 
+An optional **Slack member ID** (format: `U012AB3CD`) can be stored on each researcher. When set, it is used to generate a `@mention` in manual Slack notifications — see [Researcher Slack user ID](settings.md#researcher-slack-user-id).
+
 ## Projects
 
 A Project belongs to one researcher and is the primary unit for organising related workflow runs. Projects can be marked as **Published** with an optional publication URL.
@@ -47,6 +49,6 @@ After a sample sheet is uploaded to a run and the confirmation step is completed
 
 ## Custom Analysis Scripts
 
-Scripts can be uploaded to a project (Python, R, Shell, Bash, Perl, MATLAB, Julia, Jupyter — auto-detected from the file extension). Each script can have multiple output files attached, with an optional description.
+Scripts can be uploaded to a project (Python, R, Shell, Bash, Perl, MATLAB, Julia, Jupyter — auto-detected from the file extension). Each script can have multiple output files attached, with an optional description. A **Shared storage path** field stores the cloud or network location where the script output is made accessible to the researcher — separate from any backup locations.
 
 Scripts are soft-deleted to the trash like all other records.

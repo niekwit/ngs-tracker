@@ -154,9 +154,9 @@ A **Filter by workflow** row appears above the runs table when more than one wor
 
 A **Mapping rate** row appears when at least one run has any sample below that workflow's configured cutoff. Click **Below cutoff (N)** to show only those runs. The badge shows the total count. Workflows with no mapping rate file attached are excluded from this check entirely.
 
-The cutoff per workflow is configured on the [Workflows](workflows.md) page (default: 60 %). Click a workflow name to show only runs from that workflow; click **All** to clear the filter. The row only shows workflows that have at least one run recorded — it is not drawn from the full workflow registry.
+The cutoff per workflow is configured on the [Workflows](workflows.md) page (default: 60 %).
 
-A blue banner confirms the active filter and provides a **clear filter** link.
+An orange warning banner confirms the active filter and provides a **clear filter** link.
 
 ## Filtering by status
 
@@ -194,6 +194,18 @@ Date filters can be combined freely with status and tag filters. They are also p
 ```
 
 The same `date_from` / `date_to` parameters are supported by the [REST API](api.md) `GET /api/runs` endpoint.
+
+## Filtering by journal
+
+Clicking a slice of the **Publications per Journal** doughnut on the [Statistics](stats.md) page applies a journal filter to the runs list. Only runs belonging to projects that were published in that journal are shown.
+
+A green banner confirms the active filter. Click **clear filter** to return to the full list.
+
+You can also link directly:
+
+```
+/runs?journal=Nature+Communications
+```
 
 ## Batch operations
 

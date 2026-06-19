@@ -6,7 +6,7 @@ The dashboard (`/`) is the home page. It provides a live overview of the entire 
 
 ### Stats row
 
-Five summary cards at the top show total counts for Groups, Researchers, Projects, Runs, and Files. Clicking the **Files** card opens a pie chart broken down by file type (Config, QC, Results, etc.).
+Five summary cards at the top show total counts for Groups, Researchers, Projects, Runs, and Files. The **Files** card also shows the total disk usage of all stored files as a subtitle. Clicking the **Files** card opens a pie chart broken down by file type — including Config, QC, Results, Sample Info, Other, Scripts, and Script Outputs. Categories with a count of zero are omitted from the chart.
 
 ### Groups panel
 
@@ -31,11 +31,13 @@ Click any slice to navigate to the runs list filtered by that status. The cursor
 
 ### Backup reminder
 
-When the backup reminder is enabled (configured in [Settings](settings.md#backup-reminder)), a warning banner appears at the top of the dashboard listing every completed or failed run that has no backup recorded and is older than the configured threshold. Each entry links directly to the run's detail page so backup status can be updated immediately.
+When the backup reminder is enabled (configured in [Settings](settings.md#backup-reminder)), a warning banner appears at the top of the dashboard listing completed or failed runs that have no backup recorded and are older than the configured threshold. Up to five runs are listed directly in the banner; when there are more, a count indicates how many additional runs are affected.
 
 The banner is hidden when there are no overdue runs or when the reminder is disabled (threshold = 0).
 
 Runs tagged **published-data** are excluded from the reminder entirely, as publicly available data does not require a separate backup.
+
+If Slack notifications are configured, a daily summary of overdue runs is also posted to the workflow runs channel — see [Settings](settings.md#slack-alert).
 
 ### Backup coverage
 
