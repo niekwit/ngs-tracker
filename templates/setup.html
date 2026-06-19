@@ -276,6 +276,15 @@
     <!-- Snapshot restoration -->
     {% if snapshots %}
     <h5 class="fw-bold mt-4 mb-2"><i class="bi bi-clock-history me-1"></i> Restore Snapshot</h5>
+    {% if snapshots | selectattr('integrity', 'equalto', 'fail') | list %}
+    <div class="alert alert-danger py-2 mb-3 d-flex align-items-center gap-2">
+      <i class="bi bi-shield-exclamation fs-5"></i>
+      <span>
+        <strong>Snapshot integrity failure</strong> — one or more snapshots have a SHA-256 checksum mismatch,
+        indicating possible file corruption. Take a fresh snapshot and investigate before relying on these for recovery.
+      </span>
+    </div>
+    {% endif %}
     <p class="text-muted mb-3">
       Choose a snapshot to restore. The database will be replaced immediately and uploads will be
       restored from the corresponding backup. A manual snapshot is taken automatically first as a safety copy.
@@ -286,6 +295,7 @@
           <thead class="table-light">
             <tr>
               <th>Date &amp; Time</th>
+              <th>Integrity</th>
               <th>Uploads</th>
               <th>Note</th>
               <th></th>
@@ -295,6 +305,15 @@
             {% for snap in snapshots %}
             <tr>
               <td class="font-monospace small align-middle">{{ snap.label }}</td>
+              <td class="align-middle">
+                {% if snap.integrity == 'ok' %}
+                <span class="badge bg-success" title="SHA-256 verified"><i class="bi bi-shield-check me-1"></i>OK</span>
+                {% elif snap.integrity == 'fail' %}
+                <span class="badge bg-danger" title="SHA-256 mismatch — file may be corrupted"><i class="bi bi-shield-exclamation me-1"></i>Failed</span>
+                {% else %}
+                <span class="badge bg-secondary" title="No checksum stored (snapshot predates integrity checks)"><i class="bi bi-shield me-1"></i>—</span>
+                {% endif %}
+              </td>
               <td class="align-middle">
                 {% if snap.has_uploads %}
                 <span class="badge bg-success">Included</span>

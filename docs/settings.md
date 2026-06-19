@@ -120,9 +120,26 @@ The **Snapshot Now** button (visible once a directory is configured) triggers an
 
 The scheduler checks every 10 minutes whether a backup is due — so the actual gap between backups is within 10 minutes of the configured interval.
 
+### Snapshot integrity
+
+Every snapshot is verified immediately after it is written:
+
+1. A **SHA-256 checksum** of the `.db.gz` file is computed and stored alongside it as a `.sha256` sidecar file.
+2. The snapshot is decompressed into a temporary file and SQLite's `PRAGMA integrity_check` is run to confirm the database is not corrupt.
+
+The **Restore Snapshot** table shows an **Integrity** badge for each snapshot:
+
+| Badge | Meaning |
+|---|---|
+| **OK** (green) | SHA-256 verified — file matches the checksum stored at write time |
+| **Failed** (red) | SHA-256 mismatch — the file was modified or corrupted after writing |
+| **—** (grey) | No checksum stored (snapshot predates integrity checks) |
+
+If any snapshot shows **Failed**, a red warning banner appears at the top of the Restore Snapshot section. Take a fresh snapshot and do not rely on the failed file for recovery.
+
 ### Restoring a snapshot
 
-The **Restore Snapshot** table in Settings lists all available snapshots, newest first. Each row shows the timestamp and whether an uploads snapshot is included. Click **Restore** to:
+The **Restore Snapshot** table in Settings lists all available snapshots, newest first. Each row shows the timestamp, integrity status, and whether an uploads snapshot is included. Click **Restore** to:
 
 1. Automatically take a safety snapshot of the current state first (so you can undo the restore)
 2. Decompress the DB snapshot and write it into the live database — no restart required

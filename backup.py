@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 import json
 import logging
 import shutil
@@ -22,6 +23,46 @@ from config import (
 )
 
 _RSYNC_AVAILABLE = sys.platform == "linux" and bool(shutil.which("rsync"))
+
+
+def _sidecar(gz_path: Path) -> Path:
+    return Path(str(gz_path) + ".sha256")
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _verify_and_store(gz_path: Path) -> bool:
+    """Write a .sha256 sidecar and verify the snapshot via SQLite integrity_check.
+
+    Returns True if the integrity check passes. Called once, immediately after
+    the snapshot is written.
+    """
+    digest = _sha256(gz_path)
+    _sidecar(gz_path).write_text(digest + "\n")
+
+    tmp = gz_path.parent / f"_verify_{gz_path.name}.tmp.db"
+    ok = False
+    try:
+        with gzip.open(gz_path, "rb") as f_in, open(tmp, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+        conn = sqlite3.connect(str(tmp))
+        result = conn.execute("PRAGMA integrity_check").fetchone()
+        conn.close()
+        ok = bool(result and result[0] == "ok")
+    except Exception as exc:
+        _log.error("Snapshot integrity check failed for %s: %s", gz_path.name, exc)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    if not ok:
+        _log.error("Snapshot %s failed SQLite integrity_check", gz_path.name)
+    return ok
 
 
 def run_snapshot() -> str:
@@ -57,6 +98,8 @@ def run_snapshot() -> str:
     with open(tmp_db, "rb") as f_in, gzip.open(snapshot_gz, "wb", compresslevel=6) as f_out:
         shutil.copyfileobj(f_in, f_out)
     tmp_db.unlink()
+
+    _verify_and_store(snapshot_gz)
 
     # Uploads backup — failures are non-fatal so the DB snapshot is always recorded
     if storage_path and Path(storage_path).exists():
@@ -103,6 +146,7 @@ def _prune_db_snapshots(db_dir: Path) -> None:
     keep = get_snapshot_keep()
     for old in sorted(db_dir.glob("ngs_tracker_*.db.gz"), reverse=True)[keep:]:
         old.unlink(missing_ok=True)
+        _sidecar(old).unlink(missing_ok=True)
 
 
 def _prune_upload_snapshots(uploads_dir: Path) -> None:
@@ -170,7 +214,22 @@ def list_snapshots() -> list[dict]:
         except ValueError:
             label = ts
         has_uploads = ts in upload_tss or uploads_tar
-        result.append({"ts": ts, "label": label, "has_uploads": has_uploads, "comment": meta.get(ts, "")})
+
+        sc = _sidecar(f)
+        if sc.exists():
+            try:
+                stored = sc.read_text().strip()
+                actual = _sha256(f)
+                integrity = "ok" if actual == stored else "fail"
+            except Exception:
+                integrity = "error"
+        else:
+            integrity = "unverified"
+
+        result.append({
+            "ts": ts, "label": label, "has_uploads": has_uploads,
+            "comment": meta.get(ts, ""), "integrity": integrity,
+        })
     return result
 
 
