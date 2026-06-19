@@ -115,7 +115,7 @@
       labels: labels,
       datasets: [{
         label: 'Avg runtime (min)',
-        data: minutes,
+        data: minutes.map(function(v) { return v > 0 ? Math.log2(v) : null; }),
         backgroundColor: 'rgba(37, 99, 235, 0.70)',
         borderColor:     'rgba(37, 99, 235, 1)',
         borderWidth: 1,
@@ -140,12 +140,12 @@
       },
       scales: {
         y: {
-          beginAtZero: true,
-          title: { display: true, text: 'Average runtime (minutes)' },
+          title: { display: true, text: 'Average runtime (log₂ scale)' },
           ticks: {
             callback: function (v) {
-              if (v >= 60) return (v / 60).toFixed(1) + ' h';
-              return v + ' min';
+              var mins = Math.pow(2, v);
+              if (mins >= 60) return (mins / 60).toFixed(1) + ' h';
+              return mins.toFixed(mins < 2 ? 1 : 0) + ' min';
             }
           }
         },
