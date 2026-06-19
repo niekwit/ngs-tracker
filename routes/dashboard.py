@@ -101,10 +101,15 @@ def register(app):
             "Failed": url_for("runs_list", status="failed"),
         }
 
+        no_backup_runs = sorted(
+            [r for r in all_runs if not r.backups_list and r.status in ("completed", "failed")],
+            key=lambda r: r.run_date,
+        )
+
         reminder_days = get_backup_reminder_days()
         if reminder_days > 0:
             cutoff = datetime.utcnow() - timedelta(days=reminder_days)
-            no_backup_runs = sorted(
+            unbackedup_runs = sorted(
                 [
                     r
                     for r in all_runs
@@ -116,17 +121,7 @@ def register(app):
                 key=lambda r: r.run_date,
             )
         else:
-            no_backup_runs = sorted(
-                [
-                    r
-                    for r in all_runs
-                    if not r.backups_list
-                    and r.status in ("completed", "failed")
-                    and "published-data" not in r.tag_list
-                ],
-                key=lambda r: r.run_date,
-            )
-        unbackedup_runs = no_backup_runs
+            unbackedup_runs = []
 
         n_runs = len(all_runs)
         n_backup = sum(1 for r in all_runs if r.backups_list)
