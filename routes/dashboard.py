@@ -111,6 +111,7 @@ def register(app):
                     if not r.backups_list
                     and r.run_date < cutoff
                     and r.status in ("completed", "failed")
+                    and "published-data" not in r.tag_list
                 ],
                 key=lambda r: r.run_date,
             )
@@ -121,6 +122,7 @@ def register(app):
                     for r in all_runs
                     if not r.backups_list
                     and r.status in ("completed", "failed")
+                    and "published-data" not in r.tag_list
                 ],
                 key=lambda r: r.run_date,
             )
