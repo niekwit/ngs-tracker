@@ -107,6 +107,7 @@
             <a href="{{ url_for('run_detail', id=run.id) }}" class="text-decoration-none fw-semibold">
               {{ run.workflow_name }}
             </a>
+            <span class="text-muted small ms-1">#{{ run.id }}</span>
             {% if run.workflow_tag %}
             <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ run.workflow_tag }}</span>
             {% endif %}
