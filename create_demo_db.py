@@ -466,13 +466,13 @@ with app.app_context():
     db.session.flush()
     link_samples(run_atac2, atac_samples)
 
-    # Duplicate of run_atac1 — same workflow, project, and date — triggers detection demo
+    # Genuine duplicate of run_atac1 — identical description and samples, same date
     run_atac1b = WorkflowRun(
         project_id=proj_atac.id,
         workflow_name="atac-seq",
         workflow_tag="v2.0.0",
         workflow_system="snakemake",
-        description="D0 and D2 — accidentally re-submitted",
+        description="D0 and D2 samples — quality check",
         status="completed",
         run_date=dt(185),
         created_by="Alice Morgan",
