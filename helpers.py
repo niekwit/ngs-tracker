@@ -305,6 +305,36 @@ def find_duplicate_runs(
     return results
 
 
+def find_all_duplicate_run_ids(runs: list) -> set:
+    """Return the IDs of all runs that have at least one genuine duplicate.
+
+    Uses the same description/sample exclusion rules as find_duplicate_runs,
+    but operates over an already-loaded list so it needs no extra queries.
+    """
+    from collections import defaultdict
+    from itertools import combinations
+
+    groups: dict = defaultdict(list)
+    for run in runs:
+        key = (run.project_id, run.workflow_name, run.run_date.date())
+        groups[key].append(run)
+
+    duplicate_ids: set = set()
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        for a, b in combinations(group, 2):
+            if a.description and b.description and a.description.strip() != b.description.strip():
+                continue
+            sa = {rs.sample.name for rs in a.run_samples}
+            sb = {rs.sample.name for rs in b.run_samples}
+            if sa and sb and sa != sb:
+                continue
+            duplicate_ids.add(a.id)
+            duplicate_ids.add(b.id)
+    return duplicate_ids
+
+
 def _parse_datetime(value: str) -> datetime:
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d"):
         try:

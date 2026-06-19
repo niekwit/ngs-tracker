@@ -19,6 +19,7 @@ from helpers import (
     _compare_configs,
     _parse_datetime,
     extract_samples_from_config,
+    find_all_duplicate_run_ids,
     find_duplicate_runs,
     get_journal_name,
 )
@@ -45,6 +46,7 @@ def register(app):
         status_filter = request.args.get("status", "").strip().lower()
         workflow_filter = request.args.get("workflow", "").strip()
         low_mapping_filter = bool(request.args.get("low_mapping", ""))
+        duplicates_filter = bool(request.args.get("duplicates", ""))
         date_from_str = request.args.get("date_from", "").strip()
         date_to_str = request.args.get("date_to", "").strip()
         journal_filter = request.args.get("journal", "").strip()
@@ -84,12 +86,15 @@ def register(app):
             return False
 
         low_mapping_run_ids = {r.id for r in all_runs if _has_low_mapping(r)}
+        duplicate_run_ids = find_all_duplicate_run_ids(all_runs)
 
         runs = all_runs
         if workflow_filter:
             runs = [r for r in runs if r.workflow_name == workflow_filter]
         if low_mapping_filter:
             runs = [r for r in runs if r.id in low_mapping_run_ids]
+        if duplicates_filter:
+            runs = [r for r in runs if r.id in duplicate_run_ids]
         if journal_filter:
             pub_project_ids = {
                 p.id
@@ -137,6 +142,8 @@ def register(app):
             workflow_filter=workflow_filter,
             low_mapping_filter=low_mapping_filter,
             low_mapping_run_ids=low_mapping_run_ids,
+            duplicates_filter=duplicates_filter,
+            duplicate_run_ids=duplicate_run_ids,
             date_from=date_from_str,
             date_to=date_to_str,
             journal_filter=journal_filter,
@@ -520,6 +527,7 @@ def register(app):
                 "status",
                 "workflow",
                 "low_mapping",
+                "duplicates",
                 "date_from",
                 "date_to",
             )

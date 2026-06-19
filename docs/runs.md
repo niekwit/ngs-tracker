@@ -158,6 +158,17 @@ The cutoff per workflow is configured on the [Workflows](workflows.md) page (def
 
 An orange warning banner confirms the active filter and provides a **clear filter** link.
 
+## Filtering by duplicates
+
+A **Duplicates** row appears above the runs table when at least two runs in the database are considered genuine duplicates of each other. Click **Possible duplicates (N)** to show only those runs so you can review and delete any that were submitted by mistake.
+
+Two runs are flagged as duplicates when they share the same **project**, **workflow name**, and **calendar date**. They are excluded from duplicate flagging (i.e. treated as intentionally distinct) if:
+
+- Both carry non-empty **short descriptions** that differ from each other, or
+- Both have non-empty **sample sets** that differ from each other.
+
+A red banner confirms the active filter. Click **clear filter** to return to the full list.
+
 ## Filtering by status
 
 The runs list can be filtered to show only runs with a specific status. Click any segment of the **Status breakdown** donut on the [Dashboard](dashboard.md), or navigate directly:
