@@ -244,7 +244,9 @@ def register(app):
         send_run_notification(run)
         resp = _run_dict(run)
         duplicates = find_duplicate_runs(
-            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id
+            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id,
+            description=run.description or "",
+            sample_names={rs.sample.name for rs in run.run_samples},
         )
         if duplicates:
             resp["duplicate_warning"] = True

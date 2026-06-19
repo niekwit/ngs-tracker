@@ -274,8 +274,15 @@ def find_duplicate_runs(
     workflow_name: str,
     run_date: datetime,
     exclude_id: int | None = None,
+    description: str = "",
+    sample_names: set | None = None,
 ) -> list:
-    """Return runs sharing the same project, workflow, and calendar date."""
+    """Return runs sharing the same project, workflow, and calendar date.
+
+    Candidates are excluded when both runs carry non-empty descriptions that
+    differ, or both carry non-empty sample sets that differ — indicating
+    intentionally distinct runs on the same day.
+    """
     target_date = run_date.date()
     q = WorkflowRun.query.filter(
         WorkflowRun.project_id == project_id,
@@ -284,7 +291,18 @@ def find_duplicate_runs(
     )
     if exclude_id is not None:
         q = q.filter(WorkflowRun.id != exclude_id)
-    return [r for r in q.all() if r.run_date.date() == target_date]
+    candidates = [r for r in q.all() if r.run_date.date() == target_date]
+
+    results = []
+    for c in candidates:
+        if description and c.description and description.strip() != c.description.strip():
+            continue
+        if sample_names:
+            c_samples = {rs.sample.name for rs in c.run_samples}
+            if c_samples and c_samples != sample_names:
+                continue
+        results.append(c)
+    return results
 
 
 def _parse_datetime(value: str) -> datetime:

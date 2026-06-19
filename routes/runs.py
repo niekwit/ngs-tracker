@@ -182,7 +182,9 @@ def register(app):
         backed_up = {b["location"]: b["path"] for b in run.backups_list}
         loc_names = [l["name"] for l in backup_locations]
         duplicate_runs = find_duplicate_runs(
-            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id
+            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id,
+            description=run.description or "",
+            sample_names={rs.sample.name for rs in run.run_samples},
         )
 
         config_samples = None
@@ -303,7 +305,9 @@ def register(app):
             )
             flash(f'Workflow run "{workflow_name}" created.', "success")
             duplicates = find_duplicate_runs(
-                project_id, workflow_name, run_date, exclude_id=run.id
+                project_id, workflow_name, run_date, exclude_id=run.id,
+                description=run.description or "",
+                sample_names={rs.sample.name for rs in run.run_samples},
             )
             if duplicates:
                 links = ", ".join(
