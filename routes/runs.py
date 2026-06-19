@@ -43,6 +43,8 @@ def register(app):
         sort = request.args.get("sort", "date")
         direction = request.args.get("dir", "desc")
         tag_filter = request.args.get("tag", "").strip()
+        tag_filters = [t.strip() for t in tag_filter.split(",") if t.strip()]
+        tag_mode = request.args.get("tag_mode", "or")
         status_filter = request.args.get("status", "").strip().lower()
         workflow_filter = request.args.get("workflow", "").strip()
         low_mapping_filter = bool(request.args.get("low_mapping", ""))
@@ -107,8 +109,11 @@ def register(app):
                 if get_journal_name(p.publication_url) == journal_filter
             }
             runs = [r for r in runs if r.project_id in pub_project_ids]
-        if tag_filter:
-            runs = [r for r in runs if tag_filter in r.tag_list]
+        if tag_filters:
+            if tag_mode == "and":
+                runs = [r for r in runs if all(t in r.tag_list for t in tag_filters)]
+            else:
+                runs = [r for r in runs if any(t in r.tag_list for t in tag_filters)]
         if status_filter and status_filter in RUN_STATUSES:
             runs = [r for r in runs if r.status == status_filter]
         if date_from:
@@ -138,6 +143,8 @@ def register(app):
             sort=sort,
             dir=direction,
             tag_filter=tag_filter,
+            tag_filters=tag_filters,
+            tag_mode=tag_mode,
             status_filter=status_filter,
             workflow_filter=workflow_filter,
             low_mapping_filter=low_mapping_filter,
@@ -528,6 +535,7 @@ def register(app):
                 "workflow",
                 "low_mapping",
                 "duplicates",
+                "tag_mode",
                 "date_from",
                 "date_to",
             )
