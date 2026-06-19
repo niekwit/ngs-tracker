@@ -81,7 +81,7 @@
     All
   </a>
   {% for wf in all_workflows %}
-  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, workflow=wf, low_mapping=lm(), duplicates=dup(), date_from=date_from, date_to=date_to, journal=journal_filter) }}"
+  <a href="{{ url_for('runs_list', sort=sort, dir=dir, tag=tag_filter, status=status_filter, workflow='' if wf == workflow_filter else wf, low_mapping=lm(), duplicates=dup(), date_from=date_from, date_to=date_to, journal=journal_filter) }}"
      class="badge text-decoration-none {% if wf == workflow_filter %}bg-primary{% else %}bg-secondary opacity-75{% endif %}">
     <i class="bi bi-play-circle me-1"></i>{{ wf }}
   </a>
