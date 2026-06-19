@@ -47,3 +47,21 @@ See {doc}`api` for full details on the Python client and the `log_file` paramete
 If no runs have runtime data yet, the average runtime chart is not shown and an
 informational message is displayed instead.
 ```
+
+## Runtime Trend per Workflow
+
+A line chart showing how the runtime of a single workflow evolves across successive runs,
+ordered chronologically. Use it to spot regressions after updating a pipeline or to track
+the effect of parameter changes on wall-clock time.
+
+A **workflow selector** dropdown in the card header lets you switch between all workflows
+that have at least one run with recorded runtime. The X-axis labels show the run date; if
+a workflow tag (version) is recorded for a run it is appended in parentheses (e.g.
+`2025-06-14 (v1.2.0)`).
+
+Hovering over a data point shows:
+- Run date and project name
+- Exact formatted runtime (e.g. `2h 4m 17s`)
+- Run ID
+
+Clicking a point navigates directly to that run's detail page.

@@ -101,6 +101,26 @@ def register(app):
             {"journal": j, "count": c} for j, c in journal_counts.most_common()
         ]
 
+        trend_rows = (
+            WorkflowRun.query.filter(
+                WorkflowRun.trashed == False,
+                WorkflowRun.runtime_seconds.isnot(None),
+            )
+            .order_by(WorkflowRun.workflow_name, WorkflowRun.run_date)
+            .all()
+        )
+        trend_data: dict[str, list] = {}
+        for run in trend_rows:
+            trend_data.setdefault(run.workflow_name, []).append(
+                {
+                    "date": run.run_date.strftime("%Y-%m-%d"),
+                    "tag": run.workflow_tag or "",
+                    "runtime_seconds": run.runtime_seconds,
+                    "run_id": run.id,
+                    "project": run.project.name,
+                }
+            )
+
         return render_template(
             "stats.html",
             workflows=workflows,
@@ -108,4 +128,5 @@ def register(app):
             timeline_data=timeline_data,
             published_by_group=published_by_group,
             published_by_journal=published_by_journal,
+            trend_data=trend_data,
         )

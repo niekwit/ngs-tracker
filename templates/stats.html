@@ -166,6 +166,115 @@
 </div>
 {% endif %}
 
+{% if trend_data %}
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center gap-3">
+    <span><i class="bi bi-graph-up me-1"></i> Runtime Trend</span>
+    <select id="trendWorkflowSelect" class="form-select form-select-sm ms-auto" style="max-width:280px;">
+      {% for wf_name in trend_data.keys() %}
+      <option value="{{ wf_name }}">{{ wf_name }} ({{ trend_data[wf_name] | length }} run{{ 's' if trend_data[wf_name] | length != 1 else '' }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="card-body">
+    <canvas id="trendChart" height="80"></canvas>
+  </div>
+</div>
+<script>
+(function () {
+  var trendData = {{ trend_data | tojson }};
+
+  function fmtSeconds(s) {
+    s = Math.round(s);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    if (h > 0) return h + 'h ' + m + 'm ' + sec + 's';
+    if (m > 0) return m + 'm ' + sec + 's';
+    return sec + 's';
+  }
+
+  var trendChart = null;
+
+  function renderTrend(wfName) {
+    var points = trendData[wfName] || [];
+    var labels = points.map(function (p) {
+      return p.tag ? p.date + ' (' + p.tag + ')' : p.date;
+    });
+    var values = points.map(function (p) { return +(p.runtime_seconds / 60).toFixed(2); });
+    var rawSecs = points.map(function (p) { return p.runtime_seconds; });
+    var projects = points.map(function (p) { return p.project; });
+    var runIds = points.map(function (p) { return p.run_id; });
+
+    if (trendChart) { trendChart.destroy(); }
+
+    trendChart = new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Runtime',
+          data: values,
+          borderColor: 'rgba(37, 99, 235, 1)',
+          backgroundColor: 'rgba(37, 99, 235, 0.08)',
+          pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.2,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function (ctx) {
+                var i = ctx[0].dataIndex;
+                return labels[i] + ' — ' + projects[i];
+              },
+              label: function (ctx) {
+                return ' Runtime: ' + fmtSeconds(rawSecs[ctx.dataIndex]);
+              },
+              afterLabel: function (ctx) {
+                return ' Run #' + runIds[ctx.dataIndex];
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            title: { display: true, text: 'Runtime (minutes)' },
+            ticks: {
+              callback: function (v) {
+                if (v >= 60) return (v / 60).toFixed(1) + ' h';
+                return v + ' min';
+              }
+            }
+          },
+          x: {
+            ticks: { maxRotation: 40, minRotation: 20 }
+          }
+        },
+        onClick: function (evt, elements) {
+          if (elements.length > 0) {
+            window.location.href = '/runs/' + runIds[elements[0].index];
+          }
+        }
+      }
+    });
+    document.getElementById('trendChart').style.cursor = 'pointer';
+  }
+
+  var select = document.getElementById('trendWorkflowSelect');
+  renderTrend(select.value);
+  select.addEventListener('change', function () { renderTrend(this.value); });
+})();
+</script>
+{% endif %}
+
 {% if executions %}
 <script>
 (function () {
