@@ -46,7 +46,10 @@ def _run_row(run):
         "workflow": run.workflow_name,
         "tag": run.workflow_tag or "",
         "status": run.status_label,
-        "backup": ", ".join(run.backup_labels) or "None",
+        "backup": ", ".join(
+            (b["location"] + " (" + b["path"] + ")") if b.get("path") else b["location"]
+            for b in run.backups_list
+        ) or "None",
         "tags": ", ".join(run.tag_list),
         "notes": (run.notes or "").replace("\n", " "),
         "samples": str(len(run.run_samples)),
