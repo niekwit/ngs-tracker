@@ -16,7 +16,7 @@ A bar chart showing how many projects have been marked as **published** for each
 group, sorted from most to least. Each bar is coloured distinctly per group. Hovering
 over a bar shows the exact count. Groups with no published projects are not shown.
 
-![published_projects](<_static/screenshots/published_projects_per_research_group .png>)
+![published_projects](_static/screenshots/published_projects_per_research_group.png)
 
 ## Executions per Workflow
 
