@@ -65,6 +65,26 @@ def register(app):
                 timeline_counts[key] += 1
         timeline_data = json.dumps({m: timeline_counts[m] for m in months})
 
+        total_proj_rows = (
+            db.session.query(
+                ResearchGroup.name.label("group_name"),
+                func.count(Project.id).label("total_count"),
+            )
+            .join(Researcher, Researcher.group_id == ResearchGroup.id)
+            .join(Project, Project.researcher_id == Researcher.id)
+            .filter(
+                ResearchGroup.trashed == False,
+                Researcher.trashed == False,
+                Project.trashed == False,
+            )
+            .group_by(ResearchGroup.id, ResearchGroup.name)
+            .order_by(func.count(Project.id).desc())
+            .all()
+        )
+        projects_by_group = [
+            {"group": r.group_name, "count": r.total_count} for r in total_proj_rows
+        ]
+
         pub_rows = (
             db.session.query(
                 ResearchGroup.name.label("group_name"),
@@ -126,6 +146,7 @@ def register(app):
             workflows=workflows,
             executions=executions,
             timeline_data=timeline_data,
+            projects_by_group=projects_by_group,
             published_by_group=published_by_group,
             published_by_journal=published_by_journal,
             trend_data=trend_data,

@@ -6,7 +6,7 @@
   <h4 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h4>
 </div>
 
-{% if timeline_data or executions or workflows or published_by_group %}
+{% if timeline_data or executions or workflows or projects_by_group or published_by_group %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 {% endif %}
 
@@ -315,6 +315,72 @@
           ticks: { stepSize: 1, precision: 0 }
         },
         x: { ticks: { maxRotation: 40, minRotation: 20 } }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+
+{% if projects_by_group %}
+<div class="card {% if published_by_group %}mb-4{% endif %}">
+  <div class="card-header">
+    <i class="bi bi-folder2-open me-1"></i> Total Projects per Research Group
+  </div>
+  <div class="card-body">
+    <canvas id="projByGroupChart" style="max-height:340px;"></canvas>
+  </div>
+</div>
+<script>
+(function () {
+  var gdata   = {{ projects_by_group | tojson }};
+  var glabels = gdata.map(function (d) { return d.group; });
+  var gcounts = gdata.map(function (d) { return d.count; });
+  var colors  = [
+    'rgba(37, 99, 235, 0.75)',  'rgba(16, 185, 129, 0.75)',
+    'rgba(234, 88, 12, 0.75)',  'rgba(124, 58, 237, 0.75)',
+    'rgba(8, 145, 178, 0.75)',  'rgba(220, 38, 38, 0.75)',
+    'rgba(245, 158, 11, 0.75)', 'rgba(99, 102, 241, 0.75)',
+  ];
+  var borders = colors.map(function (c) { return c.replace('0.75', '1'); });
+
+  new Chart(document.getElementById('projByGroupChart'), {
+    type: 'bar',
+    data: {
+      labels: glabels,
+      datasets: [{
+        label: 'Projects',
+        data: gcounts,
+        backgroundColor: glabels.map(function (_, i) { return colors[i % colors.length]; }),
+        borderColor:     glabels.map(function (_, i) { return borders[i % borders.length]; }),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var n = ctx.parsed.y;
+              return n + ' project' + (n !== 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Total projects' },
+          ticks: { stepSize: 1, precision: 0 },
+          grid: { color: '#f0f0f0' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { maxRotation: 30, minRotation: 0 }
+        }
       }
     }
   });
