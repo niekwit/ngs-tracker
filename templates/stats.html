@@ -322,6 +322,29 @@
 </script>
 {% endif %}
 
+{% if projects_by_group or published_by_group %}
+<script>
+// Shared group→colour map so both charts use the same colour per group name.
+(function () {
+  var palette = [
+    'rgba(37, 99, 235, 0.75)',  'rgba(16, 185, 129, 0.75)',
+    'rgba(234, 88, 12, 0.75)',  'rgba(124, 58, 237, 0.75)',
+    'rgba(8, 145, 178, 0.75)',  'rgba(220, 38, 38, 0.75)',
+    'rgba(245, 158, 11, 0.75)', 'rgba(99, 102, 241, 0.75)',
+  ];
+  var allGroups = Array.from(new Set(
+    {{ (projects_by_group + published_by_group) | tojson }}.map(function (d) { return d.group; })
+  )).sort();
+  window.groupColorMap = {};
+  window.groupBorderMap = {};
+  allGroups.forEach(function (g, i) {
+    window.groupColorMap[g]  = palette[i % palette.length];
+    window.groupBorderMap[g] = palette[i % palette.length].replace('0.75', '1');
+  });
+})();
+</script>
+{% endif %}
+
 {% if projects_by_group %}
 <div class="card {% if published_by_group %}mb-4{% endif %}">
   <div class="card-header">
@@ -336,13 +359,6 @@
   var gdata   = {{ projects_by_group | tojson }};
   var glabels = gdata.map(function (d) { return d.group; });
   var gcounts = gdata.map(function (d) { return d.count; });
-  var colors  = [
-    'rgba(37, 99, 235, 0.75)',  'rgba(16, 185, 129, 0.75)',
-    'rgba(234, 88, 12, 0.75)',  'rgba(124, 58, 237, 0.75)',
-    'rgba(8, 145, 178, 0.75)',  'rgba(220, 38, 38, 0.75)',
-    'rgba(245, 158, 11, 0.75)', 'rgba(99, 102, 241, 0.75)',
-  ];
-  var borders = colors.map(function (c) { return c.replace('0.75', '1'); });
 
   new Chart(document.getElementById('projByGroupChart'), {
     type: 'bar',
@@ -351,8 +367,8 @@
       datasets: [{
         label: 'Projects',
         data: gcounts,
-        backgroundColor: glabels.map(function (_, i) { return colors[i % colors.length]; }),
-        borderColor:     glabels.map(function (_, i) { return borders[i % borders.length]; }),
+        backgroundColor: glabels.map(function (g) { return window.groupColorMap[g]; }),
+        borderColor:     glabels.map(function (g) { return window.groupBorderMap[g]; }),
         borderWidth: 1,
         borderRadius: 4,
       }]
@@ -402,13 +418,6 @@
   var pdata   = {{ published_by_group | tojson }};
   var plabels = pdata.map(function (d) { return d.group; });
   var pcounts = pdata.map(function (d) { return d.count; });
-  var colors  = [
-    'rgba(124, 58, 237, 0.75)', 'rgba(37, 99, 235, 0.75)',
-    'rgba(16, 185, 129, 0.75)', 'rgba(234, 88, 12, 0.75)',
-    'rgba(8, 145, 178, 0.75)',  'rgba(220, 38, 38, 0.75)',
-    'rgba(245, 158, 11, 0.75)', 'rgba(99, 102, 241, 0.75)',
-  ];
-  var borders = colors.map(function (c) { return c.replace('0.75', '1'); });
 
   new Chart(document.getElementById('pubChart'), {
     type: 'bar',
@@ -417,8 +426,8 @@
       datasets: [{
         label: 'Published projects',
         data: pcounts,
-        backgroundColor: plabels.map(function (_, i) { return colors[i % colors.length]; }),
-        borderColor:     plabels.map(function (_, i) { return borders[i % borders.length]; }),
+        backgroundColor: plabels.map(function (g) { return window.groupColorMap[g]; }),
+        borderColor:     plabels.map(function (g) { return window.groupBorderMap[g]; }),
         borderWidth: 1,
         borderRadius: 4,
       }]
