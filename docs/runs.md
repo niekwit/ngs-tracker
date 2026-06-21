@@ -31,6 +31,8 @@ NGS Tracker checks whether another non-trashed run already exists with the same 
 
 The check is date-based (same day), not time-based, so re-running a pipeline later the same day is still flagged. Delete whichever run was submitted accidentally.
 
+![duplicate_runs](_static/screenshots/duplicates.png)
+
 ## Workflow system badge
 
 When a workflow is selected in the form, a coloured pill badge immediately shows the workflow system — Snakemake (green), Nextflow (orange), CWL (blue), or Other (grey). The badge also appears on the run detail page next to the workflow name.
@@ -56,6 +58,8 @@ Upload a YAML or JSON config/params file using the **Config** file type. If the 
 
 Files that do not parse as YAML/JSON (e.g. a Nextflow Groovy `.config` file) are stored and available for download but no tree is shown.
 
+![config](_static/screenshots/config.png)
+
 ### Config diff
 
 When a run has a parsed config, a **Compare Config** button appears on the detail page. Select any other run that also has a parsed config and the comparison page shows a three-column table:
@@ -69,6 +73,8 @@ When a run has a parsed config, a **Compare Config** button appears on the detai
 
 Nested keys are flattened to dot-notation (e.g. `params.threads`). A **Hide unchanged** toggle collapses identical rows.
 
+![config_diff](_static/screenshots/config_diff.png)
+
 ## Sample sheets
 
 Upload a CSV or TSV sample sheet via the **Upload CSV** button on the run detail page. After upload:
@@ -79,6 +85,8 @@ Upload a CSV or TSV sample sheet via the **Upload CSV** button on the run detail
 4. Click **Confirm** to link the samples to the run and create sample records in the project
 
 The sample sheet is rendered as a full scrollable table with a sticky header on the run detail page.
+
+![samples](_static/screenshots/samples.png)
 
 ## File attachments
 
@@ -112,6 +120,8 @@ NGS Tracker renders a **bar chart** for each mapping rates file attached to the 
 - If any samples fall below it, an orange warning banner lists the failing sample names.
 
 The cutoff threshold is configured **per workflow** on the [Workflows](workflows.md) page (default: 60 %). Multiple mapping rates files can be attached to the same run — each produces its own chart.
+
+![mapping_rates](_static/screenshots/mapping_rates.png)
 
 ## Tags
 
