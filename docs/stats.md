@@ -8,17 +8,23 @@ that summarise pipeline usage and performance across the entire database.
 A bar chart of workflow run activity over the last 12 calendar months, covering all
 non-trashed runs regardless of status.
 
+![runs_per_month](_static/screenshots/runs_per_month.png)
+
 ## Published Projects per Research Group
 
 A bar chart showing how many projects have been marked as **published** for each research
 group, sorted from most to least. Each bar is coloured distinctly per group. Hovering
 over a bar shows the exact count. Groups with no published projects are not shown.
 
+![published_projects](<_static/screenshots/published_projects_per_research_group .png>)
+
 ## Executions per Workflow
 
 A bar chart showing the total number of runs (all statuses, non-trashed) recorded for
 each workflow, sorted from most to least executed. Use this to see which pipelines are
 run most frequently across all researchers and projects.
+
+![workflow_executions](_static/screenshots/executions_per_workflow.png)
 
 ## Average Runtime per Workflow
 
@@ -29,6 +35,8 @@ manually or via the API without a log file) are excluded from this average.
 The Y axis is labelled in minutes; ticks above 60 minutes are displayed in hours
 (e.g. `14.6 h`). Hovering over a bar shows the exact formatted runtime
 (e.g. `14h 33m 58s`) and the number of runs the average is based on.
+
+![runtime](_static/screenshots/average_runtime_per_workflow.png)
 
 ### Recording runtime automatically
 
@@ -61,6 +69,8 @@ that journal — useful for compiling a methods summary for a specific venue.
 Groups or projects without a publication URL, or without a recognised journal domain, are
 excluded. The chart is not shown when there are no published projects with a URL.
 
+![publications_per_journal](_static/screenshots/publications_per_journal.png)
+
 ## Runtime Trend per Workflow
 
 A line chart showing how the runtime of a single workflow evolves across successive runs,
@@ -78,3 +88,5 @@ Hovering over a data point shows:
 - Run ID
 
 Clicking a point navigates directly to that run's detail page.
+
+![runtime_trend](_static/screenshots/runtime_trend.png)
