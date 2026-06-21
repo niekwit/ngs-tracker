@@ -8,13 +8,30 @@
 
 {% if timeline_data or executions or workflows or projects_by_group or published_by_group %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+function downloadChart(canvasId, filename) {
+  var src = document.getElementById(canvasId);
+  var out = document.createElement('canvas');
+  out.width  = src.width;
+  out.height = src.height;
+  var ctx = out.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(src, 0, 0);
+  var a = document.createElement('a');
+  a.download = filename + '.png';
+  a.href = out.toDataURL('image/png');
+  a.click();
+}
+</script>
 {% endif %}
 
 <!-- Runs per month -->
 <div class="card mb-4">
-  <div class="card-header">
-    <i class="bi bi-bar-chart-line me-1"></i> Workflow Runs per Month
-    <span class="text-muted small ms-2">(last 12 months)</span>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-bar-chart-line me-1"></i> Workflow Runs per Month
+    <span class="text-muted small ms-2">(last 12 months)</span></span>
+    <button class="btn btn-xs btn-outline-secondary" onclick="downloadChart('timelineChart','runs_per_month')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body">
     <canvas id="timelineChart" height="60"></canvas>
@@ -69,9 +86,10 @@
 
 {% if executions %}
 <div class="card mb-4">
-  <div class="card-header">
-    <i class="bi bi-play-circle-fill me-1"></i> Executions per Workflow
-    <span class="text-muted small ms-2">(all non-trashed runs)</span>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-play-circle-fill me-1"></i> Executions per Workflow
+    <span class="text-muted small ms-2">(all non-trashed runs)</span></span>
+    <button class="btn btn-xs btn-outline-secondary" onclick="downloadChart('execChart','executions_per_workflow')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body">
     <canvas id="execChart" style="max-height:420px;"></canvas>
@@ -81,9 +99,10 @@
 
 {% if workflows %}
 <div class="card {% if published_by_group %}mb-4{% endif %}">
-  <div class="card-header">
-    <i class="bi bi-stopwatch me-1"></i> Average Runtime per Workflow
-    <span class="text-muted small ms-2">(completed runs with recorded runtime)</span>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-stopwatch me-1"></i> Average Runtime per Workflow
+    <span class="text-muted small ms-2">(completed runs with recorded runtime)</span></span>
+    <button class="btn btn-xs btn-outline-secondary" onclick="downloadChart('runtimeChart','average_runtime_per_workflow')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body">
     <canvas id="runtimeChart" style="max-height:420px;"></canvas>
@@ -175,6 +194,7 @@
       <option value="{{ wf_name }}">{{ wf_name }} ({{ trend_data[wf_name] | length }} run{{ 's' if trend_data[wf_name] | length != 1 else '' }})</option>
       {% endfor %}
     </select>
+    <button class="btn btn-xs btn-outline-secondary flex-shrink-0" onclick="downloadChart('trendChart','runtime_trend')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body">
     <canvas id="trendChart" height="80"></canvas>
@@ -347,8 +367,9 @@
 
 {% if projects_by_group %}
 <div class="card {% if published_by_group %}mb-4{% endif %}">
-  <div class="card-header">
-    <i class="bi bi-folder2-open me-1"></i> Total Projects per Research Group
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-folder2-open me-1"></i> Total Projects per Research Group</span>
+    <button class="btn btn-xs btn-outline-secondary" onclick="downloadChart('projByGroupChart','total_projects_per_research_group')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body">
     <canvas id="projByGroupChart" style="max-height:340px;"></canvas>
@@ -406,8 +427,9 @@
 
 {% if published_by_group %}
 <div class="card">
-  <div class="card-header">
-    <i class="bi bi-journal-check me-1"></i> Published Projects per Research Group
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-journal-check me-1"></i> Published Projects per Research Group</span>
+    <button class="btn btn-xs btn-outline-secondary" onclick="downloadChart('pubChart','published_projects_per_research_group')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body">
     <canvas id="pubChart" style="max-height:340px;"></canvas>
@@ -465,8 +487,9 @@
 
 {% if published_by_journal %}
 <div class="card mt-4">
-  <div class="card-header">
-    <i class="bi bi-pie-chart-fill me-1"></i> Publications per Journal
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-pie-chart-fill me-1"></i> Publications per Journal</span>
+    <button class="btn btn-xs btn-outline-secondary" onclick="downloadChart('journalChart','publications_per_journal')" title="Download PNG"><i class="bi bi-download"></i></button>
   </div>
   <div class="card-body d-flex justify-content-center">
     <canvas id="journalChart" style="max-height:340px; max-width:500px;"></canvas>
