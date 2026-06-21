@@ -10,6 +10,14 @@ non-trashed runs regardless of status.
 
 ![runs_per_month](_static/screenshots/runs_per_month.png)
 
+## Total Projects per Research Group
+
+A bar chart showing the total number of projects (regardless of publication status) for
+each research group, sorted from most to least. Each bar is coloured distinctly per
+group. Hovering over a bar shows the exact count. Groups with no projects are not shown.
+
+![total_projects](_static/screenshots/total_projects_perresearch_group.png)
+
 ## Published Projects per Research Group
 
 A bar chart showing how many projects have been marked as **published** for each research
