@@ -26,6 +26,21 @@ if [ "${1:-}" = "demo" ]; then
     echo "Starting NGS Tracker in DEMO mode — http://127.0.0.1:${NGS_PORT:-5000}"
 fi
 
+PORT="${NGS_PORT:-5000}"
+HOST="${NGS_HOST:-127.0.0.1}"
+SETTINGS="$HOME/.ngs-tracker/settings.json"
+
+if [ "${1:-}" != "demo" ]; then
+    DB_PATH=""
+    if [ -f "$SETTINGS" ]; then
+        DB_PATH=$(python3 -c "import json,sys; d=json.load(open('$SETTINGS')); print(d.get('db_path',''))" 2>/dev/null)
+    fi
+    DB_DISPLAY="${DB_PATH:-~/.ngs-tracker/ngs_tracker.db (default)}"
+    echo "Starting NGS Tracker — http://${HOST}:${PORT}"
+    echo "  Database : $DB_DISPLAY"
+    echo "  Settings : $SETTINGS"
+fi
+
 RESTART_FLAG="$HOME/.ngs-tracker/.restart"
 
 while true; do
