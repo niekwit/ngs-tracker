@@ -1,0 +1,2 @@
+seqnames,start,end,width,strand,Conc,Conc_iPSC,Conc_D6,Fold,p.value,FDR
+chr1,1234567,1235012,446,*,5.2,3.1,7.3,2.2,1.2e-6,4.5e-5

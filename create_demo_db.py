@@ -41,10 +41,12 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 from models import (
     AttachedFile,
     Project,
+    ProjectScript,
     ResearchGroup,
     Researcher,
     RunSample,
     Sample,
+    ScriptOutputFile,
     WorkflowRun,
     db,
 )
@@ -78,7 +80,10 @@ def _make_snapshot(src_db: Path, snap_dir: Path, ts: str) -> None:
             src.backup(dst)
         src.close()
         dst.close()
-        with open(tmp_path, "rb") as f_in, gzip.open(snap_gz, "wb", compresslevel=6) as f_out:
+        with (
+            open(tmp_path, "rb") as f_in,
+            gzip.open(snap_gz, "wb", compresslevel=6) as f_out,
+        ):
             shutil.copyfileobj(f_in, f_out)
     finally:
         if tmp_path.exists():
@@ -989,6 +994,176 @@ with app.app_context():
     )
     db.session.add(mr_file)
 
+    # ── Custom Analysis Scripts ───────────────────────────────────────────────
+
+    def _write_script(project_id, script_id, filename, content):
+        """Write a demo script file and return the stored path string."""
+        d = demo_storage / "projects" / str(project_id) / "scripts"
+        d.mkdir(parents=True, exist_ok=True)
+        stored = d / f"{uuid.uuid4().hex}_{filename}"
+        stored.write_text(content)
+        return str(stored)
+
+    def _write_output(project_id, script_id, filename, content):
+        """Write a demo script output file and return the stored path string."""
+        d = (
+            demo_storage
+            / "projects"
+            / str(project_id)
+            / "scripts"
+            / str(script_id)
+            / "outputs"
+        )
+        d.mkdir(parents=True, exist_ok=True)
+        stored = d / f"{uuid.uuid4().hex}_{filename}"
+        stored.write_text(content)
+        return str(stored)
+
+    # Ben — CRISPR hit-ranking Python script
+    py_content = '''\
+"""Rank MAGeCK RRA output by combined score and export top hits."""
+import pandas as pd
+import matplotlib.pyplot as plt
+
+rra = pd.read_csv("mageck_rra.gene_summary.txt", sep="\\t")
+rra = rra.sort_values("neg|score").head(50)
+rra[["id", "neg|score", "neg|fdr"]].to_csv("top50_hits.csv", index=False)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.barh(rra["id"][:20][::-1], -rra["neg|score"][:20][::-1], color="steelblue")
+ax.set_xlabel("−log10(RRA score)")
+ax.set_title("Top 20 CRISPR screen hits (neg. selection)")
+plt.tight_layout()
+fig.savefig("top20_hits.pdf")
+'''
+    script_crispr = ProjectScript(
+        project_id=proj_crispr.id,
+        original_filename="crispr_hit_ranking.py",
+        stored_path="placeholder",  # set below after flush
+        language="Python",
+        description="Rank MAGeCK RRA hits and plot top 20 genes",
+        shared_storage_path="/OneDrive/LabShare/ben/crispr_kras/hit_ranking",
+        uploaded_at=dt(230),
+        created_by="Ben Hartley",
+    )
+    db.session.add(script_crispr)
+    db.session.flush()
+    script_crispr.stored_path = _write_script(
+        proj_crispr.id, script_crispr.id, "crispr_hit_ranking.py", py_content
+    )
+
+    out_hits_csv = ScriptOutputFile(
+        script_id=script_crispr.id,
+        original_filename="top50_hits.csv",
+        stored_path="placeholder",
+        description="Top 50 negatively selected hits (RRA score + FDR)",
+        uploaded_at=dt(229),
+    )
+    db.session.add(out_hits_csv)
+    db.session.flush()
+    out_hits_csv.stored_path = _write_output(
+        proj_crispr.id,
+        script_crispr.id,
+        "top50_hits.csv",
+        "id,neg|score,neg|fdr\nSOS1,0.0012,0.0008\nKRAS,0.0031,0.0021\nEGFR,0.0045,0.0031\n",
+    )
+
+    # Alice — differential ATAC-seq R script
+    r_content = """\
+library(DiffBind)
+library(ggplot2)
+
+# Load peak set and count reads
+dba <- dba(sampleSheet = "sample_sheet.csv")
+dba <- dba.count(dba, bUseSummarizeOverlaps = TRUE)
+dba <- dba.normalize(dba)
+dba <- dba.contrast(dba, categories = DBA_CONDITION)
+dba <- dba.analyze(dba)
+
+# Export results
+res <- dba.report(dba, th = 0.05)
+write.csv(as.data.frame(res), "differential_peaks.csv", row.names = FALSE)
+
+# MA plot
+png("ma_plot.png", width = 800, height = 600, res = 150)
+dba.plotMA(dba)
+dev.off()
+"""
+    script_atac = ProjectScript(
+        project_id=proj_atac.id,
+        original_filename="differential_accessibility.R",
+        stored_path="placeholder",
+        language="R",
+        description="DiffBind differential accessibility — D0 vs D6 iPSC",
+        shared_storage_path="/OneDrive/LabShare/alice/atac_diffbind",
+        uploaded_at=dt(150),
+        created_by="Alice Morgan",
+    )
+    db.session.add(script_atac)
+    db.session.flush()
+    script_atac.stored_path = _write_script(
+        proj_atac.id, script_atac.id, "differential_accessibility.R", r_content
+    )
+
+    out_peaks_csv = ScriptOutputFile(
+        script_id=script_atac.id,
+        original_filename="differential_peaks.csv",
+        stored_path="placeholder",
+        description="Differentially accessible peaks (FDR < 0.05)",
+        uploaded_at=dt(149),
+    )
+    db.session.add(out_peaks_csv)
+    db.session.flush()
+    out_peaks_csv.stored_path = _write_output(
+        proj_atac.id,
+        script_atac.id,
+        "differential_peaks.csv",
+        "seqnames,start,end,width,strand,Conc,Conc_iPSC,Conc_D6,Fold,p.value,FDR\n"
+        "chr1,1234567,1235012,446,*,5.2,3.1,7.3,2.2,1.2e-6,4.5e-5\n",
+    )
+
+    # David — Jupyter notebook for single-cell UMAP visualisation
+    ipynb_content = json.dumps(
+        {
+            "nbformat": 4,
+            "nbformat_minor": 5,
+            "metadata": {"kernelspec": {"name": "python3", "display_name": "Python 3"}},
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": ["# PDAC single-cell atlas — UMAP visualisation\n"],
+                },
+                {
+                    "cell_type": "code",
+                    "metadata": {},
+                    "source": [
+                        "import scanpy as sc\n",
+                        "adata = sc.read_h5ad('pdac_atlas.h5ad')\n",
+                        "sc.pl.umap(adata, color=['cell_type', 'sample'], save='_celltypes.png')\n",
+                    ],
+                    "outputs": [],
+                    "execution_count": None,
+                },
+            ],
+        }
+    )
+    script_sc = ProjectScript(
+        project_id=proj_sc.id,
+        original_filename="pdac_umap_visualisation.ipynb",
+        stored_path="placeholder",
+        language="Jupyter",
+        description="UMAP plots coloured by cell type and sample for the PDAC atlas",
+        shared_storage_path="/OneDrive/LabShare/david/pdac_atlas/figures",
+        uploaded_at=dt(95),
+        created_by="David Osei",
+    )
+    db.session.add(script_sc)
+    db.session.flush()
+    script_sc.stored_path = _write_script(
+        proj_sc.id, script_sc.id, "pdac_umap_visualisation.ipynb", ipynb_content
+    )
+
     db.session.commit()
 
     # ── Snapshot 2: full state (all groups, projects, and runs) ───────────────
@@ -1001,6 +1176,7 @@ with app.app_context():
     n_projects = Project.query.count()
     n_runs = WorkflowRun.query.count()
     n_samples = Sample.query.count()
+    n_scripts = ProjectScript.query.count()
 
     print(f"\nDemo database written to: {demo_db}")
     print(f"  Research groups : {n_groups}")
@@ -1008,6 +1184,7 @@ with app.app_context():
     print(f"  Projects        : {n_projects}")
     print(f"  Workflow runs   : {n_runs}")
     print(f"  Samples         : {n_samples}")
+    print(f"  Custom scripts  : {n_scripts}")
     print(f"\nDemo snapshots written to: {snap_dir.parent}")
     print(f"  Snapshot 1 (2026-01-01): 5 runs (Alice's ATAC-seq and ChIP-seq only)")
     print(f"  Snapshot 2 (2026-06-01): {n_runs} runs (full dataset)")
@@ -1017,13 +1194,13 @@ with app.app_context():
 from config import SETTINGS_DIR as _SETTINGS_DIR
 
 _demo_journal_cache = {
-    "10.1038/nmeth.1923":             "Nature Methods",
-    "10.1038/s41588-022-01152-6":     "Nature Genetics",
-    "10.1186/s13059-014-0550-8":      "Genome Biology",
-    "10.1371/journal.pcbi.1009820":   "PLOS Computational Biology",
-    "10.1093/bioinformatics/bts635":  "Bioinformatics",
-    "10.1038/nature11247":            "Nature",
-    "10.1093/nar/gkz173":             "Nucleic Acids Research",
+    "10.1038/nmeth.1923": "Nature Methods",
+    "10.1038/s41588-022-01152-6": "Nature Genetics",
+    "10.1186/s13059-014-0550-8": "Genome Biology",
+    "10.1371/journal.pcbi.1009820": "PLOS Computational Biology",
+    "10.1093/bioinformatics/bts635": "Bioinformatics",
+    "10.1038/nature11247": "Nature",
+    "10.1093/nar/gkz173": "Nucleic Acids Research",
 }
 _cache_path = _SETTINGS_DIR / "journal_cache.json"
 _existing: dict = {}
