@@ -17,8 +17,7 @@
   </div>
   <div class="d-flex gap-2">
     {% if scripts %}
-    <button class="btn btn-outline-secondary btn-sm" id="scripts-toggle"
-            data-bs-toggle="collapse" data-bs-target="#scriptsSection" aria-expanded="false">
+    <button class="btn btn-outline-secondary btn-sm" id="scripts-toggle" aria-expanded="false">
       <i class="bi bi-file-earmark-code me-1"></i>
       Scripts <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ scripts|length }}</span>
     </button>
@@ -41,6 +40,7 @@
 </a>
 {% endmacro %}
 
+<div id="runs-section">
 <!-- Date range filter -->
 <form method="GET" action="{{ url_for('runs_list') }}" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
   <input type="hidden" name="sort" value="{{ sort }}">
@@ -393,6 +393,8 @@
 </div>
 {% endif %}
 
+</div>{# end #runs-section #}
+
 {% if scripts %}
 <div class="collapse mt-4" id="scriptsSection">
   <div class="card">
@@ -514,18 +516,43 @@
   };
 })();
 
-// Scripts section toggle — persist open/closed state across page loads
+// Scripts toggle — hide runs when scripts are shown, persist state
 (function () {
   var btn = document.getElementById('scripts-toggle');
   var section = document.getElementById('scriptsSection');
+  var runsSection = document.getElementById('runs-section');
   if (!btn || !section) return;
   var KEY = 'ngs-scripts-open';
-  if (localStorage.getItem(KEY) === '1') {
+
+  function showScripts() {
     section.classList.add('show');
     btn.setAttribute('aria-expanded', 'true');
+    btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+    if (runsSection) runsSection.style.display = 'none';
+    localStorage.setItem(KEY, '1');
   }
-  section.addEventListener('shown.bs.collapse', function () { localStorage.setItem(KEY, '1'); });
-  section.addEventListener('hidden.bs.collapse', function () { localStorage.removeItem(KEY); });
+
+  function hideScripts() {
+    section.classList.remove('show');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+    if (runsSection) runsSection.style.display = '';
+    localStorage.removeItem(KEY);
+  }
+
+  if (localStorage.getItem(KEY) === '1') {
+    showScripts();
+  }
+
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (section.classList.contains('show')) {
+      hideScripts();
+    } else {
+      showScripts();
+    }
+  });
 })();
 </script>
 {% endblock %}
