@@ -524,6 +524,16 @@ def set_snapshot_keep(n: int) -> None:
     save_settings(s)
 
 
+def get_rclone_remote() -> str:
+    return load_settings().get("rclone_remote", "")
+
+
+def set_rclone_remote(remote: str) -> None:
+    s = load_settings()
+    s["rclone_remote"] = remote.strip()
+    save_settings(s)
+
+
 def get_last_snapshot_time() -> str:
     return load_settings().get("last_snapshot_time", "")
 

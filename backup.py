@@ -15,6 +15,7 @@ _log = logging.getLogger("ngs_tracker.backup")
 from config import (
     DEFAULT_DB,
     get_last_snapshot_time,
+    get_rclone_remote,
     get_snapshot_backup_dir,
     get_snapshot_interval_hours,
     get_snapshot_keep,
@@ -23,6 +24,7 @@ from config import (
 )
 
 _RSYNC_AVAILABLE = sys.platform == "linux" and bool(shutil.which("rsync"))
+_RCLONE_AVAILABLE = bool(shutil.which("rclone"))
 
 
 def _sidecar(gz_path: Path) -> Path:
@@ -95,7 +97,10 @@ def run_snapshot() -> str:
     dst.close()
 
     snapshot_gz = db_dir / f"ngs_tracker_{ts}.db.gz"
-    with open(tmp_db, "rb") as f_in, gzip.open(snapshot_gz, "wb", compresslevel=6) as f_out:
+    with (
+        open(tmp_db, "rb") as f_in,
+        gzip.open(snapshot_gz, "wb", compresslevel=6) as f_out,
+    ):
         shutil.copyfileobj(f_in, f_out)
     tmp_db.unlink()
 
@@ -119,6 +124,16 @@ def run_snapshot() -> str:
         if uploads_dir.exists():
             _prune_upload_snapshots(uploads_dir)
 
+    # rclone sync — mirror the whole backup dir to the configured remote
+    remote = get_rclone_remote()
+    if remote:
+        try:
+            _rclone_sync(dest_root, remote)
+        except Exception as exc:
+            _log.warning(
+                "rclone sync to %s failed (local snapshot still saved): %s", remote, exc
+            )
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     set_last_snapshot_time(now)
     return str(snapshot_gz)
@@ -140,6 +155,24 @@ def _rsync_uploads(storage_path: str, dest_root: Path, ts: str) -> None:
         cmd += [f"--link-dest={existing[0]}"]
     cmd += [storage_path.rstrip("/") + "/", str(new_snap) + "/"]
     subprocess.run(cmd, check=True)
+
+
+def _rclone_sync(local_dir: Path, remote: str) -> None:
+    """Mirror the entire local backup directory to an rclone remote path."""
+    if not _RCLONE_AVAILABLE:
+        raise RuntimeError("rclone is not installed or not in PATH.")
+    subprocess.run(
+        [
+            "rclone",
+            "sync",
+            str(local_dir) + "/",
+            remote.rstrip("/") + "/",
+            "--fast-list",
+            "--transfers=4",
+        ],
+        check=True,
+        timeout=600,
+    )
 
 
 def _prune_db_snapshots(db_dir: Path) -> None:
@@ -226,10 +259,15 @@ def list_snapshots() -> list[dict]:
         else:
             integrity = "unverified"
 
-        result.append({
-            "ts": ts, "label": label, "has_uploads": has_uploads,
-            "comment": meta.get(ts, ""), "integrity": integrity,
-        })
+        result.append(
+            {
+                "ts": ts,
+                "label": label,
+                "has_uploads": has_uploads,
+                "comment": meta.get(ts, ""),
+                "integrity": integrity,
+            }
+        )
     return result
 
 
@@ -274,9 +312,13 @@ def restore_snapshot(ts: str, engine) -> None:
             if snap_uploads.exists():
                 Path(storage_path).mkdir(parents=True, exist_ok=True)
                 subprocess.run(
-                    ["rsync", "-a", "--delete",
-                     str(snap_uploads).rstrip("/") + "/",
-                     storage_path.rstrip("/") + "/"],
+                    [
+                        "rsync",
+                        "-a",
+                        "--delete",
+                        str(snap_uploads).rstrip("/") + "/",
+                        storage_path.rstrip("/") + "/",
+                    ],
                     check=True,
                 )
         else:

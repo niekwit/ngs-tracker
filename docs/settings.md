@@ -87,8 +87,30 @@ The snapshot backup creates point-in-time copies of the database and uploads dir
 | **Backup directory** | Full path to the directory where snapshots are written. Leave empty to disable. |
 | **Every (hours)** | How often to run an automatic backup. Set to 0 to disable the schedule (manual only). |
 | **Keep (copies)** | How many snapshots to retain (DB and upload snapshots); the oldest are pruned automatically. |
+| **Cloud backup (rclone remote)** | Optional rclone remote path (e.g. `myremote:mybucket/ngs-tracker`). After every snapshot, the entire local backup directory is mirrored to this remote with `rclone sync`. Leave empty to disable. |
 
 The database snapshot uses SQLite's built-in online backup API, which produces a fully consistent copy even while the app is running — no shutdown required. The snapshot file is gzip-compressed (`.db.gz`).
+
+### Cloud backup via rclone
+
+If a **Cloud backup** remote is configured, NGS Tracker runs `rclone sync` after each snapshot (manual or scheduled), mirroring the full local backup directory — DB snapshots, SHA-256 sidecars, and uploads — to the remote. Pruning is reflected automatically: files deleted locally are also deleted on the remote.
+
+**Requirements:**
+
+- `rclone` must be installed and in `PATH`.
+- The remote must already be configured with `rclone config` (e.g. `rclone config` → add Dropbox, S3, Google Drive, etc.).
+- The remote path must be writable by the user running NGS Tracker.
+
+**Example remote paths:**
+
+| Backend | Example path |
+|---|---|
+| Dropbox | `dropbox:ngs-tracker-backup` |
+| S3 | `s3:mybucket/ngs-tracker` |
+| Google Drive | `gdrive:ngs-tracker` |
+| SFTP / RCS | `rcs:~/ngs-tracker-backup` |
+
+rclone failures are non-fatal — if the sync fails, a warning is logged but the local snapshot is always saved and the last-snapshot timestamp is still updated. Check the application log if the cloud badge does not appear after a snapshot.
 
 ### Storage structure
 

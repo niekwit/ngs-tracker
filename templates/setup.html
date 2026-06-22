@@ -244,6 +244,17 @@
                 <i class="bi bi-save me-1"></i>Save
               </button>
             </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold mb-1" for="rcloneRemote">
+                Cloud backup (rclone remote)
+                <i class="bi bi-info-circle text-muted ms-1"
+                   title="After each snapshot, rclone sync copies the entire local backup directory to this remote path. Requires rclone to be installed and the remote to be configured. Example: myremote:mybucket/ngs-tracker"
+                   data-bs-toggle="tooltip"></i>
+              </label>
+              <input type="text" id="rcloneRemote" class="form-control form-control-sm font-monospace"
+                     name="rclone_remote" value="{{ rclone_remote }}"
+                     placeholder="remote:bucket/path — leave empty to disable">
+            </div>
           </div>
         </form>
         <div class="mt-3 d-flex align-items-center gap-3 flex-wrap">
@@ -255,6 +266,11 @@
           <span class="badge bg-secondary">Directory set — automatic schedule off</span>
           {% else %}
           <span class="badge bg-secondary">Disabled</span>
+          {% endif %}
+          {% if rclone_remote %}
+          <span class="badge bg-info text-dark">
+            <i class="bi bi-cloud-upload me-1"></i>rclone → {{ rclone_remote }}
+          </span>
           {% endif %}
           {% if last_snapshot_time %}
           <span class="text-muted small"><i class="bi bi-clock me-1"></i>Last snapshot: {{ last_snapshot_time }}</span>

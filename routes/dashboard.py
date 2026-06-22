@@ -24,6 +24,7 @@ from config import (
     get_slack_runs_channel,
     get_slack_snapshot_channel,
     get_slack_token,
+    get_rclone_remote,
     get_snapshot_backup_dir,
     get_snapshot_interval_hours,
     get_snapshot_keep,
@@ -42,6 +43,7 @@ from config import (
     set_slack_runs_channel,
     set_slack_snapshot_channel,
     set_slack_token,
+    set_rclone_remote,
     set_snapshot_backup_dir,
     set_snapshot_interval_hours,
     set_snapshot_keep,
@@ -102,7 +104,11 @@ def register(app):
         }
 
         no_backup_runs = sorted(
-            [r for r in all_runs if not r.backups_list and r.status in ("completed", "failed")],
+            [
+                r
+                for r in all_runs
+                if not r.backups_list and r.status in ("completed", "failed")
+            ],
             key=lambda r: r.run_date,
         )
 
@@ -266,9 +272,11 @@ def register(app):
                     except Exception as e:
                         flash(f"Could not create backup directory: {e}", "danger")
                         return redirect(url_for("setup"))
+                rclone_remote = request.form.get("rclone_remote", "").strip()
                 set_snapshot_backup_dir(bdir)
                 set_snapshot_interval_hours(hours)
                 set_snapshot_keep(keep)
+                set_rclone_remote(rclone_remote)
                 if bdir and hours > 0:
                     flash(
                         f"Snapshot backup enabled: every {hours}h to {bdir}, keeping {keep} copies.",
@@ -418,6 +426,7 @@ def register(app):
             snapshot_backup_dir=snap_dir,
             snapshot_interval_hours=snap_interval,
             snapshot_keep=get_snapshot_keep(),
+            rclone_remote=get_rclone_remote(),
             last_snapshot_time=last_snap,
             next_snapshot_time=next_snapshot_time,
             snapshots=_list_snapshots(),
