@@ -28,6 +28,7 @@ from models import (
     RUN_STATUSES,
     AttachedFile,
     Project,
+    ProjectScript,
     ResearchGroup,
     Researcher,
     WorkflowRun,
@@ -137,6 +138,12 @@ def register(app):
         page = min(page, total_pages)
         runs_page = runs[(page - 1) * PER_PAGE : page * PER_PAGE]
 
+        scripts = (
+            ProjectScript.query.filter_by(trashed=False)
+            .order_by(ProjectScript.uploaded_at.desc())
+            .all()
+        )
+
         return render_template(
             "runs/list.html",
             runs=runs_page,
@@ -162,6 +169,7 @@ def register(app):
             total=total,
             per_page=PER_PAGE,
             backup_locations=get_backup_locations(),
+            scripts=scripts,
         )
 
     @app.route("/runs/<int:id>")

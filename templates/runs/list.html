@@ -15,9 +15,18 @@
     </span>
     {% endif %}
   </div>
-  <a href="{{ url_for('run_new') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus-lg me-1"></i> New Run
-  </a>
+  <div class="d-flex gap-2">
+    {% if scripts %}
+    <button class="btn btn-outline-secondary btn-sm" id="scripts-toggle"
+            data-bs-toggle="collapse" data-bs-target="#scriptsSection" aria-expanded="false">
+      <i class="bi bi-file-earmark-code me-1"></i>
+      Scripts <span class="badge bg-secondary ms-1" style="font-size:.7rem;">{{ scripts|length }}</span>
+    </button>
+    {% endif %}
+    <a href="{{ url_for('run_new') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> New Run
+    </a>
+  </div>
 </div>
 
 {% macro sort_link(col, label) %}
@@ -384,6 +393,57 @@
 </div>
 {% endif %}
 
+{% if scripts %}
+<div class="collapse mt-4" id="scriptsSection">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-file-earmark-code me-1"></i> Custom Analysis Scripts <span class="badge bg-secondary ms-1">{{ scripts|length }}</span></span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Script</th>
+            <th>Project</th>
+            <th>Researcher</th>
+            <th>Description</th>
+            <th>Outputs</th>
+            <th>Uploaded</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in scripts %}
+          <tr>
+            <td>
+              <span class="badge bg-light text-dark border me-1" style="font-weight:500;">
+                {% if s.language_icon %}<i class="{{ s.language_icon }}" style="font-size:1em;"></i>{% endif %}
+              </span>
+              <a href="{{ url_for('script_detail', id=s.id) }}" class="text-decoration-none fw-semibold">{{ s.original_filename }}</a>
+            </td>
+            <td>
+              <a href="{{ url_for('project_detail', id=s.project_id) }}" class="text-decoration-none text-secondary small">{{ s.project.name }}</a>
+            </td>
+            <td class="text-muted small">{{ s.project.researcher.name }}</td>
+            <td class="text-muted small">{{ s.description or '—' }}</td>
+            <td class="text-muted small text-center">
+              {% if s.output_files %}
+              <span class="badge bg-light text-dark border">{{ s.output_files|length }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-muted small">{{ s.uploaded_at.strftime('%Y-%m-%d') }}</td>
+            <td class="text-end">
+              <a href="{{ url_for('script_detail', id=s.id) }}" class="btn btn-xs btn-outline-primary">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="modal fade" id="removeTagsModal" tabindex="-1">
   <div class="modal-dialog modal-sm">
     <div class="modal-content">
@@ -452,6 +512,20 @@
     if (selectAll) selectAll.checked = false;
     updateBar();
   };
+})();
+
+// Scripts section toggle — persist open/closed state across page loads
+(function () {
+  var btn = document.getElementById('scripts-toggle');
+  var section = document.getElementById('scriptsSection');
+  if (!btn || !section) return;
+  var KEY = 'ngs-scripts-open';
+  if (localStorage.getItem(KEY) === '1') {
+    section.classList.add('show');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  section.addEventListener('shown.bs.collapse', function () { localStorage.setItem(KEY, '1'); });
+  section.addEventListener('hidden.bs.collapse', function () { localStorage.removeItem(KEY); });
 })();
 </script>
 {% endblock %}
