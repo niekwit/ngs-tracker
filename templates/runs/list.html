@@ -2,6 +2,10 @@
 {% block title %}Workflow Runs — NGS Tracker{% endblock %}
 
 {% block content %}
+{% macro lm() %}{{ 1 if low_mapping_filter else '' }}{% endmacro %}
+{% macro dup() %}{{ 1 if duplicates_filter else '' }}{% endmacro %}
+{% macro tm() %}{{ tag_mode if tag_filters else '' }}{% endmacro %}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h4 class="fw-bold mb-0"><i class="bi bi-play-circle-fill me-1 text-danger"></i> Workflow Runs</h4>
@@ -53,10 +57,6 @@
   </a>
   {% endif %}
 </form>
-
-{% macro lm() %}{{ 1 if low_mapping_filter else '' }}{% endmacro %}
-{% macro dup() %}{{ 1 if duplicates_filter else '' }}{% endmacro %}
-{% macro tm() %}{{ tag_mode if tag_filters else '' }}{% endmacro %}
 
 {% if all_tags %}
 <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
