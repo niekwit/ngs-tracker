@@ -81,7 +81,11 @@
           <dt class="col-sm-4 text-muted">Script</dt>
           <dd class="col-sm-8 font-monospace">{{ script.original_filename }}</dd>
           <dt class="col-sm-4 text-muted">Language</dt>
-          <dd class="col-sm-8"><span class="badge bg-{{ script.language_color }}">{{ script.language }}</span></dd>
+          <dd class="col-sm-8">
+            <span class="badge bg-light text-dark border" style="font-weight:500;">
+              {% if script.language_icon %}<i class="{{ script.language_icon }} me-1" style="font-size:1em;"></i>{% endif %}{{ script.language }}
+            </span>
+          </dd>
           {% if script.description %}
           <dt class="col-sm-4 text-muted">Description</dt>
           <dd class="col-sm-8">{{ script.description }}</dd>

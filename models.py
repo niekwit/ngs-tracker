@@ -133,6 +133,17 @@ SCRIPT_LANGUAGE_COLORS = {
     "Jupyter": "info",
 }
 
+SCRIPT_LANGUAGE_ICONS = {
+    "Python": "devicon-python-plain colored",
+    "R": "devicon-r-plain colored",
+    "Shell": "devicon-bash-plain colored",
+    "Bash": "devicon-bash-plain colored",
+    "Perl": "devicon-perl-plain colored",
+    "MATLAB": "devicon-matlab-plain colored",
+    "Julia": "devicon-julia-plain colored",
+    "Jupyter": "devicon-jupyter-plain colored",
+}
+
 
 class ProjectScript(db.Model):
     __tablename__ = "project_script"
@@ -158,6 +169,10 @@ class ProjectScript(db.Model):
     def language_color(self):
         return SCRIPT_LANGUAGE_COLORS.get(self.language, "secondary")
 
+    @property
+    def language_icon(self):
+        return SCRIPT_LANGUAGE_ICONS.get(self.language, "")
+
 
 class ScriptOutputFile(db.Model):
     __tablename__ = "script_output_file"
@@ -170,7 +185,16 @@ class ScriptOutputFile(db.Model):
     description = db.Column(db.String(255), default="")
     uploaded_at = db.Column(db.DateTime, default=_now)
 
-    _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".tif", ".tiff"}
+    _IMAGE_EXTENSIONS = {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".tif",
+        ".tiff",
+    }
 
     @property
     def is_image(self):

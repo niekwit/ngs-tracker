@@ -247,7 +247,9 @@
             </a>
           </td>
           <td>
-            <span class="badge bg-{{ s.language_color }}">{{ s.language }}</span>
+            <span class="badge bg-light text-dark border" style="font-weight:500;">
+              {% if s.language_icon %}<i class="{{ s.language_icon }} me-1" style="font-size:1em;"></i>{% endif %}{{ s.language }}
+            </span>
           </td>
           <td class="text-muted small">{{ s.description or '—' }}</td>
           <td>
