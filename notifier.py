@@ -45,25 +45,44 @@ def _post(channel: str, text: str, blocks: list | None = None) -> tuple[bool, st
         return False, str(exc)
 
 
-def _snapshot_blocks(success: bool, detail: str) -> list:
+def _snapshot_blocks(
+    success: bool, detail: str, rclone_error: str | None = None
+) -> list:
     icon = ":white_check_mark:" if success else ":x:"
     header = f"{icon} *Snapshot {'succeeded' if success else 'failed'}*"
-    return [
+    blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text": header}},
         {"type": "section", "text": {"type": "mrkdwn", "text": f"```{detail}```"}},
     ]
+    if rclone_error is not None:
+        blocks.append({"type": "divider"})
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":x: *rclone sync failed*\n```{rclone_error}```",
+                },
+            }
+        )
+    return blocks
 
 
-def send_snapshot_notification(success: bool, detail: str) -> bool:
+def send_snapshot_notification(
+    success: bool, detail: str, rclone_error: str | None = None
+) -> bool:
     """Post a snapshot result to the configured snapshots channel.
 
     Only sends when Slack is enabled. Returns True on success.
+    rclone_error: if set, an extra block is appended showing the rclone failure.
     """
     if not get_slack_enabled():
         return False
     channel = get_slack_snapshot_channel()
     text = f"Snapshot {'succeeded' if success else 'failed'}: {detail}"
-    ok, err = _post(channel, text, _snapshot_blocks(success, detail))
+    if rclone_error is not None:
+        text += " (rclone sync failed)"
+    ok, err = _post(channel, text, _snapshot_blocks(success, detail, rclone_error))
     if not ok:
         _log.warning("Could not send snapshot notification: %s", err)
     return ok

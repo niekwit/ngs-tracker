@@ -296,10 +296,12 @@ def register(app):
                 from notifier import send_snapshot_notification
 
                 try:
-                    path = run_snapshot()
+                    path, rclone_err = run_snapshot()
                     db_log("CREATE", "Snapshot", 0, f"Manual snapshot: {path}")
                     flash(f"Snapshot saved to {path}.", "success")
-                    send_snapshot_notification(True, path)
+                    if rclone_err:
+                        flash(f"rclone sync failed: {rclone_err}", "warning")
+                    send_snapshot_notification(True, path, rclone_error=rclone_err)
                 except Exception as e:
                     flash(f"Snapshot failed: {e}", "danger")
                     send_snapshot_notification(False, str(e))
@@ -358,7 +360,7 @@ def register(app):
                     flash("No snapshot selected.", "danger")
                     return redirect(url_for("setup"))
                 try:
-                    run_snapshot()  # safety copy before overwriting
+                    run_snapshot()  # safety copy before overwriting; rclone result ignored here
                     restore_snapshot(ts, db.engine)
                     db_log(
                         "UPDATE",

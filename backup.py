@@ -67,12 +67,13 @@ def _verify_and_store(gz_path: Path) -> bool:
     return ok
 
 
-def run_snapshot() -> str:
+def run_snapshot() -> tuple[str, str | None]:
     """
     Write a timestamped DB snapshot and back up the uploads directory.
     On Linux with rsync: incremental hardlink snapshot per timestamp.
     Otherwise: single overwritten tar.gz archive.
-    Returns the DB snapshot path.
+    Returns (db_snapshot_path, rclone_error) where rclone_error is None
+    when rclone is not configured or succeeded, or an error string on failure.
     """
     backup_dir = get_snapshot_backup_dir()
     if not backup_dir:
@@ -125,18 +126,20 @@ def run_snapshot() -> str:
             _prune_upload_snapshots(uploads_dir)
 
     # rclone sync — mirror the whole backup dir to the configured remote
+    rclone_error: str | None = None
     remote = get_rclone_remote()
     if remote:
         try:
             _rclone_sync(dest_root, remote)
         except Exception as exc:
+            rclone_error = str(exc)
             _log.warning(
                 "rclone sync to %s failed (local snapshot still saved): %s", remote, exc
             )
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     set_last_snapshot_time(now)
-    return str(snapshot_gz)
+    return str(snapshot_gz), rclone_error
 
 
 def _rsync_uploads(storage_path: str, dest_root: Path, ts: str) -> None:

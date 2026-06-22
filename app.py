@@ -173,9 +173,9 @@ def _start_snapshot_scheduler(app: Flask) -> None:
                         from config import db_log
                         from notifier import send_snapshot_notification
 
-                        path = run_snapshot()
+                        path, rclone_err = run_snapshot()
                         db_log("CREATE", "Snapshot", 0, f"Scheduled snapshot: {path}")
-                        send_snapshot_notification(True, path)
+                        send_snapshot_notification(True, path, rclone_error=rclone_err)
                 except Exception as exc:
                     _log.error("Scheduled snapshot failed: %s", exc, exc_info=True)
                     try:
