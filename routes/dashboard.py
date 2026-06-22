@@ -11,6 +11,7 @@ from config import (
     DEFAULT_DB,
     SETTINGS_FILE,
     add_backup_location,
+    set_backup_location_base_path,
     add_default_tag,
     add_user,
     db_log,
@@ -222,12 +223,13 @@ def register(app):
             if action == "add_backup_loc":
                 name = request.form.get("loc_name", "").strip()
                 loc_type = request.form.get("loc_type", "remote")
+                base_path = request.form.get("loc_base_path", "").strip()
                 if not name:
                     flash("Location name is required.", "danger")
                 elif name in [l["name"] for l in get_backup_locations()]:
                     flash(f'"{name}" already exists.', "warning")
                 else:
-                    add_backup_location(name, loc_type)
+                    add_backup_location(name, loc_type, base_path)
                     flash(f'Backup location "{name}" added.', "success")
                 return redirect(url_for("setup"))
 
@@ -235,6 +237,13 @@ def register(app):
                 name = request.form.get("loc_name", "")
                 remove_backup_location(name)
                 flash(f'Backup location "{name}" removed.', "success")
+                return redirect(url_for("setup"))
+
+            if action == "set_backup_loc_base_path":
+                name = request.form.get("loc_name", "")
+                base_path = request.form.get("base_path", "").strip()
+                set_backup_location_base_path(name, base_path)
+                flash(f'Base path for "{name}" updated.', "success")
                 return redirect(url_for("setup"))
 
             if action == "rotate_api_key":

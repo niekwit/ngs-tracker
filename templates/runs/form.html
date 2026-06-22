@@ -198,8 +198,15 @@
             <div class="d-flex flex-column gap-2">
               {% for loc in backup_locations %}
               {% set checked = loc.name in run_backup_map %}
-              {% set path_val = run_backup_map.get(loc.name, '') %}
-              <div class="d-flex align-items-center gap-2">
+              {% set stored_path = run_backup_map.get(loc.name, '') %}
+              {% set base = loc.base_path | default('') %}
+              {# Strip the base_path prefix for the editable subdir field #}
+              {% if base and stored_path.startswith(base) %}
+                {% set path_val = stored_path[base | length :].lstrip('/') %}
+              {% else %}
+                {% set path_val = stored_path %}
+              {% endif %}
+              <div class="d-flex align-items-center gap-2 flex-wrap">
                 <div class="form-check mb-0" style="min-width:140px;">
                   <input class="form-check-input backup-cb" type="checkbox"
                          name="backup_loc" id="backup_cb_{{ loop.index }}"
@@ -210,11 +217,15 @@
                     <i class="bi {% if loc.type == 'local' %}bi-hdd{% else %}bi-server{% endif %} me-1 text-success"></i> {{ loc.name }}
                   </label>
                 </div>
-                <input type="text" class="form-control form-control-sm"
-                       name="backup_path_{{ loc.name }}" id="backup_path_{{ loop.index }}"
-                       value="{{ path_val }}"
-                       placeholder="Storage path…"
-                       {% if not checked %}style="opacity:.45;"{% endif %}>
+                <div class="input-group input-group-sm flex-nowrap" style="max-width:480px; {% if not checked %}opacity:.45;{% endif %}" id="backup_path_{{ loop.index }}">
+                  {% if base %}
+                  <span class="input-group-text font-monospace text-muted" style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ base }}">{{ base }}</span>
+                  {% endif %}
+                  <input type="text" class="form-control"
+                         name="backup_path_{{ loc.name }}"
+                         value="{{ path_val }}"
+                         placeholder="{{ 'subdirectory…' if base else 'Storage path…' }}">
+                </div>
               </div>
               {% endfor %}
               {% if not backup_locations %}

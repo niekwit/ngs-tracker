@@ -196,7 +196,10 @@ def register(app):
         backed_up = {b["location"]: b["path"] for b in run.backups_list}
         loc_names = [l["name"] for l in backup_locations]
         duplicate_runs = find_duplicate_runs(
-            run.project_id, run.workflow_name, run.run_date, exclude_id=run.id,
+            run.project_id,
+            run.workflow_name,
+            run.run_date,
+            exclude_id=run.id,
             description=run.description or "",
             sample_names={rs.sample.name for rs in run.run_samples},
         )
@@ -258,14 +261,19 @@ def register(app):
             status = request.form.get("status", "completed")
             run_date = _parse_datetime(request.form.get("run_date", ""))
             selected_locs = set(request.form.getlist("backup_loc"))
-            backups = [
-                {
-                    "location": loc["name"],
-                    "path": request.form.get(f"backup_path_{loc['name']}", "").strip(),
-                }
-                for loc in get_backup_locations()
-                if loc["name"] in selected_locs
-            ]
+            backups = []
+            for loc in get_backup_locations():
+                if loc["name"] not in selected_locs:
+                    continue
+                subpath = request.form.get(f"backup_path_{loc['name']}", "").strip()
+                base = loc.get("base_path", "").strip()
+                if base and subpath:
+                    full = base.rstrip("/") + "/" + subpath.lstrip("/")
+                elif base:
+                    full = base
+                else:
+                    full = subpath
+                backups.append({"location": loc["name"], "path": full})
             wf_list = load_workflows()
             wf_systems = {w["name"]: w.get("system", "snakemake") for w in wf_list}
             workflow_system = wf_systems.get(workflow_name, "other")
@@ -319,7 +327,10 @@ def register(app):
             )
             flash(f'Workflow run "{workflow_name}" created.', "success")
             duplicates = find_duplicate_runs(
-                project_id, workflow_name, run_date, exclude_id=run.id,
+                project_id,
+                workflow_name,
+                run_date,
+                exclude_id=run.id,
                 description=run.description or "",
                 sample_names={rs.sample.name for rs in run.run_samples},
             )
@@ -382,18 +393,20 @@ def register(app):
             run.status = request.form.get("status", "completed")
             run.run_date = _parse_datetime(request.form.get("run_date", ""))
             selected_locs = set(request.form.getlist("backup_loc"))
-            run.backups = json.dumps(
-                [
-                    {
-                        "location": loc["name"],
-                        "path": request.form.get(
-                            f"backup_path_{loc['name']}", ""
-                        ).strip(),
-                    }
-                    for loc in get_backup_locations()
-                    if loc["name"] in selected_locs
-                ]
-            )
+            edit_backups = []
+            for loc in get_backup_locations():
+                if loc["name"] not in selected_locs:
+                    continue
+                subpath = request.form.get(f"backup_path_{loc['name']}", "").strip()
+                base = loc.get("base_path", "").strip()
+                if base and subpath:
+                    full = base.rstrip("/") + "/" + subpath.lstrip("/")
+                elif base:
+                    full = base
+                else:
+                    full = subpath
+                edit_backups.append({"location": loc["name"], "path": full})
+            run.backups = json.dumps(edit_backups)
             wf_systems = {
                 w["name"]: w.get("system", "snakemake") for w in load_workflows()
             }

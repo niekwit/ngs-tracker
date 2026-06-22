@@ -138,20 +138,48 @@
     <div class="card mb-3">
       <div class="card-body">
         {% if backup_locations %}
-        <div class="d-flex flex-wrap gap-2 mb-3">
+        <table class="table table-sm align-middle mb-3">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Base path <span class="text-muted fw-normal small">(optional prefix prepended to run backup paths)</span></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
           {% for loc in backup_locations %}
-          <form method="POST" class="d-inline" onsubmit="return confirm('Remove backup location &quot;{{ loc.name }}&quot;?')">
-            <input type="hidden" name="action" value="remove_backup_loc">
-            <input type="hidden" name="loc_name" value="{{ loc.name }}">
-            <span class="badge bg-success d-inline-flex align-items-center gap-1" style="font-size:.82rem;">
-              <i class="bi {% if loc.type == 'local' %}bi-hdd{% else %}bi-server{% endif %}"></i>
-              {{ loc.name }}
-              <span class="badge bg-light text-secondary ms-1" style="font-size:.7rem; font-weight:400;">{{ loc.type }}</span>
-              <button type="submit" class="btn-close btn-close-white ms-1" style="font-size:.55rem;" title="Remove"></button>
-            </span>
-          </form>
+          <tr>
+            <td>
+              <i class="bi {% if loc.type == 'local' %}bi-hdd{% else %}bi-server{% endif %} me-1 text-success"></i>
+              <strong>{{ loc.name }}</strong>
+            </td>
+            <td><span class="badge bg-secondary" style="font-size:.75rem;">{{ loc.type }}</span></td>
+            <td>
+              <form method="POST" class="d-flex gap-2 align-items-center">
+                <input type="hidden" name="action" value="set_backup_loc_base_path">
+                <input type="hidden" name="loc_name" value="{{ loc.name }}">
+                <input type="text" class="form-control form-control-sm font-monospace"
+                       name="base_path" value="{{ loc.base_path }}"
+                       placeholder="e.g. /rcs/groups/mylab"
+                       style="max-width:340px;">
+                <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">Save</button>
+              </form>
+            </td>
+            <td class="text-end">
+              <form method="POST" class="d-inline"
+                    onsubmit="return confirm('Remove backup location &quot;{{ loc.name }}&quot;?')">
+                <input type="hidden" name="action" value="remove_backup_loc">
+                <input type="hidden" name="loc_name" value="{{ loc.name }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
           {% endfor %}
-        </div>
+          </tbody>
+        </table>
         {% else %}
         <p class="text-muted small mb-3">No backup locations configured yet.</p>
         {% endif %}
@@ -159,7 +187,7 @@
         <form method="POST" class="d-flex flex-wrap gap-2 align-items-center">
           <input type="hidden" name="action" value="add_backup_loc">
           <input type="text" class="form-control form-control-sm" name="loc_name"
-                 placeholder="e.g. HPC, NAS, External Drive" required style="max-width:220px;">
+                 placeholder="Name, e.g. HPC, NAS" required style="max-width:160px;">
           <div class="d-flex gap-3">
             <div class="form-check mb-0">
               <input class="form-check-input" type="radio" name="loc_type" id="loc_type_remote"
@@ -176,6 +204,8 @@
               </label>
             </div>
           </div>
+          <input type="text" class="form-control form-control-sm font-monospace" name="loc_base_path"
+                 placeholder="Base path (optional)" style="max-width:240px;">
           <button type="submit" class="btn btn-sm btn-success text-nowrap">
             <i class="bi bi-plus-lg me-1"></i>Add
           </button>

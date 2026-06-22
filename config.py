@@ -355,10 +355,10 @@ _DEFAULT_BACKUP_LOCATIONS = [
 
 
 def _migrate_backup_locs(locs: list) -> list[dict]:
-    """Upgrade old list[str] format to list[dict]."""
+    """Upgrade old list[str] format to list[dict], and add missing keys."""
     if locs and isinstance(locs[0], str):
-        return [{"name": l, "type": "remote"} for l in locs]
-    return locs
+        locs = [{"name": l, "type": "remote"} for l in locs]
+    return [{**l, "base_path": l.get("base_path", "")} for l in locs]
 
 
 def get_backup_locations() -> list[dict]:
@@ -374,16 +374,29 @@ def get_backup_locations() -> list[dict]:
     return locs
 
 
-def add_backup_location(name: str, loc_type: str = "remote") -> None:
+def add_backup_location(
+    name: str, loc_type: str = "remote", base_path: str = ""
+) -> None:
     name = name.strip()
     if not name:
         return
     s = load_settings()
     locs = _migrate_backup_locs(s.get("backup_locations", _DEFAULT_BACKUP_LOCATIONS[:]))
     if name not in [l["name"] for l in locs]:
-        locs.append({"name": name, "type": loc_type})
+        locs.append({"name": name, "type": loc_type, "base_path": base_path.strip()})
         s["backup_locations"] = locs
         save_settings(s)
+
+
+def set_backup_location_base_path(name: str, base_path: str) -> None:
+    s = load_settings()
+    locs = _migrate_backup_locs(s.get("backup_locations", []))
+    for loc in locs:
+        if loc["name"] == name:
+            loc["base_path"] = base_path.strip()
+            break
+    s["backup_locations"] = locs
+    save_settings(s)
 
 
 def remove_backup_location(name: str) -> None:

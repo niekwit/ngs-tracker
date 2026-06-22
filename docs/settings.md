@@ -61,6 +61,20 @@ The built-in defaults ship with sensible colours (`failed-QC` → Red, `publishe
 
 Removing a tag from the defaults does not affect runs that already use it.
 
+## Backup locations
+
+Backup locations are the named destinations shown when recording that a workflow run has been backed up. Each location has:
+
+| Field | Description |
+|---|---|
+| **Name** | Short label shown on the run form, e.g. `RCS`, `HPC`, `External Drive`. |
+| **Type** | `remote` (server icon) or `local` (hard drive icon). Cosmetic only. |
+| **Base path** | Optional path prefix. When set, the run form shows the prefix as read-only text and only asks the user to enter the subdirectory. The full path stored in the database is `base_path/subdir`. |
+
+**Example:** set base path to `/rcs/groups/mylab/backups` for the *RCS* location. When recording a backup, the user enters `project_xyz/run_001` and the stored path is `/rcs/groups/mylab/backups/project_xyz/run_001`.
+
+Locations with no base path behave as before — the user types the full path. The base path can be set (or updated) at any time from the Settings page; existing run records are not affected.
+
 ## Backup reminder
 
 The backup reminder flags runs that have been completed or failed for longer than a configurable number of days without any backup being recorded. When triggered, a warning banner appears on the [Dashboard](dashboard.md) listing the affected runs.
