@@ -38,6 +38,11 @@
     <a href="{{ url_for('script_download', id=script.id) }}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-download me-1"></i> Download Script
     </a>
+    {% if slack_enabled %}
+    <a href="{{ url_for('script_slack', id=script.id) }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-slack me-1"></i> Send to Slack
+    </a>
+    {% endif %}
     <form method="POST" action="{{ url_for('script_delete', id=script.id) }}"
           onsubmit="return confirm('Delete this script and all its output files?')">
       <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i> Delete</button>

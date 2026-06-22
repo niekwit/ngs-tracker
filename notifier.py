@@ -280,3 +280,40 @@ def build_run_message(
 def send_manual_run_message(channel: str, message: str) -> tuple[bool, str]:
     """Post a manually composed run message. Bypasses the enabled flag."""
     return _post(channel, message)
+
+
+def build_script_message(script) -> str:
+    """Build the default mrkdwn message for a manual custom-analysis-script notification."""
+    researcher = script.project.researcher
+    mention = (
+        f"<@{researcher.slack_user_id}>"
+        if researcher.slack_user_id
+        else researcher.name
+    )
+
+    lines = [
+        f"Hi {mention},",
+        "",
+        f"Custom analysis results for *{script.project.name}* are ready. :bar_chart:",
+        "",
+        f"• *Script:* `{script.original_filename}`",
+        f"• *Language:* {script.language}",
+    ]
+
+    if script.description:
+        lines.append(f"• *Description:* {script.description}")
+
+    if script.output_files:
+        n = len(script.output_files)
+        filenames = ", ".join(
+            f"`{o.original_filename}`" for o in script.output_files[:5]
+        )
+        if n > 5:
+            filenames += f" (+{n - 5} more)"
+        lines.append(f"• *Output files ({n}):* {filenames}")
+
+    if script.shared_storage_path:
+        lines.append(f"• *Data location:* `{script.shared_storage_path}`")
+
+    lines += ["", "Please let me know if you have any questions."]
+    return "\n".join(lines)

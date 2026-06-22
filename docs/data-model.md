@@ -51,4 +51,16 @@ After a sample sheet is uploaded to a run and the confirmation step is completed
 
 Scripts can be uploaded to a project (Python, R, Shell, Bash, Perl, MATLAB, Julia, Jupyter — auto-detected from the file extension). Each script can have multiple output files attached, with an optional description. A **Shared storage path** field stores the cloud or network location where the script output is made accessible to the researcher — separate from any backup locations.
 
+### Slack notification
+
+Once [Slack is configured](settings.md#slack-notifications), a **Send to Slack** button appears on every script detail page. Clicking it opens a compose page pre-filled with a message containing:
+
+- A @mention of the researcher
+- Project name and script filename with language
+- Description (if set)
+- Output file names (up to 5, with count)
+- Shared storage path (if set)
+
+The message is fully editable before sending. The destination channel is derived from the research group name in the same way as [workflow run notifications](runs.md#slack-notification). Every message sent is recorded in the [audit log](audit-log.md) as a `CREATE SlackMessage` entry.
+
 Scripts are soft-deleted to the trash like all other records.

@@ -4,7 +4,13 @@ from pathlib import Path
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
 
-from config import db_log, get_current_user, get_storage_path, resolve_stored_path
+from config import (
+    db_log,
+    get_current_user,
+    get_slack_enabled,
+    get_storage_path,
+    resolve_stored_path,
+)
 from helpers import _delete_file
 from models import SCRIPT_LANGUAGES, Project, ProjectScript, ScriptOutputFile, db
 
@@ -68,14 +74,21 @@ def register(app):
     @app.route("/scripts/<int:id>")
     def script_detail(id):
         script = db.get_or_404(ProjectScript, id)
-        return render_template("scripts/detail.html", script=script)
+        return render_template(
+            "scripts/detail.html", script=script, slack_enabled=get_slack_enabled()
+        )
 
     @app.route("/scripts/<int:id>/edit", methods=["POST"])
     def script_edit(id):
         script = db.get_or_404(ProjectScript, id)
         script.shared_storage_path = request.form.get("shared_storage_path", "").strip()
         db.session.commit()
-        db_log("UPDATE", "ProjectScript", id, f"{script.original_filename} shared storage path updated")
+        db_log(
+            "UPDATE",
+            "ProjectScript",
+            id,
+            f"{script.original_filename} shared storage path updated",
+        )
         flash("Shared storage path updated.", "success")
         return redirect(url_for("script_detail", id=id))
 
@@ -175,3 +188,56 @@ def register(app):
         db_log("DELETE", "ScriptOutputFile", id, f"{fname} from script id={script_id}")
         flash(f'Output file "{fname}" deleted.', "success")
         return redirect(url_for("script_detail", id=script_id))
+
+    # ── Slack notification ────────────────────────────────────────────────────
+
+    @app.route("/scripts/<int:id>/slack", methods=["GET", "POST"])
+    def script_slack(id):
+        from notifier import (
+            build_script_message,
+            channel_from_group_name,
+            send_manual_run_message,
+        )
+
+        script = db.get_or_404(ProjectScript, id)
+        channel = channel_from_group_name(script.project.researcher.group.name)
+
+        if request.method == "POST":
+            message = request.form.get("message", "").strip()
+            override_channel = (
+                request.form.get("channel", "").strip().lstrip("#") or channel
+            )
+            if not message:
+                flash("Message cannot be empty.", "danger")
+                return render_template(
+                    "scripts/slack_compose.html",
+                    script=script,
+                    channel=override_channel,
+                    message=message,
+                )
+            ok, err = send_manual_run_message(override_channel, message)
+            if ok:
+                db_log(
+                    "CREATE",
+                    "SlackMessage",
+                    script.id,
+                    f"Slack message sent to #{override_channel} for script {script.original_filename} #{script.id}",
+                )
+                flash(f"Message sent to #{override_channel}.", "success")
+                return redirect(url_for("script_detail", id=id))
+            else:
+                flash(f"Failed to send Slack message: {err}", "danger")
+                return render_template(
+                    "scripts/slack_compose.html",
+                    script=script,
+                    channel=override_channel,
+                    message=message,
+                )
+
+        default_message = build_script_message(script)
+        return render_template(
+            "scripts/slack_compose.html",
+            script=script,
+            channel=channel,
+            message=default_message,
+        )

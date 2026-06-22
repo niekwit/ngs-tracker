@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Send Slack Message — {{ script.original_filename }} — NGS Tracker{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('group_detail', id=script.project.researcher.group_id) }}">{{ script.project.researcher.group.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('researcher_detail', id=script.project.researcher_id) }}">{{ script.project.researcher.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('project_detail', id=script.project_id) }}">{{ script.project.name }}</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{{ url_for('script_detail', id=script.id) }}">{{ script.original_filename }}</a>
+    </li>
+    <li class="breadcrumb-item active">Send Slack Message</li>
+  </ol>
+</nav>
+
+<div class="row">
+  <div class="col-md-8 col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-slack me-1"></i> Compose Slack Message
+      </div>
+      <div class="card-body">
+        <form method="POST">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Channel</label>
+            <div class="input-group">
+              <span class="input-group-text">#</span>
+              <input type="text" class="form-control font-monospace" name="channel"
+                     value="{{ channel }}" required
+                     placeholder="channel-name">
+            </div>
+            <div class="form-text">
+              Derived from the research group name. Edit if the Slack channel name differs.
+              {% if not script.project.researcher.slack_user_id %}
+              <span class="text-warning">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                {{ script.project.researcher.name }} has no Slack user ID set —
+                <a href="{{ url_for('researcher_edit', id=script.project.researcher_id) }}">add one</a>
+                for a proper @mention.
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Message</label>
+            <textarea class="form-control font-monospace" name="message" rows="16"
+                      required style="font-size:.875rem; line-height:1.55;">{{ message }}</textarea>
+            <div class="form-text">
+              Supports Slack <a href="https://api.slack.com/reference/surfaces/formatting" target="_blank" rel="noopener">mrkdwn</a>:
+              <code>*bold*</code>, <code>_italic_</code>, <code>`code`</code>, <code>&lt;@UXXXXXXX&gt;</code> to mention someone.
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-send me-1"></i> Send
+            </button>
+            <a href="{{ url_for('script_detail', id=script.id) }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- Script summary sidebar -->
+    <div class="card mt-3 border-secondary-subtle">
+      <div class="card-header text-muted py-2" style="font-size:.85rem;">
+        <i class="bi bi-info-circle me-1"></i> Script summary
+      </div>
+      <div class="card-body py-2">
+        <dl class="row mb-0 small">
+          <dt class="col-sm-4 text-muted">Script</dt>
+          <dd class="col-sm-8 font-monospace">{{ script.original_filename }}</dd>
+          <dt class="col-sm-4 text-muted">Language</dt>
+          <dd class="col-sm-8"><span class="badge bg-{{ script.language_color }}">{{ script.language }}</span></dd>
+          {% if script.description %}
+          <dt class="col-sm-4 text-muted">Description</dt>
+          <dd class="col-sm-8">{{ script.description }}</dd>
+          {% endif %}
+          <dt class="col-sm-4 text-muted">Project</dt>
+          <dd class="col-sm-8">{{ script.project.name }}</dd>
+          <dt class="col-sm-4 text-muted">Researcher</dt>
+          <dd class="col-sm-8">
+            {{ script.project.researcher.name }}
+            {% if script.project.researcher.slack_user_id %}
+            <span class="text-muted font-monospace ms-1" style="font-size:.8rem;">{{ script.project.researcher.slack_user_id }}</span>
+            {% endif %}
+          </dd>
+          <dt class="col-sm-4 text-muted">Output files</dt>
+          <dd class="col-sm-8">{{ script.output_files | length }}</dd>
+          {% if script.shared_storage_path %}
+          <dt class="col-sm-4 text-muted">Shared storage</dt>
+          <dd class="col-sm-8 font-monospace" style="font-size:.8rem; word-break:break-all;">{{ script.shared_storage_path }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
