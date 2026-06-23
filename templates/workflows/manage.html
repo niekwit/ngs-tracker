@@ -158,35 +158,20 @@
 
 <!-- Researcher XLSX template download -->
 <div class="card mt-3">
-  <div class="card-header d-flex align-items-center justify-content-between">
-    <span><i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Researcher Run Template</span>
-    <form method="POST" action="{{ url_for('workflow_refresh_tags') }}" class="mb-0">
-      <button type="submit" class="btn btn-xs btn-outline-secondary" title="Re-fetch release tags from GitHub">
-        <i class="bi bi-arrow-clockwise me-1"></i>Refresh tags
-      </button>
-    </form>
+  <div class="card-header">
+    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Researcher Run Template
   </div>
   <div class="card-body">
-    <p class="text-muted small mb-2">
+    <p class="text-muted small mb-3">
       Downloads a single Excel template with <strong>all workflows and their release tags</strong>
       as in-sheet dropdowns. Share it with a researcher — they pick the workflow and version,
       fill in the remaining fields, and return the file.
     </p>
-    {% if not tags_cached %}
-    <div class="alert alert-info py-2 mb-3 small">
-      <i class="bi bi-hourglass-split me-1"></i>
-      Release tags are being fetched in the background. Wait a few seconds then
-      click <strong>Refresh tags</strong> before downloading, otherwise the version
-      dropdown will show "(enter tag manually)".
-    </div>
-    {% endif %}
     {% if workflows %}
-    <div class="d-flex align-items-center gap-3">
-      <a href="{{ url_for('workflow_xlsx_template') }}" class="btn btn-sm btn-success">
-        <i class="bi bi-download me-1"></i> Download Template
-      </a>
-      <span class="text-muted small">run_template.xlsx</span>
-    </div>
+    <button id="xlsx-download-btn" class="btn btn-sm btn-success" onclick="downloadXlsx()">
+      <i class="bi bi-download me-1"></i> Download Template
+    </button>
+    <span id="xlsx-status" class="text-muted small ms-2"></span>
     {% else %}
     <p class="text-muted small mb-0">Add at least one workflow above first.</p>
     {% endif %}
@@ -251,5 +236,90 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const WORKFLOWS = [
+    {% for wf in workflows %}
+    { name: {{ wf.name | tojson }},
+      url:  {{ (wf.url or '') | tojson }},
+      local: {{ 'true' if wf.get('local_path') else 'false' }} },
+    {% endfor %}
+  ];
+
+  function repoFromUrl(url) {
+    var m = url.match(/github\.com\/([^/]+\/[^/]+)/);
+    return m ? m[1].replace(/\.git$/, '') : null;
+  }
+
+  async function fetchTagsForWorkflow(wf) {
+    if (wf.local) {
+      try {
+        var r = await fetch('/workflows/' + encodeURIComponent(wf.name) + '/tags');
+        var d = await r.json();
+        if (!d.error) {
+          if (d.type === 'tags') return d.items;
+          return d.items.map(function(c) {
+            return c.sha + '  ' + (c.date || '') + '  ' + (c.subject || '').substring(0, 60);
+          });
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    var repo = repoFromUrl(wf.url || '');
+    if (!repo) return [];
+    try {
+      var items = [], r;
+      r = await fetch('https://api.github.com/repos/' + repo + '/releases?per_page=50');
+      if (r.ok) items = (await r.json()).map(function(x) { return x.tag_name; }).filter(Boolean);
+      if (!items.length) {
+        r = await fetch('https://api.github.com/repos/' + repo + '/tags?per_page=50');
+        if (r.ok) items = (await r.json()).map(function(x) { return x.name; }).filter(Boolean);
+      }
+      if (!items.length) {
+        r = await fetch('https://api.github.com/repos/' + repo + '/commits?per_page=20');
+        if (r.ok) items = (await r.json()).map(function(c) {
+          return c.sha.substring(0, 7) + '  ' + c.commit.author.date.substring(0, 10) +
+                 '  ' + c.commit.message.split('\n')[0].substring(0, 60);
+        });
+      }
+      return items;
+    } catch (e) { return []; }
+  }
+
+  window.downloadXlsx = async function () {
+    var btn    = document.getElementById('xlsx-download-btn');
+    var status = document.getElementById('xlsx-status');
+    btn.disabled = true;
+    status.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Fetching release tags…';
+
+    var results = await Promise.all(WORKFLOWS.map(fetchTagsForWorkflow));
+    var tagsMap = {};
+    WORKFLOWS.forEach(function (wf, i) { tagsMap[wf.name] = results[i]; });
+
+    status.textContent = 'Building spreadsheet…';
+    try {
+      var resp = await fetch('{{ url_for("workflow_xlsx_template") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags: tagsMap }),
+      });
+      if (!resp.ok) throw new Error('Server error ' + resp.status);
+      var blob = await resp.blob();
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url; a.download = 'run_template.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+      status.textContent = '';
+    } catch (e) {
+      status.textContent = 'Error: ' + e.message;
+    }
+    btn.disabled = false;
+  };
+})();
+</script>
 {% endblock %}
 

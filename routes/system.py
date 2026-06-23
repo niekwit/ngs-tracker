@@ -239,32 +239,12 @@ def register(app):
                 save_workflows(workflows)
                 flash(f'Workflow "{name}" removed.', "success")
 
-        workflows = load_workflows()
-
-        # Auto-refresh tag cache in background if stale (>7 days) or any workflow missing
-        cache = load_workflow_tags_cache()
-        from datetime import datetime, timezone, timedelta
-        needs_refresh = any(
-            wf["name"] not in cache
-            or (
-                datetime.fromisoformat(cache[wf["name"]]["fetched_at"])
-                < datetime.now(timezone.utc) - timedelta(days=_CACHE_TTL_DAYS)
-            )
-            for wf in workflows
-        )
-        if needs_refresh:
-            import threading
-            threading.Thread(
-                target=_refresh_tags_cache, args=(workflows,), daemon=True
-            ).start()
-
         return render_template(
             "workflows/manage.html",
-            workflows=workflows,
+            workflows=load_workflows(),
             templates=load_run_templates(),
             workflow_systems=WORKFLOW_SYSTEMS,
             workflows_file=str(WORKFLOWS_FILE),
-            tags_cached=not needs_refresh,
         )
 
     @app.route("/templates/save", methods=["POST"])
@@ -418,7 +398,7 @@ def register(app):
         flash("Workflow tag cache refreshed.", "success")
         return redirect(url_for("workflows_manage"))
 
-    @app.route("/workflows/xlsx-template")
+    @app.route("/workflows/xlsx-template", methods=["POST"])
     def workflow_xlsx_template():
         try:
             import openpyxl
@@ -427,22 +407,23 @@ def register(app):
             from openpyxl.workbook.defined_name import DefinedName
             from openpyxl.worksheet.datavalidation import DataValidation
         except ImportError:
-            flash("openpyxl is not installed. Run: pip install openpyxl", "danger")
-            return redirect(url_for("workflows_manage"))
+            return jsonify({"error": "openpyxl not installed"}), 500
 
         import re
         from config import get_default_tags
 
+        # Tags sent by the browser (same JS that powers the New Run form)
+        payload = request.get_json(silent=True) or {}
+        browser_tags: dict = payload.get("tags", {})  # {wf_name: [tag, ...]}
+
         workflows = load_workflows()
         if not workflows:
-            flash("No workflows registered yet.", "warning")
-            return redirect(url_for("workflows_manage"))
+            return jsonify({"error": "No workflows registered"}), 400
 
         def _sanitize(name: str) -> str:
             s = re.sub(r"[^A-Za-z0-9_]", "_", name)
             return ("WF_" + s) if s and s[0].isdigit() else (s or "WF")
 
-        # Deduplicate sanitized names in case two workflows collide
         seen: dict[str, int] = {}
         san_names: list[str] = []
         for wf in workflows:
@@ -454,8 +435,7 @@ def register(app):
                 seen[s] = 0
             san_names.append(s)
 
-        cache = load_workflow_tags_cache()
-        tags_per_wf = [_cached_tags(wf, cache) or ["(enter tag manually)"] for wf in workflows]
+        tags_per_wf = [browser_tags.get(wf["name"]) or ["(enter tag manually)"] for wf in workflows]
         default_tags = [t["name"] for t in get_default_tags()]
         n_wf = len(workflows)
 
