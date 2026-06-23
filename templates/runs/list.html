@@ -335,7 +335,7 @@
             </td>
             <td>
               {% if run.attached_files %}
-              <span class="badge bg-light text-dark border">{{ run.attached_files|length }}</span>
+              <span class="badge bg-body-secondary text-body border">{{ run.attached_files|length }}</span>
               {% else %}
               <span class="text-muted small">—</span>
               {% endif %}
@@ -418,7 +418,7 @@
           {% for s in scripts %}
           <tr>
             <td>
-              <span class="badge bg-light text-dark border me-1" style="font-weight:500;">
+              <span class="badge bg-body-secondary text-body border me-1" style="font-weight:500;">
                 {% if s.language_icon %}<i class="{{ s.language_icon }}" style="font-size:1em;"></i>{% endif %}
               </span>
               <a href="{{ url_for('script_detail', id=s.id) }}" class="text-decoration-none fw-semibold">{{ s.original_filename }}</a>
@@ -430,7 +430,7 @@
             <td class="text-muted small">{{ s.description or '—' }}</td>
             <td class="text-muted small text-center">
               {% if s.output_files %}
-              <span class="badge bg-light text-dark border">{{ s.output_files|length }}</span>
+              <span class="badge bg-body-secondary text-body border">{{ s.output_files|length }}</span>
               {% else %}—{% endif %}
             </td>
             <td class="text-muted small">{{ s.uploaded_at.strftime('%Y-%m-%d') }}</td>

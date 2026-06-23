@@ -87,7 +87,7 @@
       {% endif %}
       <span class="badge bg-{{ r.status_color }}" style="font-size:.7rem;">{{ r.status_label }}</span>
       {% if notes_snippets.get(r.id) %}
-      <span class="badge bg-light text-dark border" style="font-size:.65rem;">in notes</span>
+      <span class="badge bg-body-secondary text-body border" style="font-size:.65rem;">in notes</span>
       {% endif %}
       <span class="text-muted small ms-1">{{ r.project.name }} · {{ r.run_date.strftime('%Y-%m-%d') }}</span>
     </div>

@@ -198,7 +198,7 @@
     <div class="d-flex flex-wrap gap-2">
       {% for rs in run.run_samples %}
       <a href="{{ url_for('sample_detail', id=rs.sample.id) }}"
-         class="badge bg-light text-dark border text-decoration-none"
+         class="badge bg-body-secondary text-body border text-decoration-none"
          style="font-size:.82rem;">
         <i class="bi bi-person-badge text-primary me-1"></i>{{ rs.sample.name }}
       </a>

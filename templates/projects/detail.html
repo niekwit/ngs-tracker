@@ -128,7 +128,7 @@
           </td>
           <td>
             {% if run.attached_files %}
-            <span class="badge bg-light text-dark border">{{ run.attached_files|length }} file{{ 's' if run.attached_files|length != 1 }}</span>
+            <span class="badge bg-body-secondary text-body border">{{ run.attached_files|length }} file{{ 's' if run.attached_files|length != 1 }}</span>
             {% else %}
             <span class="text-muted small">—</span>
             {% endif %}
@@ -168,7 +168,7 @@
     <div class="d-flex flex-wrap gap-2">
       {% for sample in project.samples %}
       <a href="{{ url_for('sample_detail', id=sample.id) }}"
-         class="badge bg-light text-dark border text-decoration-none d-flex align-items-center gap-1"
+         class="badge bg-body-secondary text-body border text-decoration-none d-flex align-items-center gap-1"
          style="font-size:.82rem;">
         <i class="bi bi-person-badge text-primary"></i>
         {{ sample.name }}
@@ -247,14 +247,14 @@
             </a>
           </td>
           <td>
-            <span class="badge bg-light text-dark border" style="font-weight:500;">
+            <span class="badge bg-body-secondary text-body border" style="font-weight:500;">
               {% if s.language_icon %}<i class="{{ s.language_icon }} me-1" style="font-size:1em;"></i>{% endif %}{{ s.language }}
             </span>
           </td>
           <td class="text-muted small">{{ s.description or '—' }}</td>
           <td>
             {% if s.output_files %}
-            <span class="badge bg-light text-dark border">{{ s.output_files|length }} file{{ 's' if s.output_files|length != 1 }}</span>
+            <span class="badge bg-body-secondary text-body border">{{ s.output_files|length }} file{{ 's' if s.output_files|length != 1 }}</span>
             {% else %}
             <span class="text-muted small">—</span>
             {% endif %}
