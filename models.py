@@ -138,7 +138,7 @@ SCRIPT_LANGUAGE_ICONS = {
     "R": "devicon-r-plain colored",
     "Shell": "devicon-bash-plain",
     "Bash": "devicon-bash-plain",
-    "Perl": "devicon-perl-plain colored",
+    "Perl": "devicon-perl-plain",
     "MATLAB": "devicon-matlab-plain colored",
     "Julia": "devicon-julia-plain colored",
     "Jupyter": "devicon-jupyter-plain colored",
