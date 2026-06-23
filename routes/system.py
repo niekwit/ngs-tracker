@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import threading
@@ -5,6 +6,8 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
+
+_log = logging.getLogger("ngs_tracker.system")
 
 from io import BytesIO
 
@@ -20,7 +23,9 @@ from config import (
     delete_run_template,
     db_log,
     load_run_templates,
+    load_workflow_tags_cache,
     load_workflows,
+    save_workflow_tags_cache,
     save_workflows,
 )
 from models import (
@@ -62,81 +67,115 @@ def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
     )
 
 
-def _wf_tags(wf: dict) -> list[str]:
-    """Return git tags (or short commit strings) for a workflow, or [] if unavailable.
+_CACHE_TTL_DAYS = 7
 
-    Tries the local repo first, then falls back to the GitHub API.
+
+def _fetch_tags_from_github(repo: str) -> list[str] | None:
+    """Fetch release tags (or commits) for a GitHub repo.
+
+    Returns a list on success, None on rate-limit (429/403), or [] on other failure.
     """
     import re as _re
-
-    local_path = wf.get("local_path", "").strip()
-    if local_path and Path(local_path).is_dir():
-        try:
-            result = subprocess.run(
-                ["git", "-C", local_path, "tag", "--sort=-version:refname"],
-                capture_output=True, text=True, timeout=10,
-            )
-            tags = [t.strip() for t in result.stdout.splitlines() if t.strip()]
-            if tags:
-                return tags
-            log = subprocess.run(
-                ["git", "-C", local_path, "log", "--format=%h  %as  %s", "-20"],
-                capture_output=True, text=True, timeout=10,
-            )
-            commits = [line.strip() for line in log.stdout.splitlines() if line.strip()]
-            if commits:
-                return commits
-        except Exception:
-            pass
-
-    url = wf.get("url", "").strip()
-    if not url:
-        return []
-
-    m = _re.search(r"github\.com/([^/]+/[^/.\s]+?)(?:\.git)?(?:/|$)", url)
-    if not m:
-        return []
-    repo = m.group(1)
-
     try:
         import requests as _req
+    except ImportError:
+        return []
 
-        # Releases first
-        resp = _req.get(
-            f"https://api.github.com/repos/{repo}/releases",
-            params={"per_page": 50}, timeout=10,
-        )
-        if resp.ok:
-            tags = [r["tag_name"] for r in resp.json() if isinstance(r, dict)]
-            if tags:
-                return tags
+    for endpoint, extract in [
+        (f"https://api.github.com/repos/{repo}/releases", lambda d: [r["tag_name"] for r in d if isinstance(r, dict) and r.get("tag_name")]),
+        (f"https://api.github.com/repos/{repo}/tags",    lambda d: [t["name"]     for t in d if isinstance(t, dict) and t.get("name")]),
+    ]:
+        try:
+            resp = _req.get(endpoint, params={"per_page": 50}, timeout=10)
+            if resp.status_code in (403, 429):
+                return None  # rate-limited — caller should stop
+            if resp.ok:
+                items = extract(resp.json() if isinstance(resp.json(), list) else [])
+                if items:
+                    return items
+        except Exception:
+            return []
 
-        # Tags
-        resp = _req.get(
-            f"https://api.github.com/repos/{repo}/tags",
-            params={"per_page": 50}, timeout=10,
-        )
-        if resp.ok:
-            tags = [t["name"] for t in resp.json() if isinstance(t, dict)]
-            if tags:
-                return tags
-
-        # Recent commits
+    # Fallback: recent commits
+    try:
         resp = _req.get(
             f"https://api.github.com/repos/{repo}/commits",
             params={"per_page": 20}, timeout=10,
         )
-        if resp.ok:
+        if resp.status_code in (403, 429):
+            return None
+        if resp.ok and isinstance(resp.json(), list):
             return [
                 f"{c['sha'][:7]}  {c['commit']['author']['date'][:10]}  "
                 f"{c['commit']['message'].splitlines()[0][:60]}"
-                for c in resp.json()
-                if isinstance(c, dict)
+                for c in resp.json() if isinstance(c, dict)
             ]
     except Exception:
         pass
-
     return []
+
+
+def _refresh_tags_cache(workflows: list) -> dict:
+    """Fetch tags for all workflows, update the on-disk cache, return the new cache.
+
+    Stops making GitHub API calls if a rate-limit response is received.
+    Always preserves existing cached entries for workflows that couldn't be refreshed.
+    """
+    import re as _re
+    from datetime import datetime, timezone
+
+    cache = load_workflow_tags_cache()
+    rate_limited = False
+
+    for wf in workflows:
+        name = wf["name"]
+        tags: list[str] = []
+
+        # Local git repo
+        local_path = wf.get("local_path", "").strip()
+        if local_path and Path(local_path).is_dir():
+            try:
+                r = subprocess.run(
+                    ["git", "-C", local_path, "tag", "--sort=-version:refname"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                tags = [t.strip() for t in r.stdout.splitlines() if t.strip()]
+                if not tags:
+                    r = subprocess.run(
+                        ["git", "-C", local_path, "log", "--format=%h  %as  %s", "-20"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    tags = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+            except Exception:
+                pass
+
+        # GitHub API (only if local repo didn't provide tags and not yet rate-limited)
+        if not tags and not rate_limited:
+            url = wf.get("url", "").strip()
+            m = _re.search(r"github\.com/([^/]+/[^/.\s]+?)(?:\.git)?(?:/|$)", url) if url else None
+            if m:
+                result = _fetch_tags_from_github(m.group(1))
+                if result is None:
+                    rate_limited = True
+                    _log.warning("GitHub API rate limit hit — using cached tags for remaining workflows")
+                elif result:
+                    tags = result
+
+        if tags:
+            cache[name] = {
+                "tags": tags,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }
+        # If no tags fetched and rate-limited, keep existing cache entry untouched
+
+    save_workflow_tags_cache(cache)
+    return cache
+
+
+def _cached_tags(wf: dict, cache: dict) -> list[str]:
+    """Return cached tags for a workflow, or []."""
+    entry = cache.get(wf["name"])
+    return entry["tags"] if entry and entry.get("tags") else []
 
 
 def register(app):
@@ -200,12 +239,32 @@ def register(app):
                 save_workflows(workflows)
                 flash(f'Workflow "{name}" removed.', "success")
 
+        workflows = load_workflows()
+
+        # Auto-refresh tag cache in background if stale (>7 days) or any workflow missing
+        cache = load_workflow_tags_cache()
+        from datetime import datetime, timezone, timedelta
+        needs_refresh = any(
+            wf["name"] not in cache
+            or (
+                datetime.fromisoformat(cache[wf["name"]]["fetched_at"])
+                < datetime.now(timezone.utc) - timedelta(days=_CACHE_TTL_DAYS)
+            )
+            for wf in workflows
+        )
+        if needs_refresh:
+            import threading
+            threading.Thread(
+                target=_refresh_tags_cache, args=(workflows,), daemon=True
+            ).start()
+
         return render_template(
             "workflows/manage.html",
-            workflows=load_workflows(),
+            workflows=workflows,
             templates=load_run_templates(),
             workflow_systems=WORKFLOW_SYSTEMS,
             workflows_file=str(WORKFLOWS_FILE),
+            tags_cached=not needs_refresh,
         )
 
     @app.route("/templates/save", methods=["POST"])
@@ -352,6 +411,13 @@ def register(app):
             all_actions=all_actions,
         )
 
+    @app.route("/workflows/refresh-tags", methods=["POST"])
+    def workflow_refresh_tags():
+        workflows = load_workflows()
+        _refresh_tags_cache(workflows)
+        flash("Workflow tag cache refreshed.", "success")
+        return redirect(url_for("workflows_manage"))
+
     @app.route("/workflows/xlsx-template")
     def workflow_xlsx_template():
         try:
@@ -388,7 +454,8 @@ def register(app):
                 seen[s] = 0
             san_names.append(s)
 
-        tags_per_wf = [_wf_tags(wf) or ["(enter tag manually)"] for wf in workflows]
+        cache = load_workflow_tags_cache()
+        tags_per_wf = [_cached_tags(wf, cache) or ["(enter tag manually)"] for wf in workflows]
         default_tags = [t["name"] for t in get_default_tags()]
         n_wf = len(workflows)
 

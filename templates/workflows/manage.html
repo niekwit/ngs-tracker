@@ -158,20 +158,35 @@
 
 <!-- Researcher XLSX template download -->
 <div class="card mt-3">
-  <div class="card-header">
-    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Researcher Run Template
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Researcher Run Template</span>
+    <form method="POST" action="{{ url_for('workflow_refresh_tags') }}" class="mb-0">
+      <button type="submit" class="btn btn-xs btn-outline-secondary" title="Re-fetch release tags from GitHub">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh tags
+      </button>
+    </form>
   </div>
   <div class="card-body">
     <p class="text-muted small mb-2">
-      Downloads a single Excel template containing <strong>all workflows and their available release tags</strong>
-      as dropdowns inside the sheet. Share it with a researcher — they pick the workflow and version
-      from the dropdowns and fill in the remaining fields (run date, status, description, tags, notes).
+      Downloads a single Excel template with <strong>all workflows and their release tags</strong>
+      as in-sheet dropdowns. Share it with a researcher — they pick the workflow and version,
+      fill in the remaining fields, and return the file.
     </p>
+    {% if not tags_cached %}
+    <div class="alert alert-info py-2 mb-3 small">
+      <i class="bi bi-hourglass-split me-1"></i>
+      Release tags are being fetched in the background. Wait a few seconds then
+      click <strong>Refresh tags</strong> before downloading, otherwise the version
+      dropdown will show "(enter tag manually)".
+    </div>
+    {% endif %}
     {% if workflows %}
-    <a href="{{ url_for('workflow_xlsx_template') }}" class="btn btn-sm btn-success">
-      <i class="bi bi-download me-1"></i> Download Template
-    </a>
-    <span class="text-muted small ms-2">run_template.xlsx</span>
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('workflow_xlsx_template') }}" class="btn btn-sm btn-success">
+        <i class="bi bi-download me-1"></i> Download Template
+      </a>
+      <span class="text-muted small">run_template.xlsx</span>
+    </div>
     {% else %}
     <p class="text-muted small mb-0">Add at least one workflow above first.</p>
     {% endif %}
