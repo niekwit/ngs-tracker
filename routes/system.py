@@ -370,7 +370,7 @@ def register(app):
 
         # Row 6: Status
         label(6, "Status")
-        c6 = editable(6, "completed", height=22)
+        c6 = editable(6, "pending", height=22)
         dv_status = DataValidation(
             type="list",
             formula1='"completed,running,failed,pending"',
