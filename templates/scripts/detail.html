@@ -40,6 +40,9 @@
     <a href="{{ url_for('script_download', id=script.id) }}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-download me-1"></i> Download Script
     </a>
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editMetaModal">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </button>
     {% if slack_enabled %}
     <a href="{{ url_for('script_slack', id=script.id) }}" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-slack me-1"></i> Send to Slack
@@ -160,6 +163,44 @@
     <p class="mt-2 mb-0">No output files attached yet.</p>
   </div>
   {% endif %}
+</div>
+
+<!-- Edit description / language modal -->
+<div class="modal fade" id="editMetaModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('script_edit', id=script.id) }}">
+        <input type="hidden" name="form_type" value="meta">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-1"></i> Edit Script Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <input type="text" class="form-control" name="description"
+                   value="{{ script.description or '' }}"
+                   placeholder="What does this script do?">
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Language</label>
+            <select class="form-select" name="language">
+              {% for lang in languages %}
+              <option value="{{ lang }}" {% if lang == script.language %}selected{% endif %}>{{ lang }}</option>
+              {% endfor %}
+              {% if script.language and script.language not in languages %}
+              <option value="{{ script.language }}" selected>{{ script.language }}</option>
+              {% endif %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- Image / PDF lightbox modal -->

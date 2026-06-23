@@ -12,7 +12,13 @@ from config import (
     resolve_stored_path,
 )
 from helpers import _delete_file
-from models import SCRIPT_LANGUAGES, Project, ProjectScript, ScriptOutputFile, db
+from models import (
+    SCRIPT_LANGUAGES,
+    Project,
+    ProjectScript,
+    ScriptOutputFile,
+    db,
+)
 
 
 def register(app):
@@ -74,22 +80,41 @@ def register(app):
     @app.route("/scripts/<int:id>")
     def script_detail(id):
         script = db.get_or_404(ProjectScript, id)
+        languages = sorted(set(SCRIPT_LANGUAGES.values()))
         return render_template(
-            "scripts/detail.html", script=script, slack_enabled=get_slack_enabled()
+            "scripts/detail.html",
+            script=script,
+            slack_enabled=get_slack_enabled(),
+            languages=languages,
         )
 
     @app.route("/scripts/<int:id>/edit", methods=["POST"])
     def script_edit(id):
         script = db.get_or_404(ProjectScript, id)
-        script.shared_storage_path = request.form.get("shared_storage_path", "").strip()
-        db.session.commit()
-        db_log(
-            "UPDATE",
-            "ProjectScript",
-            id,
-            f"{script.original_filename} shared storage path updated",
-        )
-        flash("Shared storage path updated.", "success")
+        form_type = request.form.get("form_type", "storage")
+        if form_type == "meta":
+            script.description = request.form.get("description", "").strip()
+            script.language = request.form.get("language", script.language).strip()
+            db.session.commit()
+            db_log(
+                "UPDATE",
+                "ProjectScript",
+                id,
+                f"{script.original_filename} description/language updated",
+            )
+            flash("Script details updated.", "success")
+        else:
+            script.shared_storage_path = request.form.get(
+                "shared_storage_path", ""
+            ).strip()
+            db.session.commit()
+            db_log(
+                "UPDATE",
+                "ProjectScript",
+                id,
+                f"{script.original_filename} shared storage path updated",
+            )
+            flash("Shared storage path updated.", "success")
         return redirect(url_for("script_detail", id=id))
 
     @app.route("/scripts/<int:id>/delete", methods=["POST"])
