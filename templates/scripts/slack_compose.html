@@ -83,7 +83,7 @@
           <dt class="col-sm-4 text-muted">Language</dt>
           <dd class="col-sm-8">
             <span class="badge bg-body-secondary text-body border" style="font-weight:500;">
-              {% if script.language_icon %}<i class="{{ script.language_icon }} me-1" style="font-size:1em;"></i>{% endif %}{{ script.language }}
+              {% if script.language_icon %}<i class="{{ script.language_icon }} me-1" style="font-size:1em;{{ script.language_icon_style }}"></i>{% endif %}{{ script.language }}
             </span>
           </dd>
           {% if script.description %}

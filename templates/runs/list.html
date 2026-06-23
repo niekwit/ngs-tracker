@@ -419,7 +419,7 @@
           <tr>
             <td>
               <span class="badge bg-body-secondary text-body border me-1" style="font-weight:500;">
-                {% if s.language_icon %}<i class="{{ s.language_icon }}" style="font-size:1em;"></i>{% endif %}
+                {% if s.language_icon %}<i class="{{ s.language_icon }}" style="font-size:1em;{{ s.language_icon_style }}"></i>{% endif %}
               </span>
               <a href="{{ url_for('script_detail', id=s.id) }}" class="text-decoration-none fw-semibold">{{ s.original_filename }}</a>
             </td>

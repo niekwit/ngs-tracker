@@ -134,7 +134,7 @@ SCRIPT_LANGUAGE_COLORS = {
 }
 
 SCRIPT_LANGUAGE_ICONS = {
-    "Python": "devicon-python-plain colored",
+    "Python": "devicon-python-plain",
     "R": "devicon-r-plain colored",
     "Shell": "devicon-bash-plain",
     "Bash": "devicon-bash-plain",
@@ -142,6 +142,10 @@ SCRIPT_LANGUAGE_ICONS = {
     "MATLAB": "devicon-matlab-plain colored",
     "Julia": "devicon-julia-plain colored",
     "Jupyter": "devicon-jupyter-plain colored",
+}
+
+SCRIPT_LANGUAGE_ICON_STYLES = {
+    "Python": "color:#3776AB",
 }
 
 
@@ -172,6 +176,10 @@ class ProjectScript(db.Model):
     @property
     def language_icon(self):
         return SCRIPT_LANGUAGE_ICONS.get(self.language, "")
+
+    @property
+    def language_icon_style(self):
+        return SCRIPT_LANGUAGE_ICON_STYLES.get(self.language, "")
 
 
 class ScriptOutputFile(db.Model):
