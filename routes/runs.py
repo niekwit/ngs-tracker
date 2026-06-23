@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from config import (
     add_default_tag,
@@ -38,6 +38,63 @@ from models import (
 
 def register(app):
     PER_PAGE = 50
+
+    @app.route("/runs/parse-xlsx", methods=["POST"])
+    def parse_run_xlsx():
+        f = request.files.get("file")
+        if not f:
+            return jsonify({"error": "No file uploaded"}), 400
+        try:
+            import openpyxl
+            from datetime import date, datetime as dt
+        except ImportError:
+            return jsonify({"error": "openpyxl not installed"}), 500
+        try:
+            wb = openpyxl.load_workbook(f, data_only=True)
+        except Exception as e:
+            return jsonify({"error": f"Cannot open file: {e}"}), 400
+        if "Run Template" not in wb.sheetnames:
+            return jsonify({"error": "File has no 'Run Template' sheet — is this a valid NGS Tracker template?"}), 400
+        ws = wb["Run Template"]
+
+        def _str(row, col=2):
+            v = ws.cell(row=row, column=col).value
+            if v is None:
+                return ""
+            if isinstance(v, (date, dt)):
+                return v.strftime("%Y-%m-%d")
+            return str(v).strip()
+
+        # Tags start at row 10; col A = tag name, col B = Yes/No
+        tags: dict[str, bool] = {}
+        r = 10
+        while True:
+            name_cell = ws.cell(row=r, column=1).value
+            if name_cell is None:
+                break
+            val_cell = str(ws.cell(row=r, column=2).value or "").strip().lower()
+            tags[str(name_cell).strip()] = val_cell == "yes"
+            r += 1
+
+        run_date_raw = ws.cell(row=5, column=2).value
+        if isinstance(run_date_raw, (date, dt)):
+            run_date = run_date_raw.strftime("%Y-%m-%d")
+        else:
+            run_date = str(run_date_raw or "").strip()[:10]
+
+        status_raw = _str(6).lower()
+        valid_statuses = {"completed", "running", "failed", "pending"}
+        status = status_raw if status_raw in valid_statuses else "completed"
+
+        return jsonify({
+            "workflow":    _str(3),
+            "version":     _str(4),
+            "run_date":    run_date,
+            "status":      status,
+            "description": _str(7),
+            "notes":       _str(8),
+            "tags":        tags,
+        })
 
     @app.route("/runs")
     def runs_list():

@@ -13,6 +13,22 @@
   </ol>
 </nav>
 
+{% if not run %}
+<div class="card mb-3 border-secondary-subtle">
+  <div class="card-header text-muted py-2" style="font-size:.85rem;">
+    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Import from researcher spreadsheet
+  </div>
+  <div class="card-body py-2">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <input type="file" class="form-control form-control-sm" id="xlsx-import"
+             accept=".xlsx" style="max-width:320px;">
+      <span id="xlsx-import-status" class="text-muted small"></span>
+    </div>
+    <div class="form-text">Select the completed template to pre-fill the form. Review and submit manually.</div>
+  </div>
+</div>
+{% endif %}
+
 {% if not run and templates %}
 <div class="card mb-3 border-secondary-subtle">
   <div class="card-header text-muted py-2" style="font-size:.85rem;">
@@ -480,6 +496,75 @@ document.getElementById('add-tag-btn').addEventListener('click', function() {
 document.getElementById('new-tag-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-tag-btn').click(); }
 });
+
+// XLSX import
+(function () {
+  var fileInput  = document.getElementById('xlsx-import');
+  if (!fileInput) return;
+  var statusEl   = document.getElementById('xlsx-import-status');
+
+  fileInput.addEventListener('change', async function () {
+    var file = this.files[0];
+    if (!file) return;
+    statusEl.textContent = 'Reading…';
+
+    var fd = new FormData();
+    fd.append('file', file);
+    var data;
+    try {
+      var resp = await fetch('/runs/parse-xlsx', { method: 'POST', body: fd });
+      data = await resp.json();
+    } catch (e) {
+      statusEl.textContent = 'Upload failed: ' + e.message;
+      return;
+    }
+    if (data.error) {
+      statusEl.textContent = 'Error: ' + data.error;
+      return;
+    }
+
+    // Description
+    var descEl = document.querySelector('[name="description"]');
+    if (descEl && data.description) descEl.value = data.description;
+
+    // Notes
+    var notesEl = document.querySelector('[name="notes"]');
+    if (notesEl && data.notes) notesEl.value = data.notes;
+
+    // Run date
+    var dateEl = document.querySelector('[name="run_date"]');
+    if (dateEl && data.run_date) dateEl.value = data.run_date;
+
+    // Status
+    var statusSelect = document.querySelector('[name="status"]');
+    if (statusSelect && data.status) statusSelect.value = data.status;
+
+    // Tags: check/uncheck based on the Yes/No values in the sheet
+    if (data.tags) {
+      document.querySelectorAll('#tag-checkboxes input[type="checkbox"]').forEach(function (cb) {
+        var tagName = cb.value.toLowerCase();
+        var matched = Object.entries(data.tags).find(function ([k]) {
+          return k.toLowerCase() === tagName;
+        });
+        if (matched) cb.checked = matched[1];
+      });
+    }
+
+    // Workflow + tag: set preselected value, then trigger the change event
+    // so the existing tag-fetch logic runs and auto-selects the version.
+    if (data.workflow) {
+      var wfSel = document.getElementById('workflow_name');
+      var tagSel = document.getElementById('workflow_tag');
+      // Store version so _populateTags picks it up via data-preselected
+      if (data.version) tagSel.dataset.preselected = data.version;
+      wfSel.value = data.workflow;
+      wfSel.dispatchEvent(new Event('change'));
+    }
+
+    statusEl.textContent = 'Fields pre-filled — review and submit when ready.';
+    statusEl.className = 'text-success small ms-2';
+  });
+})();
 
 // Dim path inputs when backup checkbox is unchecked
 document.querySelectorAll('.backup-cb').forEach(cb => {
