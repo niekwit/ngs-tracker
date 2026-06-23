@@ -633,7 +633,13 @@ def set_last_backup_alert_sent(ts: str) -> None:
 # ── Slack notifications ───────────────────────────────────────────────────────
 
 
+def is_demo_mode() -> bool:
+    return bool(os.environ.get("NGS_DB_PATH"))
+
+
 def get_slack_enabled() -> bool:
+    if is_demo_mode():
+        return False
     return bool(load_settings().get("slack_enabled", False))
 
 
