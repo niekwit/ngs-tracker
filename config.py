@@ -12,7 +12,6 @@ SETTINGS_DIR = Path.home() / ".ngs-tracker"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 WORKFLOWS_FILE = SETTINGS_DIR / "workflows.yaml"
 LOG_FILE = SETTINGS_DIR / "changes.log"
-WORKFLOW_TAGS_CACHE = SETTINGS_DIR / "workflow_tags_cache.json"
 _LOG_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 _LEGACY_SETTINGS = Path(__file__).parent / "settings.json"
 DEFAULT_DB = SETTINGS_DIR / "ngs_tracker.db"
@@ -438,23 +437,6 @@ def save_workflows(workflows: list) -> None:
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     with open(WORKFLOWS_FILE, "w") as f:
         yaml.dump(workflows, f, default_flow_style=False, sort_keys=False)
-
-
-# ── Workflow tags cache ────────────────────────────────────────────────────────
-
-def load_workflow_tags_cache() -> dict:
-    """Return {wf_name: {"tags": [...], "fetched_at": iso_str}} or {}."""
-    if WORKFLOW_TAGS_CACHE.exists():
-        try:
-            return json.loads(WORKFLOW_TAGS_CACHE.read_text())
-        except Exception:
-            pass
-    return {}
-
-
-def save_workflow_tags_cache(cache: dict) -> None:
-    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
-    WORKFLOW_TAGS_CACHE.write_text(json.dumps(cache, indent=2))
 
 
 # ── Run templates ─────────────────────────────────────────────────────────────

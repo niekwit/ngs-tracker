@@ -1,4 +1,3 @@
-import logging
 import os
 import subprocess
 import threading
@@ -6,9 +5,6 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-
-_log = logging.getLogger("ngs_tracker.system")
-
 from io import BytesIO
 
 from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
@@ -23,9 +19,7 @@ from config import (
     delete_run_template,
     db_log,
     load_run_templates,
-    load_workflow_tags_cache,
     load_workflows,
-    save_workflow_tags_cache,
     save_workflows,
 )
 from models import (
@@ -65,117 +59,6 @@ def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
         + escape(excerpt[match_end:])
         + suffix
     )
-
-
-_CACHE_TTL_DAYS = 7
-
-
-def _fetch_tags_from_github(repo: str) -> list[str] | None:
-    """Fetch release tags (or commits) for a GitHub repo.
-
-    Returns a list on success, None on rate-limit (429/403), or [] on other failure.
-    """
-    import re as _re
-    try:
-        import requests as _req
-    except ImportError:
-        return []
-
-    for endpoint, extract in [
-        (f"https://api.github.com/repos/{repo}/releases", lambda d: [r["tag_name"] for r in d if isinstance(r, dict) and r.get("tag_name")]),
-        (f"https://api.github.com/repos/{repo}/tags",    lambda d: [t["name"]     for t in d if isinstance(t, dict) and t.get("name")]),
-    ]:
-        try:
-            resp = _req.get(endpoint, params={"per_page": 50}, timeout=10)
-            if resp.status_code in (403, 429):
-                return None  # rate-limited — caller should stop
-            if resp.ok:
-                items = extract(resp.json() if isinstance(resp.json(), list) else [])
-                if items:
-                    return items
-        except Exception:
-            return []
-
-    # Fallback: recent commits
-    try:
-        resp = _req.get(
-            f"https://api.github.com/repos/{repo}/commits",
-            params={"per_page": 20}, timeout=10,
-        )
-        if resp.status_code in (403, 429):
-            return None
-        if resp.ok and isinstance(resp.json(), list):
-            return [
-                f"{c['sha'][:7]}  {c['commit']['author']['date'][:10]}  "
-                f"{c['commit']['message'].splitlines()[0][:60]}"
-                for c in resp.json() if isinstance(c, dict)
-            ]
-    except Exception:
-        pass
-    return []
-
-
-def _refresh_tags_cache(workflows: list) -> dict:
-    """Fetch tags for all workflows, update the on-disk cache, return the new cache.
-
-    Stops making GitHub API calls if a rate-limit response is received.
-    Always preserves existing cached entries for workflows that couldn't be refreshed.
-    """
-    import re as _re
-    from datetime import datetime, timezone
-
-    cache = load_workflow_tags_cache()
-    rate_limited = False
-
-    for wf in workflows:
-        name = wf["name"]
-        tags: list[str] = []
-
-        # Local git repo
-        local_path = wf.get("local_path", "").strip()
-        if local_path and Path(local_path).is_dir():
-            try:
-                r = subprocess.run(
-                    ["git", "-C", local_path, "tag", "--sort=-version:refname"],
-                    capture_output=True, text=True, timeout=10,
-                )
-                tags = [t.strip() for t in r.stdout.splitlines() if t.strip()]
-                if not tags:
-                    r = subprocess.run(
-                        ["git", "-C", local_path, "log", "--format=%h  %as  %s", "-20"],
-                        capture_output=True, text=True, timeout=10,
-                    )
-                    tags = [l.strip() for l in r.stdout.splitlines() if l.strip()]
-            except Exception:
-                pass
-
-        # GitHub API (only if local repo didn't provide tags and not yet rate-limited)
-        if not tags and not rate_limited:
-            url = wf.get("url", "").strip()
-            m = _re.search(r"github\.com/([^/]+/[^/.\s]+?)(?:\.git)?(?:/|$)", url) if url else None
-            if m:
-                result = _fetch_tags_from_github(m.group(1))
-                if result is None:
-                    rate_limited = True
-                    _log.warning("GitHub API rate limit hit — using cached tags for remaining workflows")
-                elif result:
-                    tags = result
-
-        if tags:
-            cache[name] = {
-                "tags": tags,
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-            }
-        # If no tags fetched and rate-limited, keep existing cache entry untouched
-
-    save_workflow_tags_cache(cache)
-    return cache
-
-
-def _cached_tags(wf: dict, cache: dict) -> list[str]:
-    """Return cached tags for a workflow, or []."""
-    entry = cache.get(wf["name"])
-    return entry["tags"] if entry and entry.get("tags") else []
 
 
 def register(app):
@@ -391,98 +274,33 @@ def register(app):
             all_actions=all_actions,
         )
 
-    @app.route("/workflows/refresh-tags", methods=["POST"])
-    def workflow_refresh_tags():
-        workflows = load_workflows()
-        _refresh_tags_cache(workflows)
-        flash("Workflow tag cache refreshed.", "success")
-        return redirect(url_for("workflows_manage"))
-
-    @app.route("/workflows/xlsx-template", methods=["POST"])
+    @app.route("/workflows/xlsx-template")
     def workflow_xlsx_template():
         try:
             import openpyxl
             from openpyxl.styles import Alignment, Font, PatternFill, Protection
-            from openpyxl.utils import get_column_letter
-            from openpyxl.workbook.defined_name import DefinedName
             from openpyxl.worksheet.datavalidation import DataValidation
         except ImportError:
-            return jsonify({"error": "openpyxl not installed"}), 500
+            flash("openpyxl is not installed. Run: pip install openpyxl", "danger")
+            return redirect(url_for("workflows_manage"))
 
-        import re
         from config import get_default_tags
-
-        # Tags sent by the browser (same JS that powers the New Run form)
-        payload = request.get_json(silent=True) or {}
-        browser_tags: dict = payload.get("tags", {})  # {wf_name: [tag, ...]}
 
         workflows = load_workflows()
         if not workflows:
-            return jsonify({"error": "No workflows registered"}), 400
+            flash("No workflows registered yet.", "warning")
+            return redirect(url_for("workflows_manage"))
 
-        def _sanitize(name: str) -> str:
-            s = re.sub(r"[^A-Za-z0-9_]", "_", name)
-            return ("WF_" + s) if s and s[0].isdigit() else (s or "WF")
-
-        seen: dict[str, int] = {}
-        san_names: list[str] = []
-        for wf in workflows:
-            s = _sanitize(wf["name"])
-            if s in seen:
-                seen[s] += 1
-                s = f"{s}_{seen[s]}"
-            else:
-                seen[s] = 0
-            san_names.append(s)
-
-        tags_per_wf = [browser_tags.get(wf["name"]) or ["(enter tag manually)"] for wf in workflows]
         default_tags = [t["name"] for t in get_default_tags()]
-        n_wf = len(workflows)
+        wf_names = [w["name"] for w in workflows]
 
         wb = openpyxl.Workbook()
-
-        # ── Data sheet (hidden) ────────────────────────────────────────────────
-        ws_data = wb.active
-        ws_data.title = "Data"
-        ws_data.sheet_state = "hidden"
-
-        # Col A: human-readable names  |  Col B: sanitized names  |  Col C+: tags
-        ws_data.cell(1, 1, "Workflow")
-        ws_data.cell(1, 2, "RangeName")
-        for i, (wf, san) in enumerate(zip(workflows, san_names)):
-            ws_data.cell(i + 2, 1, wf["name"])
-            ws_data.cell(i + 2, 2, san)
-
-        for j, (san, tags) in enumerate(zip(san_names, tags_per_wf)):
-            col = j + 3
-            col_letter = get_column_letter(col)
-            ws_data.cell(1, col, san)
-            for k, tag in enumerate(tags):
-                ws_data.cell(k + 2, col, tag)
-            end_row = len(tags) + 1
-            attr = f"'Data'!${col_letter}$2:${col_letter}${end_row}"
-            try:
-                wb.defined_names[san] = DefinedName(san, attr_text=attr)
-            except Exception:
-                pass
-
-        # Placeholder named range shown when no workflow is selected yet
-        ph_col = get_column_letter(n_wf + 3)
-        ws_data.cell(1, n_wf + 3, "—")
-        try:
-            wb.defined_names["_ngs_empty_"] = DefinedName(
-                "_ngs_empty_", attr_text=f"'Data'!${ph_col}$1:${ph_col}$1"
-            )
-        except Exception:
-            pass
-
-        # ── Run Template sheet ─────────────────────────────────────────────────
-        ws = wb.create_sheet("Run Template")
+        ws = wb.active
+        ws.title = "Run Template"
 
         fill_header  = PatternFill("solid", fgColor="1F4E79")
-        fill_sel     = PatternFill("solid", fgColor="CFE2FF")   # selectable rows (blue-ish)
-        fill_edit    = PatternFill("solid", fgColor="FFFACD")   # free-text rows (yellow)
-        fill_section = PatternFill("solid", fgColor="DEE2E6")   # label column
+        fill_edit    = PatternFill("solid", fgColor="FFFACD")
+        fill_section = PatternFill("solid", fgColor="DEE2E6")
 
         font_header = Font(bold=True, color="FFFFFF", size=13)
         font_bold   = Font(bold=True)
@@ -493,19 +311,18 @@ def register(app):
 
         ws.column_dimensions["A"].width = 28
         ws.column_dimensions["B"].width = 55
-        ws.column_dimensions["C"].hidden = True   # helper formula column
 
-        def label(row, text, fill=None):
+        def label(row, text):
             c = ws.cell(row=row, column=1, value=text)
             c.font = font_bold
-            c.fill = fill or fill_section
+            c.fill = fill_section
             c.alignment = Alignment(vertical="center")
 
-        def value_cell(row, value="", fill=None, locked=False, height=None):
+        def editable(row, value="", height=None):
             c = ws.cell(row=row, column=2, value=value)
-            c.fill = fill if fill is not None else fill_edit
+            c.fill = fill_edit
             c.alignment = align_wrap
-            c.protection = Protection(locked=locked)
+            c.protection = Protection(locked=False)
             if height:
                 ws.row_dimensions[row].height = height
             return c
@@ -521,20 +338,19 @@ def register(app):
         # Row 2: Instruction
         ws.merge_cells("A2:B2")
         ws["A2"] = (
-            "Select the Workflow and Version using the dropdown in each yellow-blue cell, "
-            "fill in the remaining yellow fields, then return this file to the bioinformatician."
+            "Fill in the yellow cells and return this file to the bioinformatician."
         )
         ws["A2"].font = font_hint
         ws["A2"].fill = PatternFill("solid", fgColor="F8F9FA")
         ws["A2"].alignment = Alignment(wrap_text=True, horizontal="left", vertical="center")
-        ws.row_dimensions[2].height = 34
+        ws.row_dimensions[2].height = 26
 
-        # Row 3: Workflow — dropdown from Data sheet
-        label(3, "Workflow  ✱", fill=fill_sel)
-        c3 = value_cell(3, fill=fill_sel, height=22)
+        # Row 3: Workflow — dropdown of all registered workflow names
+        label(3, "Workflow  ✱")
+        c3 = editable(3, height=22)
         dv_wf = DataValidation(
             type="list",
-            formula1=f"'Data'!$A$2:$A${n_wf + 1}",
+            formula1='"' + ",".join(wf_names) + '"',
             showDropDown=False,
             showErrorMessage=True,
             error="Choose a workflow from the dropdown.",
@@ -543,42 +359,18 @@ def register(app):
         ws.add_data_validation(dv_wf)
         dv_wf.add(c3)
 
-        # C3: hidden helper — maps selected workflow name → sanitized named-range name
-        c_helper = ws.cell(row=3, column=3)
-        c_helper.value = (
-            f'=IFERROR(INDEX(Data!$B$2:$B${n_wf + 1},'
-            f'MATCH(B3,Data!$A$2:$A${n_wf + 1},0)),"_ngs_empty_")'
-        )
-        c_helper.protection = Protection(locked=True)
+        # Row 4: Version — plain free-text cell (researcher fills in manually)
+        label(4, "Version / Release tag  ✱")
+        editable(4, height=22)
 
-        # Row 4: Version/Tag — dependent on row 3 via INDIRECT($C$3)
-        label(4, "Version / Release tag  ✱", fill=fill_sel)
-        c4 = value_cell(4, fill=fill_sel, height=22)
-        dv_tag = DataValidation(
-            type="list",
-            formula1="INDIRECT($C$3)",
-            showDropDown=False,
-            showErrorMessage=False,
-        )
-        ws.add_data_validation(dv_tag)
-        dv_tag.add(c4)
-
-        # Row 5: Section divider
-        ws.merge_cells("A5:B5")
-        ws["A5"] = "Fill in the fields below"
-        ws["A5"].font = Font(bold=True, color="1F4E79", size=10)
-        ws["A5"].fill = PatternFill("solid", fgColor="D0E4FF")
-        ws["A5"].alignment = align_center
-        ws.row_dimensions[5].height = 18
-
-        # Row 6: Run Date
-        label(6, "Run Date  (YYYY-MM-DD)")
-        c = value_cell(6, height=22)
+        # Row 5: Run Date
+        label(5, "Run Date  (YYYY-MM-DD)")
+        c = editable(5, height=22)
         c.number_format = "YYYY-MM-DD"
 
-        # Row 7: Status
-        label(7, "Status")
-        c7 = value_cell(7, "completed", height=22)
+        # Row 6: Status
+        label(6, "Status")
+        c6 = editable(6, "completed", height=22)
         dv_status = DataValidation(
             type="list",
             formula1='"completed,running,failed,pending"',
@@ -588,23 +380,23 @@ def register(app):
             errorTitle="Invalid status",
         )
         ws.add_data_validation(dv_status)
-        dv_status.add(c7)
+        dv_status.add(c6)
 
-        # Row 8: Short Description
-        label(8, "Short Description")
-        value_cell(8, height=26)
+        # Row 7: Short Description
+        label(7, "Short Description")
+        editable(7, height=26)
 
-        # Row 9: Notes
-        label(9, "Notes")
-        value_cell(9, height=80)
+        # Row 8: Notes
+        label(8, "Notes")
+        editable(8, height=80)
 
-        # Row 10: Tags divider
-        ws.merge_cells("A10:B10")
-        ws["A10"] = "Tags — select Yes for each tag that applies"
-        ws["A10"].font = Font(bold=True, color="1F4E79", size=10)
-        ws["A10"].fill = PatternFill("solid", fgColor="D0E4FF")
-        ws["A10"].alignment = align_center
-        ws.row_dimensions[10].height = 18
+        # Row 9: Tags divider
+        ws.merge_cells("A9:B9")
+        ws["A9"] = "Tags — select Yes for each tag that applies"
+        ws["A9"].font = Font(bold=True, color="1F4E79", size=10)
+        ws["A9"].fill = PatternFill("solid", fgColor="D0E4FF")
+        ws["A9"].alignment = align_center
+        ws.row_dimensions[9].height = 18
 
         dv_yn = DataValidation(
             type="list",
@@ -616,9 +408,9 @@ def register(app):
         )
         ws.add_data_validation(dv_yn)
         for i, tag in enumerate(default_tags):
-            row = 11 + i
+            row = 10 + i
             label(row, tag)
-            c = value_cell(row, "No", height=20)
+            c = editable(row, "No", height=20)
             dv_yn.add(c)
 
         ws.protection.sheet = True
