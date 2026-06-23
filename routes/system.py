@@ -63,25 +63,80 @@ def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
 
 
 def _wf_tags(wf: dict) -> list[str]:
-    """Return git tags (or short commit strings) for a workflow, or [] if unavailable."""
+    """Return git tags (or short commit strings) for a workflow, or [] if unavailable.
+
+    Tries the local repo first, then falls back to the GitHub API.
+    """
+    import re as _re
+
     local_path = wf.get("local_path", "").strip()
-    if not local_path or not Path(local_path).is_dir():
+    if local_path and Path(local_path).is_dir():
+        try:
+            result = subprocess.run(
+                ["git", "-C", local_path, "tag", "--sort=-version:refname"],
+                capture_output=True, text=True, timeout=10,
+            )
+            tags = [t.strip() for t in result.stdout.splitlines() if t.strip()]
+            if tags:
+                return tags
+            log = subprocess.run(
+                ["git", "-C", local_path, "log", "--format=%h  %as  %s", "-20"],
+                capture_output=True, text=True, timeout=10,
+            )
+            commits = [line.strip() for line in log.stdout.splitlines() if line.strip()]
+            if commits:
+                return commits
+        except Exception:
+            pass
+
+    url = wf.get("url", "").strip()
+    if not url:
         return []
+
+    m = _re.search(r"github\.com/([^/]+/[^/.\s]+?)(?:\.git)?(?:/|$)", url)
+    if not m:
+        return []
+    repo = m.group(1)
+
     try:
-        result = subprocess.run(
-            ["git", "-C", local_path, "tag", "--sort=-version:refname"],
-            capture_output=True, text=True, timeout=10,
+        import requests as _req
+
+        # Releases first
+        resp = _req.get(
+            f"https://api.github.com/repos/{repo}/releases",
+            params={"per_page": 50}, timeout=10,
         )
-        tags = [t.strip() for t in result.stdout.splitlines() if t.strip()]
-        if tags:
-            return tags
-        log = subprocess.run(
-            ["git", "-C", local_path, "log", "--format=%h  %as  %s", "-20"],
-            capture_output=True, text=True, timeout=10,
+        if resp.ok:
+            tags = [r["tag_name"] for r in resp.json() if isinstance(r, dict)]
+            if tags:
+                return tags
+
+        # Tags
+        resp = _req.get(
+            f"https://api.github.com/repos/{repo}/tags",
+            params={"per_page": 50}, timeout=10,
         )
-        return [line.strip() for line in log.stdout.splitlines() if line.strip()]
+        if resp.ok:
+            tags = [t["name"] for t in resp.json() if isinstance(t, dict)]
+            if tags:
+                return tags
+
+        # Recent commits
+        resp = _req.get(
+            f"https://api.github.com/repos/{repo}/commits",
+            params={"per_page": 20}, timeout=10,
+        )
+        if resp.ok:
+            return [
+                f"{c['sha'][:7]}  {c['commit']['author']['date'][:10]}  "
+                f"{c['commit']['message'].splitlines()[0][:60]}"
+                for c in resp.json()
+                if isinstance(c, dict)
+            ]
     except Exception:
-        return []
+        pass
+
+    return []
 
 
 def register(app):
