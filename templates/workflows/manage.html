@@ -162,41 +162,19 @@
     <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Researcher Run Template
   </div>
   <div class="card-body">
-    <p class="text-muted small mb-3">
-      Generate an Excel (.xlsx) template pre-set with a specific workflow and version.
-      Share it with a researcher to fill in the run date, status, description, tags, and notes.
+    <p class="text-muted small mb-2">
+      Downloads a single Excel template containing <strong>all workflows and their available release tags</strong>
+      as dropdowns inside the sheet. Share it with a researcher — they pick the workflow and version
+      from the dropdowns and fill in the remaining fields (run date, status, description, tags, notes).
     </p>
-    <form method="GET" action="{{ url_for('workflow_xlsx_template') }}"
-          class="row g-2 align-items-end" id="xlsx-form">
-      <div class="col-md-4">
-        <label class="form-label fw-semibold mb-1">Workflow <span class="text-danger">*</span></label>
-        <select class="form-select form-select-sm" name="workflow_name" id="xlsx-wf" required>
-          <option value="">— select workflow —</option>
-          {% for wf in workflows %}
-          <option value="{{ wf.name }}"
-                  data-url="{{ wf.url or '' }}"
-                  data-local="{{ 'true' if wf.get('local_path') else '' }}">
-            {{ wf.name }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label fw-semibold mb-1 d-flex align-items-center gap-2">
-          <span id="xlsx-tag-label">Version / Tag</span>
-          <span id="xlsx-spinner" class="spinner-border spinner-border-sm text-secondary d-none" role="status"></span>
-        </label>
-        <select class="form-select form-select-sm" name="workflow_tag" id="xlsx-tag" disabled>
-          <option value="">— select workflow first —</option>
-        </select>
-      </div>
-      <div class="col-md-auto">
-        <button type="submit" class="btn btn-sm btn-success">
-          <i class="bi bi-download me-1"></i> Download Template
-        </button>
-      </div>
-    </form>
-    <p class="text-muted small mt-2 mb-0" id="xlsx-hint"></p>
+    {% if workflows %}
+    <a href="{{ url_for('workflow_xlsx_template') }}" class="btn btn-sm btn-success">
+      <i class="bi bi-download me-1"></i> Download Template
+    </a>
+    <span class="text-muted small ms-2">run_template.xlsx</span>
+    {% else %}
+    <p class="text-muted small mb-0">Add at least one workflow above first.</p>
+    {% endif %}
   </div>
 </div>
 
@@ -260,134 +238,3 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-(function () {
-  var wfSel    = document.getElementById('xlsx-wf');
-  var tagSel   = document.getElementById('xlsx-tag');
-  var spinner  = document.getElementById('xlsx-spinner');
-  var hint     = document.getElementById('xlsx-hint');
-  var tagLabel = document.getElementById('xlsx-tag-label');
-
-  function startLoad() {
-    tagSel.disabled = true;
-    tagSel.innerHTML = '<option value="">Loading…</option>';
-    spinner.classList.remove('d-none');
-    hint.textContent = '';
-    tagLabel.textContent = 'Version / Tag';
-  }
-
-  function populateTags(items, type) {
-    tagSel.innerHTML = '<option value="">— select tag —</option>';
-    if (type === 'commits') {
-      tagLabel.textContent = 'Latest commit';
-      hint.textContent = 'No tags found — showing 10 latest commits.';
-      items.forEach(function(c) {
-        var opt = document.createElement('option');
-        opt.value = c.sha;
-        opt.textContent = c.sha + '  ' + (c.date || '') + '  ' + (c.subject || '').substring(0, 72);
-        tagSel.appendChild(opt);
-      });
-    } else {
-      tagLabel.textContent = 'Version / Tag';
-      items.forEach(function(t) {
-        var opt = document.createElement('option');
-        opt.value = t;
-        opt.textContent = t;
-        tagSel.appendChild(opt);
-      });
-    }
-    tagSel.disabled = false;
-    spinner.classList.add('d-none');
-  }
-
-  async function loadTags(opt) {
-    var name    = opt ? opt.value : '';
-    var url     = opt ? (opt.dataset.url || '') : '';
-    var isLocal = opt ? (opt.dataset.local === 'true') : false;
-
-    if (!name) {
-      tagSel.innerHTML = '<option value="">— select workflow first —</option>';
-      tagSel.disabled = true;
-      hint.textContent = '';
-      return;
-    }
-
-    startLoad();
-
-    if (isLocal) {
-      try {
-        var resp = await fetch('/workflows/' + encodeURIComponent(name) + '/tags');
-        var data = await resp.json();
-        if (data.error) {
-          tagSel.innerHTML = '<option value="">Error: ' + data.error + '</option>';
-          tagSel.disabled = false;
-          spinner.classList.add('d-none');
-          return;
-        }
-        populateTags(data.items, data.type);
-      } catch (e) {
-        tagSel.innerHTML = '<option value="">Could not read local repo</option>';
-        tagSel.disabled = false;
-        spinner.classList.add('d-none');
-      }
-      return;
-    }
-
-    if (!url) {
-      tagSel.innerHTML = '<option value="">— no repo configured —</option>';
-      tagSel.disabled = false;
-      spinner.classList.add('d-none');
-      hint.textContent = 'Set a GitHub URL or local path for this workflow to load tags.';
-      return;
-    }
-
-    var m = url.match(/github\.com\/([^/]+\/[^/]+)/);
-    var repo = m ? m[1].replace(/\.git$/, '') : null;
-    if (!repo) {
-      tagSel.innerHTML = '<option value="">Invalid repo URL</option>';
-      tagSel.disabled = false;
-      spinner.classList.add('d-none');
-      return;
-    }
-
-    try {
-      var items = [];
-      var relResp = await fetch('https://api.github.com/repos/' + repo + '/releases?per_page=50');
-      if (relResp.ok) items = (await relResp.json()).map(function(r) { return r.tag_name; });
-
-      if (!items.length) {
-        var tagResp = await fetch('https://api.github.com/repos/' + repo + '/tags?per_page=50');
-        if (tagResp.ok) items = (await tagResp.json()).map(function(t) { return t.name; });
-      }
-
-      if (!items.length) {
-        var cResp = await fetch('https://api.github.com/repos/' + repo + '/commits?per_page=10');
-        if (cResp.ok) {
-          var commits = (await cResp.json()).map(function(c) {
-            return { sha: c.sha.substring(0, 7), date: c.commit.author.date.substring(0, 10),
-                     subject: c.commit.message.split('\n')[0] };
-          });
-          populateTags(commits, 'commits');
-          return;
-        }
-        tagSel.innerHTML = '<option value="">— no releases found —</option>';
-        tagSel.disabled = false;
-        spinner.classList.add('d-none');
-      } else {
-        populateTags(items, 'tags');
-      }
-    } catch (e) {
-      tagSel.innerHTML = '<option value="">Could not fetch tags</option>';
-      hint.textContent = 'Check your internet connection.';
-      tagSel.disabled = false;
-      spinner.classList.add('d-none');
-    }
-  }
-
-  wfSel.addEventListener('change', function() {
-    loadTags(this.options[this.selectedIndex]);
-  });
-})();
-</script>
-{% endblock %}

@@ -62,6 +62,28 @@ def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
     )
 
 
+def _wf_tags(wf: dict) -> list[str]:
+    """Return git tags (or short commit strings) for a workflow, or [] if unavailable."""
+    local_path = wf.get("local_path", "").strip()
+    if not local_path or not Path(local_path).is_dir():
+        return []
+    try:
+        result = subprocess.run(
+            ["git", "-C", local_path, "tag", "--sort=-version:refname"],
+            capture_output=True, text=True, timeout=10,
+        )
+        tags = [t.strip() for t in result.stdout.splitlines() if t.strip()]
+        if tags:
+            return tags
+        log = subprocess.run(
+            ["git", "-C", local_path, "log", "--format=%h  %as  %s", "-20"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return [line.strip() for line in log.stdout.splitlines() if line.strip()]
+    except Exception:
+        return []
+
+
 def register(app):
     @app.route("/workflows", methods=["GET", "POST"])
     def workflows_manage():
@@ -280,44 +302,113 @@ def register(app):
         try:
             import openpyxl
             from openpyxl.styles import Alignment, Font, PatternFill, Protection
+            from openpyxl.utils import get_column_letter
+            from openpyxl.workbook.defined_name import DefinedName
             from openpyxl.worksheet.datavalidation import DataValidation
         except ImportError:
             flash("openpyxl is not installed. Run: pip install openpyxl", "danger")
             return redirect(url_for("workflows_manage"))
 
+        import re
         from config import get_default_tags
 
-        workflow_name = request.args.get("workflow_name", "").strip()
-        workflow_tag = request.args.get("workflow_tag", "").strip()
-
-        if not workflow_name:
-            flash("Select a workflow before downloading the template.", "warning")
+        workflows = load_workflows()
+        if not workflows:
+            flash("No workflows registered yet.", "warning")
             return redirect(url_for("workflows_manage"))
 
-        tags = [t["name"] for t in get_default_tags()]
+        def _sanitize(name: str) -> str:
+            s = re.sub(r"[^A-Za-z0-9_]", "_", name)
+            return ("WF_" + s) if s and s[0].isdigit() else (s or "WF")
+
+        # Deduplicate sanitized names in case two workflows collide
+        seen: dict[str, int] = {}
+        san_names: list[str] = []
+        for wf in workflows:
+            s = _sanitize(wf["name"])
+            if s in seen:
+                seen[s] += 1
+                s = f"{s}_{seen[s]}"
+            else:
+                seen[s] = 0
+            san_names.append(s)
+
+        tags_per_wf = [_wf_tags(wf) or ["(enter tag manually)"] for wf in workflows]
+        default_tags = [t["name"] for t in get_default_tags()]
+        n_wf = len(workflows)
 
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Run Template"
 
-        # ── Styles ───────────────────────────────────────────────────────────
-        fill_header = PatternFill("solid", fgColor="1F4E79")
-        fill_locked = PatternFill("solid", fgColor="CFE2FF")
-        fill_edit   = PatternFill("solid", fgColor="FFFACD")
-        fill_section = PatternFill("solid", fgColor="DEE2E6")
+        # ── Data sheet (hidden) ────────────────────────────────────────────────
+        ws_data = wb.active
+        ws_data.title = "Data"
+        ws_data.sheet_state = "hidden"
 
-        font_header  = Font(bold=True, color="FFFFFF", size=13)
-        font_bold    = Font(bold=True)
-        font_locked  = Font(bold=True, color="1F4E79")
-        font_hint    = Font(italic=True, color="6C757D", size=10)
+        # Col A: human-readable names  |  Col B: sanitized names  |  Col C+: tags
+        ws_data.cell(1, 1, "Workflow")
+        ws_data.cell(1, 2, "RangeName")
+        for i, (wf, san) in enumerate(zip(workflows, san_names)):
+            ws_data.cell(i + 2, 1, wf["name"])
+            ws_data.cell(i + 2, 2, san)
+
+        for j, (san, tags) in enumerate(zip(san_names, tags_per_wf)):
+            col = j + 3
+            col_letter = get_column_letter(col)
+            ws_data.cell(1, col, san)
+            for k, tag in enumerate(tags):
+                ws_data.cell(k + 2, col, tag)
+            end_row = len(tags) + 1
+            attr = f"'Data'!${col_letter}$2:${col_letter}${end_row}"
+            try:
+                wb.defined_names[san] = DefinedName(san, attr_text=attr)
+            except Exception:
+                pass
+
+        # Placeholder named range shown when no workflow is selected yet
+        ph_col = get_column_letter(n_wf + 3)
+        ws_data.cell(1, n_wf + 3, "—")
+        try:
+            wb.defined_names["_ngs_empty_"] = DefinedName(
+                "_ngs_empty_", attr_text=f"'Data'!${ph_col}$1:${ph_col}$1"
+            )
+        except Exception:
+            pass
+
+        # ── Run Template sheet ─────────────────────────────────────────────────
+        ws = wb.create_sheet("Run Template")
+
+        fill_header  = PatternFill("solid", fgColor="1F4E79")
+        fill_sel     = PatternFill("solid", fgColor="CFE2FF")   # selectable rows (blue-ish)
+        fill_edit    = PatternFill("solid", fgColor="FFFACD")   # free-text rows (yellow)
+        fill_section = PatternFill("solid", fgColor="DEE2E6")   # label column
+
+        font_header = Font(bold=True, color="FFFFFF", size=13)
+        font_bold   = Font(bold=True)
+        font_hint   = Font(italic=True, color="6C757D", size=10)
 
         align_center = Alignment(horizontal="center", vertical="center")
         align_wrap   = Alignment(wrap_text=True, vertical="top")
 
         ws.column_dimensions["A"].width = 28
-        ws.column_dimensions["B"].width = 58
+        ws.column_dimensions["B"].width = 55
+        ws.column_dimensions["C"].hidden = True   # helper formula column
 
-        # ── Row 1: Title ─────────────────────────────────────────────────────
+        def label(row, text, fill=None):
+            c = ws.cell(row=row, column=1, value=text)
+            c.font = font_bold
+            c.fill = fill or fill_section
+            c.alignment = Alignment(vertical="center")
+
+        def value_cell(row, value="", fill=None, locked=False, height=None):
+            c = ws.cell(row=row, column=2, value=value)
+            c.fill = fill if fill is not None else fill_edit
+            c.alignment = align_wrap
+            c.protection = Protection(locked=locked)
+            if height:
+                ws.row_dimensions[row].height = height
+            return c
+
+        # Row 1: Title
         ws.merge_cells("A1:B1")
         ws["A1"] = "NGS Tracker — Workflow Run Template"
         ws["A1"].font = font_header
@@ -325,44 +416,52 @@ def register(app):
         ws["A1"].alignment = align_center
         ws.row_dimensions[1].height = 28
 
-        # ── Row 2: Instruction ───────────────────────────────────────────────
+        # Row 2: Instruction
         ws.merge_cells("A2:B2")
         ws["A2"] = (
-            "Fill in the yellow cells and return this file to the bioinformatician. "
-            "The Workflow and Version rows are pre-set and locked."
+            "Select the Workflow and Version using the dropdown in each yellow-blue cell, "
+            "fill in the remaining yellow fields, then return this file to the bioinformatician."
         )
         ws["A2"].font = font_hint
         ws["A2"].fill = PatternFill("solid", fgColor="F8F9FA")
         ws["A2"].alignment = Alignment(wrap_text=True, horizontal="left", vertical="center")
         ws.row_dimensions[2].height = 34
 
-        # ── Helper: write a label cell (always locked) ───────────────────────
-        def label(row, text, fill=None):
-            c = ws.cell(row=row, column=1, value=text)
-            c.font = font_bold
-            c.fill = fill or fill_section
-            c.alignment = Alignment(vertical="center")
+        # Row 3: Workflow — dropdown from Data sheet
+        label(3, "Workflow  ✱", fill=fill_sel)
+        c3 = value_cell(3, fill=fill_sel, height=22)
+        dv_wf = DataValidation(
+            type="list",
+            formula1=f"'Data'!$A$2:$A${n_wf + 1}",
+            showDropDown=False,
+            showErrorMessage=True,
+            error="Choose a workflow from the dropdown.",
+            errorTitle="Invalid workflow",
+        )
+        ws.add_data_validation(dv_wf)
+        dv_wf.add(c3)
 
-        # ── Helper: write an editable value cell ─────────────────────────────
-        def editable(row, value="", height=None, locked=False):
-            c = ws.cell(row=row, column=2, value=value)
-            c.fill = fill_locked if locked else fill_edit
-            c.alignment = align_wrap
-            c.protection = Protection(locked=locked)
-            if height:
-                ws.row_dimensions[row].height = height
-            return c
+        # C3: hidden helper — maps selected workflow name → sanitized named-range name
+        c_helper = ws.cell(row=3, column=3)
+        c_helper.value = (
+            f'=IFERROR(INDEX(Data!$B$2:$B${n_wf + 1},'
+            f'MATCH(B3,Data!$A$2:$A${n_wf + 1},0)),"_ngs_empty_")'
+        )
+        c_helper.protection = Protection(locked=True)
 
-        # ── Rows 3–4: Pre-filled, locked ─────────────────────────────────────
-        label(3, "Workflow", fill=fill_locked)
-        c = editable(3, workflow_name, locked=True)
-        c.font = font_locked
+        # Row 4: Version/Tag — dependent on row 3 via INDIRECT($C$3)
+        label(4, "Version / Release tag  ✱", fill=fill_sel)
+        c4 = value_cell(4, fill=fill_sel, height=22)
+        dv_tag = DataValidation(
+            type="list",
+            formula1="INDIRECT($C$3)",
+            showDropDown=False,
+            showErrorMessage=False,
+        )
+        ws.add_data_validation(dv_tag)
+        dv_tag.add(c4)
 
-        label(4, "Version / Release tag", fill=fill_locked)
-        c = editable(4, workflow_tag or "—", locked=True)
-        c.font = font_locked
-
-        # ── Row 5: Section divider ────────────────────────────────────────────
+        # Row 5: Section divider
         ws.merge_cells("A5:B5")
         ws["A5"] = "Fill in the fields below"
         ws["A5"].font = Font(bold=True, color="1F4E79", size=10)
@@ -370,14 +469,14 @@ def register(app):
         ws["A5"].alignment = align_center
         ws.row_dimensions[5].height = 18
 
-        # ── Row 6: Run Date ───────────────────────────────────────────────────
+        # Row 6: Run Date
         label(6, "Run Date  (YYYY-MM-DD)")
-        c = editable(6, height=22)
+        c = value_cell(6, height=22)
         c.number_format = "YYYY-MM-DD"
 
-        # ── Row 7: Status ─────────────────────────────────────────────────────
+        # Row 7: Status
         label(7, "Status")
-        c = editable(7, "completed", height=22)
+        c7 = value_cell(7, "completed", height=22)
         dv_status = DataValidation(
             type="list",
             formula1='"completed,running,failed,pending"',
@@ -387,17 +486,17 @@ def register(app):
             errorTitle="Invalid status",
         )
         ws.add_data_validation(dv_status)
-        dv_status.add(c)
+        dv_status.add(c7)
 
-        # ── Row 8: Short Description ──────────────────────────────────────────
+        # Row 8: Short Description
         label(8, "Short Description")
-        editable(8, height=26)
+        value_cell(8, height=26)
 
-        # ── Row 9: Notes ──────────────────────────────────────────────────────
+        # Row 9: Notes
         label(9, "Notes")
-        editable(9, height=80)
+        value_cell(9, height=80)
 
-        # ── Row 10: Tags section divider ──────────────────────────────────────
+        # Row 10: Tags divider
         ws.merge_cells("A10:B10")
         ws["A10"] = "Tags — select Yes for each tag that applies"
         ws["A10"].font = Font(bold=True, color="1F4E79", size=10)
@@ -405,7 +504,6 @@ def register(app):
         ws["A10"].alignment = align_center
         ws.row_dimensions[10].height = 18
 
-        # ── Tag rows ──────────────────────────────────────────────────────────
         dv_yn = DataValidation(
             type="list",
             formula1='"Yes,No"',
@@ -415,14 +513,12 @@ def register(app):
             errorTitle="Invalid value",
         )
         ws.add_data_validation(dv_yn)
-
-        for i, tag in enumerate(tags):
+        for i, tag in enumerate(default_tags):
             row = 11 + i
             label(row, tag)
-            c = editable(row, "No", height=20)
+            c = value_cell(row, "No", height=20)
             dv_yn.add(c)
 
-        # ── Sheet protection (locks pre-filled cells, leaves yellow cells free) ──
         ws.protection.sheet = True
         ws.protection.password = ""
 
@@ -430,14 +526,10 @@ def register(app):
         wb.save(buf)
         buf.seek(0)
 
-        safe_wf  = "".join(c if c.isalnum() or c in "-_" else "_" for c in workflow_name)
-        safe_tag = "".join(c if c.isalnum() or c in "-_." else "_" for c in (workflow_tag or "no-tag"))
-        filename = f"run_template_{safe_wf}_{safe_tag}.xlsx"
-
         return send_file(
             buf,
             as_attachment=True,
-            download_name=filename,
+            download_name="run_template.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
