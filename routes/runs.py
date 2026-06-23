@@ -57,42 +57,57 @@ def register(app):
             return jsonify({"error": "File has no 'Run Template' sheet — is this a valid NGS Tracker template?"}), 400
         ws = wb["Run Template"]
 
-        def _str(row, col=2):
-            v = ws.cell(row=row, column=col).value
-            if v is None:
-                return ""
-            if isinstance(v, (date, dt)):
-                return v.strftime("%Y-%m-%d")
-            return str(v).strip()
-
-        # Tags start at row 10; col A = tag name, col B = Yes/No
+        # Scan column A for field labels so the parser works regardless of
+        # which template version was used (row numbers may differ).
+        fields: dict[str, object] = {}
         tags: dict[str, bool] = {}
-        r = 10
-        while True:
-            name_cell = ws.cell(row=r, column=1).value
-            if name_cell is None:
-                break
-            val_cell = str(ws.cell(row=r, column=2).value or "").strip().lower()
-            tags[str(name_cell).strip()] = val_cell == "yes"
-            r += 1
+        in_tags = False
+        for row in ws.iter_rows(min_row=2, values_only=False):
+            label_cell = row[0]
+            value_cell = row[1] if len(row) > 1 else None
+            label = str(label_cell.value or "").strip()
+            raw = value_cell.value if value_cell else None
 
-        run_date_raw = ws.cell(row=5, column=2).value
-        if isinstance(run_date_raw, (date, dt)):
-            run_date = run_date_raw.strftime("%Y-%m-%d")
-        else:
-            run_date = str(run_date_raw or "").strip()[:10]
+            def _val():
+                if raw is None:
+                    return ""
+                if isinstance(raw, (date, dt)):
+                    return raw.strftime("%Y-%m-%d")
+                return str(raw).strip()
 
-        status_raw = _str(6).lower()
+            if in_tags:
+                if label and not label.lower().startswith("tags"):
+                    tags[label] = str(raw or "").strip().lower() == "yes"
+                continue
+
+            low = label.lower()
+            if low.startswith("workflow") and "tag" not in low and "version" not in low:
+                fields["workflow"] = _val()
+            elif low.startswith("version") or low.startswith("release"):
+                fields["version"] = _val()
+            elif low.startswith("run date") or low.startswith("date"):
+                fields["run_date"] = _val()
+            elif low == "status":
+                fields["status"] = _val()
+            elif low.startswith("short description") or low.startswith("description"):
+                fields["description"] = _val()
+            elif low == "notes":
+                fields["notes"] = _val()
+            elif low.startswith("tags"):
+                in_tags = True
+
         valid_statuses = {"completed", "running", "failed", "pending"}
-        status = status_raw if status_raw in valid_statuses else "completed"
+        status = fields.get("status", "").lower()
+        if status not in valid_statuses:
+            status = "completed"
 
         return jsonify({
-            "workflow":    _str(3),
-            "version":     _str(4),
-            "run_date":    run_date,
+            "workflow":    fields.get("workflow", ""),
+            "version":     fields.get("version", ""),
+            "run_date":    fields.get("run_date", ""),
             "status":      status,
-            "description": _str(7),
-            "notes":       _str(8),
+            "description": fields.get("description", ""),
+            "notes":       fields.get("notes", ""),
             "tags":        tags,
         })
 
