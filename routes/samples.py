@@ -25,9 +25,9 @@ def register(app):
         data_rows = rows[1:]
 
         if request.method == "POST":
-            # Collect confirmed selections
+            n = request.form.get("n_samples", len(data_rows), type=int)
             names_to_link = []
-            for i in range(len(data_rows)):
+            for i in range(n):
                 if request.form.get(f"include_{i}"):
                     name = request.form.get(f"name_{i}", "").strip()
                     if name:
