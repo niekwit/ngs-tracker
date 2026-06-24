@@ -21,6 +21,13 @@
   <strong>{{ run.project.name }}</strong>; existing ones will just be linked.
 </p>
 
+{% if combined %}
+<p class="text-muted small mb-3">
+  <i class="bi bi-columns-gap me-1"></i>
+  Samples combined from <strong>test</strong> and <strong>control</strong> columns
+  — {{ extracted|length }} unique sample{{ 's' if extracted|length != 1 }}.
+</p>
+{% else %}
 <!-- Column selector -->
 <form method="GET" class="mb-3 d-flex align-items-center gap-2">
   <label class="form-label fw-semibold mb-0 text-nowrap">Sample name column:</label>
@@ -33,6 +40,7 @@
   </select>
   <span class="text-muted small">{{ extracted|length }} unique value{{ 's' if extracted|length != 1 }}</span>
 </form>
+{% endif %}
 
 <form method="POST">
   <div class="card mb-3">

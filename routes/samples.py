@@ -63,18 +63,32 @@ def register(app):
             flash(f"{n} sample{'s' if n != 1 else ''} linked to this run.", "success")
             return redirect(url_for("run_detail", id=id))
 
-        # GET — determine which column to use for sample names
-        col = request.args.get("col", 0, type=int)
-        col = max(0, min(col, len(headers) - 1))
-
-        # Deduplicate while preserving order
-        seen = set()
-        extracted = []
-        for row in data_rows:
-            val = row[col].strip() if col < len(row) else ""
-            if val and val not in seen:
-                seen.add(val)
-                extracted.append(val)
+        # If both 'test' and 'control' columns exist, combine them automatically
+        # (splitting semicolon-pooled entries) and skip the column picker.
+        combined = "test" in headers and "control" in headers
+        if combined:
+            test_idx = headers.index("test")
+            ctrl_idx = headers.index("control")
+            seen = set()
+            extracted = []
+            for row in data_rows:
+                for idx in (test_idx, ctrl_idx):
+                    for name in (row[idx] if idx < len(row) else "").split(";"):
+                        name = name.strip()
+                        if name and name not in seen:
+                            seen.add(name)
+                            extracted.append(name)
+            col = None
+        else:
+            col = request.args.get("col", 0, type=int)
+            col = max(0, min(col, len(headers) - 1))
+            seen = set()
+            extracted = []
+            for row in data_rows:
+                val = row[col].strip() if col < len(row) else ""
+                if val and val not in seen:
+                    seen.add(val)
+                    extracted.append(val)
 
         # Already-linked samples for this run
         already_linked = {rs.sample.name for rs in run.run_samples}
@@ -87,6 +101,7 @@ def register(app):
             headers=headers,
             extracted=extracted,
             col=col,
+            combined=combined,
             already_linked=already_linked,
             project_samples=project_samples,
         )
