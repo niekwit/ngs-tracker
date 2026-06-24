@@ -275,9 +275,10 @@ def extract_samples_from_sample_info(workflow_name: str, path: Path) -> list[dic
             roles: dict[str, set[str]] = {}
             for row in reader:
                 for col in ("test", "control"):
-                    name = row.get(col, "").strip()
-                    if name:
-                        roles.setdefault(name, set()).add(col)
+                    for name in row.get(col, "").split(";"):
+                        name = name.strip()
+                        if name:
+                            roles.setdefault(name, set()).add(col)
         if not roles:
             return None
         return [
