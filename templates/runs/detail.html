@@ -227,6 +227,11 @@
         <i class="bi bi-gear me-1"></i> Extract from config
       </a>
       {% endif %}
+      {% if has_sample_info %}
+      <a href="{{ url_for('samples_from_sample_info', id=run.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-filetype-csv me-1"></i> Extract from sample info
+      </a>
+      {% endif %}
       <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#sampleUpload">
         <i class="bi bi-upload me-1"></i> {{ 'Replace' if run.sample_sheet else 'Upload CSV' }}
       </button>

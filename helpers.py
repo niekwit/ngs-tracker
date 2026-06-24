@@ -257,6 +257,37 @@ def extract_samples_from_config(workflow_name: str, config: dict) -> list[dict] 
     return None
 
 
+def extract_samples_from_sample_info(workflow_name: str, path: Path) -> list[dict] | None:
+    """Extract sample names from a sample_info file.
+
+    Returns list of {"name": str, "description": str} or None if unsupported/unparseable.
+
+    crispr-screens: stats.csv with 'test' and 'control' columns; unique names from both.
+    """
+    if workflow_name != "crispr-screens":
+        return None
+    try:
+        with open(path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            fields = reader.fieldnames or []
+            if "test" not in fields or "control" not in fields:
+                return None
+            roles: dict[str, set[str]] = {}
+            for row in reader:
+                for col in ("test", "control"):
+                    name = row.get(col, "").strip()
+                    if name:
+                        roles.setdefault(name, set()).add(col)
+        if not roles:
+            return None
+        return [
+            {"name": name, "description": "/".join(sorted(roles[name]))}
+            for name in roles
+        ]
+    except Exception:
+        return None
+
+
 def _parse_snakemake_config(path: Path) -> str | None:
     try:
         with open(path) as f:

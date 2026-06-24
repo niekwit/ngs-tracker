@@ -3,7 +3,7 @@ import json
 from flask import flash, redirect, render_template, request, url_for
 
 from config import db_log
-from helpers import extract_samples_from_config
+from helpers import extract_samples_from_config, extract_samples_from_sample_info
 from models import RunSample, Sample, WorkflowRun, db
 
 
@@ -145,6 +145,72 @@ def register(app):
             run=run,
             candidates=candidates,
             already_linked=already_linked,
+            page_title="Samples from Config",
+            source_desc="the uploaded config file",
+            confirm_url=url_for("samples_from_config", id=id),
+        )
+
+    @app.route("/runs/<int:id>/samples/from-sample-info", methods=["GET", "POST"])
+    def samples_from_sample_info(id):
+        run = db.get_or_404(WorkflowRun, id)
+
+        candidates = None
+        for f in run.attached_files:
+            if f.file_type == "sample_info":
+                from pathlib import Path as _Path
+                from config import resolve_stored_path
+                stored = resolve_stored_path(f.stored_path)
+                if stored.exists():
+                    candidates = extract_samples_from_sample_info(run.workflow_name, stored)
+                    if candidates:
+                        break
+
+        if not candidates:
+            flash("No extractable sample data found in the sample info file for this workflow.", "warning")
+            return redirect(url_for("run_detail", id=id))
+
+        if request.method == "POST":
+            RunSample.query.filter_by(run_id=id).delete()
+            db.session.flush()
+
+            project = run.project
+            existing = {s.name: s for s in project.samples}
+            linked = 0
+
+            for i, c in enumerate(candidates):
+                if not request.form.get(f"include_{i}"):
+                    continue
+                name = request.form.get(f"name_{i}", c["name"]).strip()
+                description = request.form.get(f"desc_{i}", c["description"]).strip()
+                if not name:
+                    continue
+                if name in existing:
+                    sample = existing[name]
+                    if description and sample.description != description:
+                        sample.description = description
+                else:
+                    sample = Sample(project_id=project.id, name=name, description=description)
+                    db.session.add(sample)
+                    db.session.flush()
+                    existing[name] = sample
+                    db_log("CREATE", "Sample", sample.id, f"{name} (project: {project.name})")
+                rs = RunSample(run_id=id, sample_id=sample.id)
+                db.session.add(rs)
+                linked += 1
+
+            db.session.commit()
+            flash(f"{linked} sample{'s' if linked != 1 else ''} linked from sample info.", "success")
+            return redirect(url_for("run_detail", id=id))
+
+        already_linked = {rs.sample.name for rs in run.run_samples}
+        return render_template(
+            "runs/sample_from_config.html",
+            run=run,
+            candidates=candidates,
+            already_linked=already_linked,
+            page_title="Samples from Sample Info",
+            source_desc="the uploaded sample info file",
+            confirm_url=url_for("samples_from_sample_info", id=id),
         )
 
     @app.route("/samples/<int:id>")

@@ -19,6 +19,7 @@ from helpers import (
     _compare_configs,
     _parse_datetime,
     extract_samples_from_config,
+    extract_samples_from_sample_info,
     find_all_duplicate_run_ids,
     find_duplicate_runs,
     get_journal_name,
@@ -294,6 +295,17 @@ def register(app):
                     config_samples = extracted
                     break
 
+        has_sample_info = False
+        for f in run.attached_files:
+            if f.file_type == "sample_info":
+                from config import resolve_stored_path
+                stored = resolve_stored_path(f.stored_path)
+                if stored.exists():
+                    result = extract_samples_from_sample_info(run.workflow_name, stored)
+                    if result:
+                        has_sample_info = True
+                        break
+
         return render_template(
             "runs/detail.html",
             run=run,
@@ -306,6 +318,7 @@ def register(app):
             mapping_rate_cutoff=mapping_rate_cutoff,
             duplicate_runs=duplicate_runs,
             config_samples=config_samples,
+            has_sample_info=has_sample_info,
             slack_enabled=get_slack_enabled(),
         )
 
