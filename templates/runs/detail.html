@@ -339,6 +339,12 @@
       <a href="{{ url_for('file_download', id=cf.id) }}" class="btn btn-xs btn-outline-secondary">
         <i class="bi bi-download me-1"></i>Download
       </a>
+      <form method="POST" action="{{ url_for('file_clear_config', id=cf.id) }}"
+            onsubmit="return confirm('Clear the parsed configuration for this file?')">
+        <button class="btn btn-xs btn-outline-danger">
+          <i class="bi bi-x-circle me-1"></i>Clear
+        </button>
+      </form>
     </div>
   </div>
   <div class="card-body py-2">

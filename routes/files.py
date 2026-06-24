@@ -118,6 +118,16 @@ def register(app):
         flash(f'File "{fname}" deleted.', "success")
         return redirect(url_for("run_detail", id=run_id))
 
+    @app.route("/files/<int:id>/clear-config", methods=["POST"])
+    def file_clear_config(id):
+        f = db.get_or_404(AttachedFile, id)
+        run_id = f.workflow_run_id
+        f.parsed_config = None
+        db.session.commit()
+        db_log("UPDATE", "AttachedFile", id, f"cleared parsed config for {f.original_filename} on run id={run_id}")
+        flash(f'Configuration cleared for "{f.original_filename}".', "success")
+        return redirect(url_for("run_detail", id=run_id))
+
     @app.route("/files/<int:id>/edit", methods=["POST"])
     def file_edit(id):
         f = db.get_or_404(AttachedFile, id)
