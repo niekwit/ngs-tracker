@@ -122,6 +122,7 @@ def register(app):
         tag_mode = request.args.get("tag_mode", "or")
         status_filter = request.args.get("status", "").strip().lower()
         workflow_filter = request.args.get("workflow", "").strip()
+        library_filter = request.args.get("library", "").strip()
         low_mapping_filter = bool(request.args.get("low_mapping", ""))
         duplicates_filter = bool(request.args.get("duplicates", ""))
         date_from_str = request.args.get("date_from", "").strip()
@@ -168,6 +169,12 @@ def register(app):
         runs = all_runs
         if workflow_filter:
             runs = [r for r in runs if r.workflow_name == workflow_filter]
+        crispr_libraries_in_runs = sorted({
+            r.crispr_library for r in runs
+            if r.workflow_name == "crispr-screens" and r.crispr_library
+        })
+        if library_filter and workflow_filter == "crispr-screens":
+            runs = [r for r in runs if r.crispr_library == library_filter]
         if low_mapping_filter:
             runs = [r for r in runs if r.id in low_mapping_run_ids]
         if duplicates_filter:
@@ -228,6 +235,8 @@ def register(app):
             tag_mode=tag_mode,
             status_filter=status_filter,
             workflow_filter=workflow_filter,
+            library_filter=library_filter,
+            crispr_libraries_in_runs=crispr_libraries_in_runs,
             low_mapping_filter=low_mapping_filter,
             low_mapping_run_ids=low_mapping_run_ids,
             duplicates_filter=duplicates_filter,
