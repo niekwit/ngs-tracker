@@ -299,5 +299,10 @@ function restartServer() {
 })();
 </script>
 {% block scripts %}{% endblock %}
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+  new bootstrap.Tooltip(el);
+});
+</script>
 </body>
 </html>
