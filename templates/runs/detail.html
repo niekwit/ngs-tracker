@@ -386,6 +386,12 @@
       <a href="{{ url_for('file_download', id=mf.id) }}" class="btn btn-xs btn-outline-secondary">
         <i class="bi bi-download me-1"></i>Download
       </a>
+      <form method="POST" action="{{ url_for('file_clear_config', id=mf.id) }}"
+            onsubmit="return confirm('Clear the mapping rates plot for this file?')">
+        <button class="btn btn-xs btn-outline-danger">
+          <i class="bi bi-x-circle me-1"></i>Clear
+        </button>
+      </form>
     </div>
   </div>
   <div class="card-body">
