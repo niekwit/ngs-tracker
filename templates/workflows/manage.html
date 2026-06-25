@@ -165,17 +165,22 @@
   <div class="card-body pb-2">
     <form action="{{ url_for('crispr_libraries_manage') }}" method="POST" class="row g-2 align-items-end mb-3">
       <input type="hidden" name="action" value="add">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label fw-semibold mb-1">Library name <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-sm" name="name"
                placeholder="e.g. Brunello" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold mb-1">Genome / organism</label>
+        <input type="text" class="form-control form-control-sm" name="genome"
+               placeholder="e.g. hg38, mm10">
       </div>
       <div class="col-md-2">
         <label class="form-label fw-semibold mb-1">Addgene #</label>
         <input type="text" class="form-control form-control-sm" name="addgene_id"
                placeholder="e.g. 73179">
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label fw-semibold mb-1">Publication URL</label>
         <input type="url" class="form-control form-control-sm" name="publication_url"
                placeholder="https://doi.org/...">
@@ -192,6 +197,7 @@
         <thead class="table-light">
           <tr>
             <th>Name</th>
+            <th>Genome</th>
             <th>Addgene #</th>
             <th>Publication</th>
             <th></th>
@@ -201,6 +207,7 @@
           {% for lib in crispr_libraries %}
           <tr>
             <td class="fw-semibold align-middle">{{ lib.name }}</td>
+            <td class="align-middle small font-monospace">{{ lib.genome or '—' }}</td>
             <td class="align-middle">
               {% if lib.addgene_id %}
               <a href="https://www.addgene.org/{{ lib.addgene_id }}/" target="_blank" rel="noopener"

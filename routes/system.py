@@ -73,12 +73,13 @@ def register(app):
                 name = request.form.get("name", "").strip()
                 addgene_id = request.form.get("addgene_id", "").strip()
                 publication_url = request.form.get("publication_url", "").strip()
+                genome = request.form.get("genome", "").strip()
                 if not name:
                     flash("Library name is required.", "danger")
                 elif any(l["name"] == name for l in libs):
                     flash(f'Library "{name}" already exists.', "warning")
                 else:
-                    libs.append({"name": name, "addgene_id": addgene_id, "publication_url": publication_url})
+                    libs.append({"name": name, "genome": genome, "addgene_id": addgene_id, "publication_url": publication_url})
                     libs.sort(key=lambda l: l["name"].lower())
                     save_crispr_libraries(libs)
                     flash(f'Library "{name}" added.', "success")

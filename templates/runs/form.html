@@ -161,7 +161,7 @@
               {% for lib in crispr_libraries %}
               <option value="{{ lib.name }}"
                 {% if (run and run.crispr_library == lib.name) %}selected{% endif %}>
-                {{ lib.name }}{% if lib.addgene_id %} (Addgene #{{ lib.addgene_id }}){% endif %}
+                {{ lib.name }}{% if lib.genome %} — {{ lib.genome }}{% endif %}{% if lib.addgene_id %} (Addgene #{{ lib.addgene_id }}){% endif %}
               </option>
               {% endfor %}
             </select>

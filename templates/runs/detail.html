@@ -59,18 +59,22 @@
         {% endif %}
       {% endif %}
       {% if run.crispr_library %}
-      {% set _lib_url = none %}
+      {% set _lib_url = none %}{% set _lib_genome = none %}
       {% for lib in (crispr_libraries or []) %}
-        {% if lib.name == run.crispr_library %}{% set _lib_url = lib.publication_url %}{% endif %}
+        {% if lib.name == run.crispr_library %}
+          {% set _lib_url = lib.publication_url %}
+          {% set _lib_genome = lib.genome %}
+        {% endif %}
       {% endfor %}
+      {% set _lib_label = run.crispr_library + (' — ' + _lib_genome if _lib_genome else '') %}
       {% if _lib_url %}
       <a href="{{ _lib_url }}" target="_blank" rel="noopener"
          class="badge bg-secondary text-decoration-none ms-1" style="font-size:.75rem; font-weight:500;">
-        <i class="bi bi-journals me-1"></i>{{ run.crispr_library }}
+        <i class="bi bi-journals me-1"></i>{{ _lib_label }}
       </a>
       {% else %}
       <span class="badge bg-secondary ms-1" style="font-size:.75rem; font-weight:500;">
-        <i class="bi bi-journals me-1"></i>{{ run.crispr_library }}
+        <i class="bi bi-journals me-1"></i>{{ _lib_label }}
       </span>
       {% endif %}
       {% endif %}
