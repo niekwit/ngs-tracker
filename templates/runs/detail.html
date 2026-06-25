@@ -126,7 +126,10 @@
       </button>
     </form>
     {% if slack_enabled %}
-    <a href="{{ url_for('run_slack', id=run.id) }}" class="btn btn-outline-success btn-sm">
+    <a href="{{ url_for('run_slack', id=run.id) }}" class="btn btn-outline-success btn-sm"
+       {% if not run.shared_storage_path %}
+       onclick="return confirm('Shared storage path is empty. Send Slack notification anyway?')"
+       {% endif %}>
       <i class="bi bi-slack me-1"></i> Notify
     </a>
     {% endif %}
