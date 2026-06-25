@@ -88,6 +88,26 @@ def register(app):
                 libs = [l for l in libs if l["name"] != name]
                 save_crispr_libraries(libs)
                 flash(f'Library "{name}" removed.', "success")
+            elif action == "update":
+                original_name = request.form.get("original_name", "").strip()
+                new_name = request.form.get("name", "").strip()
+                genome = request.form.get("genome", "").strip()
+                addgene_id = request.form.get("addgene_id", "").strip()
+                publication_url = request.form.get("publication_url", "").strip()
+                if not new_name:
+                    flash("Library name is required.", "danger")
+                elif new_name != original_name and any(l["name"] == new_name for l in libs):
+                    flash(f'Library "{new_name}" already exists.', "warning")
+                else:
+                    for lib in libs:
+                        if lib["name"] == original_name:
+                            lib["name"] = new_name
+                            lib["genome"] = genome
+                            lib["addgene_id"] = addgene_id
+                            lib["publication_url"] = publication_url
+                            break
+                    save_crispr_libraries(libs)
+                    flash(f'Library "{new_name}" updated.', "success")
         return redirect(url_for("workflows_manage"))
 
     @app.route("/workflows", methods=["GET", "POST"])
