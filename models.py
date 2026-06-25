@@ -161,12 +161,20 @@ class ProjectScript(db.Model):
     uploaded_at = db.Column(db.DateTime, default=_now)
     trashed = db.Column(db.Boolean, default=False, nullable=False)
     created_by = db.Column(db.String(100), default="")
+    version_number = db.Column(db.Integer, default=1, nullable=False)
     output_files = db.relationship(
         "ScriptOutputFile",
         backref="script",
         lazy=True,
         cascade="all, delete-orphan",
         order_by="ScriptOutputFile.uploaded_at",
+    )
+    versions = db.relationship(
+        "ScriptVersion",
+        backref="script",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ScriptVersion.version_number.desc()",
     )
 
     @property
@@ -180,6 +188,18 @@ class ProjectScript(db.Model):
     @property
     def language_icon_style(self):
         return SCRIPT_LANGUAGE_ICON_STYLES.get(self.language, "")
+
+
+class ScriptVersion(db.Model):
+    """An older (archived) version of a ProjectScript file."""
+    __tablename__ = "script_version"
+    id = db.Column(db.Integer, primary_key=True)
+    script_id = db.Column(db.Integer, db.ForeignKey("project_script.id"), nullable=False)
+    version_number = db.Column(db.Integer, nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_path = db.Column(db.String(500), nullable=False)
+    uploaded_at = db.Column(db.DateTime, nullable=False)
+    uploaded_by = db.Column(db.String(100), default="")
 
 
 class ScriptOutputFile(db.Model):

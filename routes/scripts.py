@@ -17,6 +17,7 @@ from models import (
     Project,
     ProjectScript,
     ScriptOutputFile,
+    ScriptVersion,
     db,
 )
 
@@ -48,23 +49,51 @@ def register(app):
         stored_path = script_dir / stored_name
         file.save(str(stored_path))
 
-        script = ProjectScript(
-            project_id=id,
-            original_filename=original_name,
-            stored_path=str(stored_path),
-            language=language,
-            description=description,
-            created_by=get_current_user(),
-        )
-        db.session.add(script)
-        db.session.commit()
-        db_log(
-            "CREATE",
-            "ProjectScript",
-            script.id,
-            f"{original_name} ({language}) on project id={id}",
-        )
-        flash(f'Script "{original_name}" uploaded.', "success")
+        existing = ProjectScript.query.filter_by(
+            project_id=id, original_filename=original_name, trashed=False
+        ).first()
+
+        if existing:
+            # Archive the current version before overwriting
+            db.session.add(ScriptVersion(
+                script_id=existing.id,
+                version_number=existing.version_number,
+                original_filename=existing.original_filename,
+                stored_path=existing.stored_path,
+                uploaded_at=existing.uploaded_at,
+                uploaded_by=existing.created_by,
+            ))
+            existing.stored_path = str(stored_path)
+            existing.uploaded_at = __import__("datetime").datetime.utcnow()
+            existing.created_by = get_current_user()
+            existing.version_number = existing.version_number + 1
+            db.session.commit()
+            db_log(
+                "UPDATE",
+                "ProjectScript",
+                existing.id,
+                f"{original_name} re-uploaded as v{existing.version_number} on project id={id}",
+            )
+            flash(f'Script "{original_name}" updated to version {existing.version_number}.', "success")
+        else:
+            script = ProjectScript(
+                project_id=id,
+                original_filename=original_name,
+                stored_path=str(stored_path),
+                language=language,
+                description=description,
+                created_by=get_current_user(),
+                version_number=1,
+            )
+            db.session.add(script)
+            db.session.commit()
+            db_log(
+                "CREATE",
+                "ProjectScript",
+                script.id,
+                f"{original_name} ({language}) on project id={id}",
+            )
+            flash(f'Script "{original_name}" uploaded.', "success")
         return redirect(url_for("project_detail", id=id))
 
     @app.route("/scripts/<int:id>/download")
@@ -75,6 +104,16 @@ def register(app):
             abort(404)
         return send_file(
             str(stored), as_attachment=True, download_name=script.original_filename
+        )
+
+    @app.route("/script-versions/<int:id>/download")
+    def script_version_download(id):
+        ver = db.get_or_404(ScriptVersion, id)
+        stored = resolve_stored_path(ver.stored_path)
+        if not stored.exists():
+            abort(404)
+        return send_file(
+            str(stored), as_attachment=True, download_name=ver.original_filename
         )
 
     @app.route("/scripts/<int:id>")
