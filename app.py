@@ -73,6 +73,7 @@ def create_app() -> Flask:
             "ALTER TABLE researcher ADD COLUMN slack_user_id VARCHAR(20) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN shared_storage_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE project_script ADD COLUMN shared_storage_path VARCHAR(500) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN crispr_library VARCHAR(200) DEFAULT ''",
         ]:
             try:
                 db.session.execute(db.text(stmt))

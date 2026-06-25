@@ -439,6 +439,28 @@ def save_workflows(workflows: list) -> None:
         yaml.dump(workflows, f, default_flow_style=False, sort_keys=False)
 
 
+# ── CRISPR screen libraries ───────────────────────────────────────────────────
+
+CRISPR_LIBRARIES_FILE = SETTINGS_DIR / "crispr_libraries.json"
+
+
+def load_crispr_libraries() -> list:
+    """Return list of {name, addgene_id, publication_url}."""
+    if CRISPR_LIBRARIES_FILE.exists():
+        try:
+            with open(CRISPR_LIBRARIES_FILE) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+def save_crispr_libraries(libs: list) -> None:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CRISPR_LIBRARIES_FILE, "w") as f:
+        json.dump(libs, f, indent=2)
+
+
 # ── Run templates ─────────────────────────────────────────────────────────────
 
 TEMPLATES_FILE = SETTINGS_DIR / "run_templates.json"

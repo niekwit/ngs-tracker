@@ -10,6 +10,7 @@ from config import (
     get_current_user,
     get_default_tags,
     get_slack_enabled,
+    load_crispr_libraries,
     load_run_templates,
     load_workflows,
 )
@@ -320,6 +321,7 @@ def register(app):
             config_samples=config_samples,
             has_sample_info=has_sample_info,
             slack_enabled=get_slack_enabled(),
+            crispr_libraries=load_crispr_libraries(),
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
@@ -396,6 +398,8 @@ def register(app):
                     wf_systems_json=json.dumps(wf_systems),
                 )
 
+            crispr_library = request.form.get("crispr_library", "").strip()
+
             run = WorkflowRun(
                 project_id=project_id,
                 workflow_name=workflow_name,
@@ -409,6 +413,7 @@ def register(app):
                 shared_storage_path=shared_storage_path,
                 workflow_system=workflow_system,
                 created_by=get_current_user(),
+                crispr_library=crispr_library,
             )
             db.session.add(run)
             db.session.commit()
@@ -461,6 +466,7 @@ def register(app):
             wf_systems_json=json.dumps(
                 {w["name"]: w.get("system", "snakemake") for w in wf_list}
             ),
+            crispr_libraries=load_crispr_libraries(),
         )
 
     @app.route("/runs/<int:id>/edit", methods=["GET", "POST"])
@@ -504,6 +510,7 @@ def register(app):
                 w["name"]: w.get("system", "snakemake") for w in load_workflows()
             }
             run.workflow_system = wf_systems.get(run.workflow_name, "other")
+            run.crispr_library = request.form.get("crispr_library", "").strip()
             for t in request.form.get("new_tags", "").split(","):
                 add_default_tag(t.strip())
             selected_tags = request.form.getlist("tags")
@@ -534,6 +541,7 @@ def register(app):
             wf_systems_json=json.dumps(
                 {w["name"]: w.get("system", "snakemake") for w in wf_list}
             ),
+            crispr_libraries=load_crispr_libraries(),
         )
 
     @app.route("/runs/<int:id>/clone", methods=["POST"])

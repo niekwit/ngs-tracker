@@ -18,8 +18,10 @@ from config import (
     add_run_template,
     delete_run_template,
     db_log,
+    load_crispr_libraries,
     load_run_templates,
     load_workflows,
+    save_crispr_libraries,
     save_workflows,
 )
 from models import (
@@ -62,6 +64,31 @@ def _notes_snippet(notes: str, query: str, window: int = 140) -> Markup | None:
 
 
 def register(app):
+    @app.route("/crispr-libraries", methods=["GET", "POST"])
+    def crispr_libraries_manage():
+        if request.method == "POST":
+            action = request.form.get("action")
+            libs = load_crispr_libraries()
+            if action == "add":
+                name = request.form.get("name", "").strip()
+                addgene_id = request.form.get("addgene_id", "").strip()
+                publication_url = request.form.get("publication_url", "").strip()
+                if not name:
+                    flash("Library name is required.", "danger")
+                elif any(l["name"] == name for l in libs):
+                    flash(f'Library "{name}" already exists.', "warning")
+                else:
+                    libs.append({"name": name, "addgene_id": addgene_id, "publication_url": publication_url})
+                    libs.sort(key=lambda l: l["name"].lower())
+                    save_crispr_libraries(libs)
+                    flash(f'Library "{name}" added.', "success")
+            elif action == "delete":
+                name = request.form.get("name", "")
+                libs = [l for l in libs if l["name"] != name]
+                save_crispr_libraries(libs)
+                flash(f'Library "{name}" removed.', "success")
+        return redirect(url_for("workflows_manage"))
+
     @app.route("/workflows", methods=["GET", "POST"])
     def workflows_manage():
         if request.method == "POST":
@@ -128,6 +155,7 @@ def register(app):
             templates=load_run_templates(),
             workflow_systems=WORKFLOW_SYSTEMS,
             workflows_file=str(WORKFLOWS_FILE),
+            crispr_libraries=load_crispr_libraries(),
         )
 
     @app.route("/templates/save", methods=["POST"])

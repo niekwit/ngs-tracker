@@ -261,6 +261,7 @@ class WorkflowRun(db.Model):
     workflow_system = db.Column(db.String(20), default="snakemake")
     tags = db.Column(db.String(500), default="")
     runtime_seconds = db.Column(db.Integer, nullable=True)
+    crispr_library = db.Column(db.String(200), default="")
     sample_sheet = db.relationship(
         "SampleSheet",
         backref="run",

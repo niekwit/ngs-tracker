@@ -156,6 +156,82 @@
   {% endif %}
 </div>
 
+<!-- CRISPR screen libraries -->
+<div class="card mt-3">
+  <div class="card-header d-flex align-items-center">
+    <i class="bi bi-bank me-1"></i> CRISPR Screen Libraries
+    <span class="badge bg-secondary ms-1">{{ crispr_libraries|length }}</span>
+  </div>
+  <div class="card-body pb-2">
+    <form action="{{ url_for('crispr_libraries_manage') }}" method="POST" class="row g-2 align-items-end mb-3">
+      <input type="hidden" name="action" value="add">
+      <div class="col-md-4">
+        <label class="form-label fw-semibold mb-1">Library name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" name="name"
+               placeholder="e.g. Brunello" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold mb-1">Addgene #</label>
+        <input type="text" class="form-control form-control-sm" name="addgene_id"
+               placeholder="e.g. 73179">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold mb-1">Publication URL</label>
+        <input type="url" class="form-control form-control-sm" name="publication_url"
+               placeholder="https://doi.org/...">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-success btn-sm w-100">
+          <i class="bi bi-plus-lg me-1"></i> Add
+        </button>
+      </div>
+    </form>
+    {% if crispr_libraries %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Addgene #</th>
+            <th>Publication</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lib in crispr_libraries %}
+          <tr>
+            <td class="fw-semibold align-middle">{{ lib.name }}</td>
+            <td class="align-middle">
+              {% if lib.addgene_id %}
+              <a href="https://www.addgene.org/{{ lib.addgene_id }}/" target="_blank" rel="noopener"
+                 class="text-decoration-none font-monospace small">{{ lib.addgene_id }}</a>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="align-middle small">
+              {% if lib.publication_url %}
+              <a href="{{ lib.publication_url }}" target="_blank" rel="noopener"
+                 class="text-truncate d-block" style="max-width:280px;">{{ lib.publication_url }}</a>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-end align-middle">
+              <form action="{{ url_for('crispr_libraries_manage') }}" method="POST"
+                    onsubmit="return confirm('Remove library {{ lib.name }}?')">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="name" value="{{ lib.name }}">
+                <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small mb-1">No libraries added yet.</p>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Researcher XLSX template download -->
 <div class="card mt-3">
   <div class="card-header">

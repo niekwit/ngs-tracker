@@ -148,6 +148,26 @@
             </div>
           </div>
 
+          {% if crispr_libraries %}
+          <div class="mb-3" id="crispr-library-row" style="display:none;">
+            <label class="form-label fw-semibold">
+              CRISPR screen library
+              <i class="bi bi-info-circle text-muted ms-1"
+                 title="Only shown for the crispr-screens workflow."
+                 data-bs-toggle="tooltip"></i>
+            </label>
+            <select class="form-select" name="crispr_library">
+              <option value="">— none / unknown —</option>
+              {% for lib in crispr_libraries %}
+              <option value="{{ lib.name }}"
+                {% if (run and run.crispr_library == lib.name) %}selected{% endif %}>
+                {{ lib.name }}{% if lib.addgene_id %} (Addgene #{{ lib.addgene_id }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
           <div class="mb-3">
             <label class="form-label fw-semibold">Short description</label>
             <input type="text" class="form-control" name="description"
@@ -449,10 +469,19 @@
     }
   }
 
+  function updateLibraryRow(wfName) {
+    var row = document.getElementById('crispr-library-row');
+    if (row) row.style.display = (wfName === 'crispr-screens') ? '' : 'none';
+  }
+
   wfSelect.addEventListener('change', function () {
     updateSystemBadge(this.value);
     loadTagsForOption(this.options[this.selectedIndex]);
+    updateLibraryRow(this.value);
   });
+
+  // Initialise on page load (edit page or after XLSX import)
+  updateLibraryRow(wfSelect.value);
 
   // On edit page: workflow is already selected — load its tags immediately
   if (wfSelect.value) {
@@ -558,7 +587,7 @@ document.getElementById('new-tag-input').addEventListener('keydown', function(e)
       // Store version so _populateTags picks it up via data-preselected
       if (data.version) tagSel.dataset.preselected = data.version;
       wfSel.value = data.workflow;
-      wfSel.dispatchEvent(new Event('change'));
+      wfSel.dispatchEvent(new Event('change'));  // triggers tag fetch + library row
     }
 
     statusEl.textContent = 'Fields pre-filled — review and submit when ready.';

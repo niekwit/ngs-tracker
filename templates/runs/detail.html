@@ -58,6 +58,22 @@
         </span>
         {% endif %}
       {% endif %}
+      {% if run.crispr_library %}
+      {% set _lib_url = none %}
+      {% for lib in (crispr_libraries or []) %}
+        {% if lib.name == run.crispr_library %}{% set _lib_url = lib.publication_url %}{% endif %}
+      {% endfor %}
+      {% if _lib_url %}
+      <a href="{{ _lib_url }}" target="_blank" rel="noopener"
+         class="badge bg-secondary text-decoration-none ms-1" style="font-size:.75rem; font-weight:500;">
+        <i class="bi bi-journals me-1"></i>{{ run.crispr_library }}
+      </a>
+      {% else %}
+      <span class="badge bg-secondary ms-1" style="font-size:.75rem; font-weight:500;">
+        <i class="bi bi-journals me-1"></i>{{ run.crispr_library }}
+      </span>
+      {% endif %}
+      {% endif %}
     </h4>
     <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
       <span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span>
