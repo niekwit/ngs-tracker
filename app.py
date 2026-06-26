@@ -15,6 +15,7 @@ from config import (
     get_version,
     is_configured,
     load_settings,
+    sync_from_db,
 )
 from models import db
 
@@ -97,6 +98,8 @@ def create_app() -> Flask:
             run.backups = json.dumps(blist)
         if unmigrated:
             db.session.commit()
+
+        sync_from_db()
 
     return app
 

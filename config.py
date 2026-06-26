@@ -699,3 +699,109 @@ def set_slack_runs_channel(v: str) -> None:
     s = load_settings()
     s["slack_runs_channel"] = v.strip().lstrip("#")
     save_settings(s)
+
+
+# ── Startup DB → local config sync ───────────────────────────────────────────
+
+
+def sync_from_db() -> None:
+    """Merge values present in the shared DB but missing from local config.
+
+    Called once at startup so that settings entered on one machine (e.g. at
+    work) are automatically available on another (e.g. at home) as soon as
+    the shared database file is visible.
+
+    Currently syncs: CRISPR libraries, run tags, users.
+    """
+    if is_demo_mode():
+        return
+
+    from models import db
+
+    _sync_crispr_libraries(db)
+    _sync_tags(db)
+    _sync_users(db)
+
+
+def _sync_crispr_libraries(db) -> None:
+    rows = db.session.execute(
+        db.text(
+            "SELECT DISTINCT crispr_library FROM workflow_run"
+            " WHERE crispr_library != '' AND trashed = 0"
+        )
+    ).fetchall()
+    db_names = {r[0] for r in rows}
+    if not db_names:
+        return
+
+    libs = load_crispr_libraries()
+    local_names = {lib["name"] for lib in libs}
+    new_names = db_names - local_names
+    if not new_names:
+        return
+
+    for name in sorted(new_names):
+        libs.append({"name": name, "addgene_id": "", "publication_url": ""})
+    save_crispr_libraries(libs)
+    print(
+        f"  [sync] Added {len(new_names)} CRISPR librar{'y' if len(new_names) == 1 else 'ies'}"
+        f" from DB: {', '.join(sorted(new_names))}"
+    )
+
+
+def _sync_tags(db) -> None:
+    rows = db.session.execute(
+        db.text("SELECT tags FROM workflow_run WHERE tags != '' AND trashed = 0")
+    ).fetchall()
+    db_tags: set[str] = set()
+    for (tag_str,) in rows:
+        for t in tag_str.split(","):
+            t = t.strip()
+            if t:
+                db_tags.add(t)
+    if not db_tags:
+        return
+
+    s = load_settings()
+    existing = s.get("default_tags", [])
+    local_names = {entry["name"] for entry in existing}
+    new_tags = db_tags - local_names
+    if not new_tags:
+        return
+
+    for name in sorted(new_tags):
+        existing.append({"name": name, "color": "secondary"})
+    s["default_tags"] = existing
+    save_settings(s)
+    print(
+        f"  [sync] Added {len(new_tags)} tag{'s' if len(new_tags) != 1 else ''}"
+        f" from DB: {', '.join(sorted(new_tags))}"
+    )
+
+
+def _sync_users(db) -> None:
+    rows = db.session.execute(
+        db.text(
+            "SELECT DISTINCT created_by FROM workflow_run WHERE created_by != ''"
+            " UNION SELECT DISTINCT created_by FROM project_script WHERE created_by != ''"
+        )
+    ).fetchall()
+    db_users = {r[0] for r in rows}
+    if not db_users:
+        return
+
+    s = load_settings()
+    local_users = set(s.get("users", []))
+    new_users = db_users - local_users
+    if not new_users:
+        return
+
+    users = sorted(local_users | new_users, key=str.lower)
+    s["users"] = users
+    if not s.get("current_user") and users:
+        s["current_user"] = users[0]
+    save_settings(s)
+    print(
+        f"  [sync] Added {len(new_users)} user{'s' if len(new_users) != 1 else ''}"
+        f" from DB: {', '.join(sorted(new_users))}"
+    )
