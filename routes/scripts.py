@@ -171,14 +171,13 @@ def register(app):
     def script_output_upload(id):
         script = db.get_or_404(ProjectScript, id)
 
-        if "file" not in request.files or request.files["file"].filename == "":
+        files = request.files.getlist("file")
+        files = [f for f in files if f.filename]
+        if not files:
             flash("No file selected.", "danger")
             return redirect(url_for("script_detail", id=id))
 
-        file = request.files["file"]
         description = request.form.get("description", "").strip()
-        original_name = secure_filename(file.filename)
-
         out_dir = (
             get_storage_path()
             / "projects"
@@ -189,22 +188,24 @@ def register(app):
         )
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        stored_name = f"{uuid.uuid4().hex}_{original_name}"
-        stored_path = out_dir / stored_name
-        file.save(str(stored_path))
+        for file in files:
+            original_name = secure_filename(file.filename)
+            stored_name = f"{uuid.uuid4().hex}_{original_name}"
+            stored_path = out_dir / stored_name
+            file.save(str(stored_path))
+            out = ScriptOutputFile(
+                script_id=id,
+                original_filename=original_name,
+                stored_path=str(stored_path),
+                description=description,
+            )
+            db.session.add(out)
+            db.session.flush()
+            db_log("CREATE", "ScriptOutputFile", out.id, f"{original_name} on script id={id}")
 
-        out = ScriptOutputFile(
-            script_id=id,
-            original_filename=original_name,
-            stored_path=str(stored_path),
-            description=description,
-        )
-        db.session.add(out)
         db.session.commit()
-        db_log(
-            "CREATE", "ScriptOutputFile", out.id, f"{original_name} on script id={id}"
-        )
-        flash(f'Output file "{original_name}" attached.', "success")
+        n = len(files)
+        flash(f'{n} output file{"s" if n != 1 else ""} attached.', "success")
         return redirect(url_for("script_detail", id=id))
 
     @app.route("/script-outputs/<int:id>/download")
