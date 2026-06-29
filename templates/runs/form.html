@@ -168,6 +168,23 @@
           </div>
           {% endif %}
 
+          <div class="mb-3" id="genome-row" style="display:none;">
+            <label class="form-label fw-semibold">Genome &amp; release</label>
+            <div class="row g-2">
+              <div class="col-sm-6">
+                <input type="text" class="form-control" name="genome"
+                       value="{{ run.genome if run else '' }}"
+                       placeholder="e.g. hg38, mm10, GRCh38">
+              </div>
+              <div class="col-sm-6">
+                <input type="text" class="form-control" name="genome_release"
+                       value="{{ run.genome_release if run else '' }}"
+                       placeholder="e.g. Ensembl 109, GENCODE 44">
+              </div>
+            </div>
+            <div class="form-text">Reference genome assembly and annotation release used in this run.</div>
+          </div>
+
           <div class="mb-3">
             <label class="form-label fw-semibold">Short description</label>
             <input type="text" class="form-control" name="description"
@@ -469,19 +486,28 @@
     }
   }
 
+  var _NO_GENOME_WORKFLOWS = ['crispr-screens', 'gps-orfeome'];
+
   function updateLibraryRow(wfName) {
     var row = document.getElementById('crispr-library-row');
     if (row) row.style.display = (wfName === 'crispr-screens') ? '' : 'none';
+  }
+
+  function updateGenomeRow(wfName) {
+    var row = document.getElementById('genome-row');
+    if (row) row.style.display = (wfName && !_NO_GENOME_WORKFLOWS.includes(wfName)) ? '' : 'none';
   }
 
   wfSelect.addEventListener('change', function () {
     updateSystemBadge(this.value);
     loadTagsForOption(this.options[this.selectedIndex]);
     updateLibraryRow(this.value);
+    updateGenomeRow(this.value);
   });
 
   // Initialise on page load (edit page or after XLSX import)
   updateLibraryRow(wfSelect.value);
+  updateGenomeRow(wfSelect.value);
 
   // On edit page: workflow is already selected — load its tags immediately
   if (wfSelect.value) {

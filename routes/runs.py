@@ -56,7 +56,14 @@ def register(app):
         except Exception as e:
             return jsonify({"error": f"Cannot open file: {e}"}), 400
         if "Run Template" not in wb.sheetnames:
-            return jsonify({"error": "File has no 'Run Template' sheet — is this a valid NGS Tracker template?"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "File has no 'Run Template' sheet — is this a valid NGS Tracker template?"
+                    }
+                ),
+                400,
+            )
         ws = wb["Run Template"]
 
         # Scan column A for field labels so the parser works regardless of
@@ -103,15 +110,17 @@ def register(app):
         if status not in valid_statuses:
             status = "completed"
 
-        return jsonify({
-            "workflow":    fields.get("workflow", ""),
-            "version":     fields.get("version", ""),
-            "run_date":    fields.get("run_date", ""),
-            "status":      status,
-            "description": fields.get("description", ""),
-            "notes":       fields.get("notes", ""),
-            "tags":        tags,
-        })
+        return jsonify(
+            {
+                "workflow": fields.get("workflow", ""),
+                "version": fields.get("version", ""),
+                "run_date": fields.get("run_date", ""),
+                "status": status,
+                "description": fields.get("description", ""),
+                "notes": fields.get("notes", ""),
+                "tags": tags,
+            }
+        )
 
     @app.route("/runs")
     def runs_list():
@@ -169,10 +178,13 @@ def register(app):
         runs = all_runs
         if workflow_filter:
             runs = [r for r in runs if r.workflow_name == workflow_filter]
-        crispr_libraries_in_runs = sorted({
-            r.crispr_library for r in runs
-            if r.workflow_name == "crispr-screens" and r.crispr_library
-        })
+        crispr_libraries_in_runs = sorted(
+            {
+                r.crispr_library
+                for r in runs
+                if r.workflow_name == "crispr-screens" and r.crispr_library
+            }
+        )
         if library_filter and workflow_filter == "crispr-screens":
             runs = [r for r in runs if r.crispr_library == library_filter]
         if low_mapping_filter:
@@ -309,6 +321,7 @@ def register(app):
         for f in run.attached_files:
             if f.file_type == "sample_info":
                 from config import resolve_stored_path
+
                 stored = resolve_stored_path(f.stored_path)
                 if stored.exists():
                     result = extract_samples_from_sample_info(run.workflow_name, stored)
@@ -408,6 +421,8 @@ def register(app):
                 )
 
             crispr_library = request.form.get("crispr_library", "").strip()
+            genome = request.form.get("genome", "").strip()
+            genome_release = request.form.get("genome_release", "").strip()
 
             run = WorkflowRun(
                 project_id=project_id,
@@ -423,6 +438,8 @@ def register(app):
                 workflow_system=workflow_system,
                 created_by=get_current_user(),
                 crispr_library=crispr_library,
+                genome=genome,
+                genome_release=genome_release,
             )
             db.session.add(run)
             db.session.commit()
@@ -520,6 +537,8 @@ def register(app):
             }
             run.workflow_system = wf_systems.get(run.workflow_name, "other")
             run.crispr_library = request.form.get("crispr_library", "").strip()
+            run.genome = request.form.get("genome", "").strip()
+            run.genome_release = request.form.get("genome_release", "").strip()
             for t in request.form.get("new_tags", "").split(","):
                 add_default_tag(t.strip())
             selected_tags = request.form.getlist("tags")

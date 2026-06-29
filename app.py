@@ -75,6 +75,8 @@ def create_app() -> Flask:
             "ALTER TABLE workflow_run ADD COLUMN shared_storage_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE project_script ADD COLUMN shared_storage_path VARCHAR(500) DEFAULT ''",
             "ALTER TABLE workflow_run ADD COLUMN crispr_library VARCHAR(200) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN genome VARCHAR(100) DEFAULT ''",
+            "ALTER TABLE workflow_run ADD COLUMN genome_release VARCHAR(50) DEFAULT ''",
             "ALTER TABLE project_script ADD COLUMN version_number INTEGER DEFAULT 1",
         ]:
             try:

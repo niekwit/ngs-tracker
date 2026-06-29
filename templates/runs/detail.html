@@ -78,6 +78,11 @@
       </span>
       {% endif %}
       {% endif %}
+      {% if run.genome %}
+      <span class="badge bg-body-secondary text-body border ms-1" style="font-size:.75rem; font-weight:500;">
+        <i class="bi bi-dna me-1"></i>{{ run.genome }}{% if run.genome_release %} · {{ run.genome_release }}{% endif %}
+      </span>
+      {% endif %}
     </h4>
     <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
       <span class="badge bg-{{ run.status_color }}">{{ run.status_label }}</span>

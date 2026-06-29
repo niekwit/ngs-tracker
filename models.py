@@ -284,6 +284,8 @@ class WorkflowRun(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False)
     workflow_name = db.Column(db.String(150), nullable=False)
     workflow_tag = db.Column(db.String(50), default="")
+    genome = db.Column(db.String(100), default="")
+    genome_release = db.Column(db.String(50), default="")
     description = db.Column(db.Text, default="")
     trashed = db.Column(db.Boolean, default=False, nullable=False)
     created_by = db.Column(db.String(100), default="")
