@@ -92,7 +92,9 @@ def register(app):
             low = label.lower()
             if low.startswith("workflow") and "tag" not in low and "version" not in low:
                 fields["workflow"] = _val()
-            elif low.startswith("version") or low.startswith("release"):
+            elif low.startswith("version") or (
+                low.startswith("release") and "genome" not in low
+            ):
                 fields["version"] = _val()
             elif low.startswith("run date") or low.startswith("date"):
                 fields["run_date"] = _val()
@@ -100,6 +102,10 @@ def register(app):
                 fields["status"] = _val()
             elif low.startswith("short description") or low.startswith("description"):
                 fields["description"] = _val()
+            elif low == "genome release" or low.startswith("genome rel"):
+                fields["genome_release"] = _val()
+            elif low == "genome":
+                fields["genome"] = _val()
             elif low == "notes":
                 fields["notes"] = _val()
             elif low.startswith("tags"):
@@ -117,6 +123,8 @@ def register(app):
                 "run_date": fields.get("run_date", ""),
                 "status": status,
                 "description": fields.get("description", ""),
+                "genome": fields.get("genome", ""),
+                "genome_release": fields.get("genome_release", ""),
                 "notes": fields.get("notes", ""),
                 "tags": tags,
             }

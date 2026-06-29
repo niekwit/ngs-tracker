@@ -484,17 +484,25 @@ def register(app):
         label(7, "Short Description")
         editable(7, height=26)
 
-        # Row 8: Notes
-        label(8, "Notes")
-        editable(8, height=80)
+        # Row 8: Genome
+        label(8, "Genome")
+        editable(8, height=22)
 
-        # Row 9: Tags divider
-        ws.merge_cells("A9:B9")
-        ws["A9"] = "Tags — select Yes for each tag that applies"
-        ws["A9"].font = Font(bold=True, color="1F4E79", size=10)
-        ws["A9"].fill = PatternFill("solid", fgColor="D0E4FF")
-        ws["A9"].alignment = align_center
-        ws.row_dimensions[9].height = 18
+        # Row 9: Genome Release
+        label(9, "Genome Release")
+        editable(9, height=22)
+
+        # Row 10: Notes
+        label(10, "Notes")
+        editable(10, height=80)
+
+        # Row 11: Tags divider
+        ws.merge_cells("A11:B11")
+        ws["A11"] = "Tags — select Yes for each tag that applies"
+        ws["A11"].font = Font(bold=True, color="1F4E79", size=10)
+        ws["A11"].fill = PatternFill("solid", fgColor="D0E4FF")
+        ws["A11"].alignment = align_center
+        ws.row_dimensions[11].height = 18
 
         dv_yn = DataValidation(
             type="list",
@@ -506,7 +514,7 @@ def register(app):
         )
         ws.add_data_validation(dv_yn)
         for i, tag in enumerate(default_tags):
-            row = 10 + i
+            row = 12 + i
             label(row, tag)
             c = editable(row, "No", height=20)
             dv_yn.add(c)
