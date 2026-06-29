@@ -198,19 +198,30 @@ def resolve_stored_path(stored_path: str) -> Path:
 
     When the database is shared via Dropbox (or similar) across machines with
     different mount points, stored_path may contain an absolute prefix that
-    doesn't exist here. If the path is missing, we re-anchor it under the
-    current storage root by finding the first path component that matches a
-    known storage subdirectory (runs/, samples/, scripts/, outputs/).
+    doesn't exist here.  Strategy: find the first path component that matches
+    a known storage subdirectory (runs/, samples/, scripts/, outputs/) and
+    re-anchor everything from there under the current storage root.
+
+    Also tries keeping one extra parent component before the anchor to handle
+    the case where one machine configured an intermediate subdirectory (e.g.
+    uploads/) that the other machine's storage root already includes.
     """
     p = Path(stored_path)
     if p.exists():
         return p
     parts = p.parts
+    root = get_storage_path()
     for i, part in enumerate(parts):
         if part in _STORAGE_SUBDIRS:
-            candidate = get_storage_path() / Path(*parts[i:])
+            # Primary: anchor directly at the known subdirectory
+            candidate = root / Path(*parts[i:])
             if candidate.exists():
                 return candidate
+            # Fallback: keep one extra parent component (e.g. uploads/runs/…)
+            if i > 0:
+                candidate2 = root / Path(*parts[i - 1 :])
+                if candidate2.exists():
+                    return candidate2
             break
     return p
 
