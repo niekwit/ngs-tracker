@@ -724,28 +724,54 @@ def sync_from_db() -> None:
 
 
 def _sync_crispr_libraries(db) -> None:
+    from models import CrisprLibrary
+
+    # Seed DB table from local JSON if the table is still empty (first run on
+    # this machine, or first run after upgrading to this version).
+    if CrisprLibrary.query.count() == 0:
+        local_libs = load_crispr_libraries()
+        for lib in local_libs:
+            db.session.add(
+                CrisprLibrary(
+                    name=lib["name"],
+                    genome=lib.get("genome", ""),
+                    addgene_id=lib.get("addgene_id", ""),
+                    publication_url=lib.get("publication_url", ""),
+                )
+            )
+        if local_libs:
+            db.session.commit()
+            print(
+                f"  [sync] Seeded {len(local_libs)} CRISPR librar{'y' if len(local_libs) == 1 else 'ies'} from local JSON into DB"
+            )
+
+    # Also pull in any library name used in a run but not yet in the table.
     rows = db.session.execute(
         db.text(
             "SELECT DISTINCT crispr_library FROM workflow_run"
             " WHERE crispr_library != '' AND trashed = 0"
         )
     ).fetchall()
-    db_names = {r[0] for r in rows}
-    if not db_names:
+    for (name,) in rows:
+        if not CrisprLibrary.query.filter_by(name=name).first():
+            db.session.add(CrisprLibrary(name=name))
+    db.session.commit()
+
+    # Now populate local JSON from DB (the authoritative source).
+    all_libs = CrisprLibrary.query.order_by(CrisprLibrary.name).all()
+    local_libs = load_crispr_libraries()
+    local_names = {lib["name"] for lib in local_libs}
+    new_libs = [lib for lib in all_libs if lib.name not in local_names]
+    if not new_libs:
         return
 
-    libs = load_crispr_libraries()
-    local_names = {lib["name"] for lib in libs}
-    new_names = db_names - local_names
-    if not new_names:
-        return
-
-    for name in sorted(new_names):
-        libs.append({"name": name, "addgene_id": "", "publication_url": ""})
-    save_crispr_libraries(libs)
+    for lib in new_libs:
+        local_libs.append(lib.to_dict())
+    local_libs.sort(key=lambda x: x["name"].lower())
+    save_crispr_libraries(local_libs)
     print(
-        f"  [sync] Added {len(new_names)} CRISPR librar{'y' if len(new_names) == 1 else 'ies'}"
-        f" from DB: {', '.join(sorted(new_names))}"
+        f"  [sync] Added {len(new_libs)} CRISPR librar{'y' if len(new_libs) == 1 else 'ies'}"
+        f" from DB: {', '.join(lib.name for lib in new_libs)}"
     )
 
 

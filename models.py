@@ -109,6 +109,23 @@ class Project(db.Model):
         )
 
 
+class CrisprLibrary(db.Model):
+    __tablename__ = "crispr_library"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, unique=True)
+    genome = db.Column(db.String(100), default="")
+    addgene_id = db.Column(db.String(50), default="")
+    publication_url = db.Column(db.String(500), default="")
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "genome": self.genome,
+            "addgene_id": self.addgene_id,
+            "publication_url": self.publication_url,
+        }
+
+
 SCRIPT_LANGUAGES = {
     ".py": "Python",
     ".r": "R",
@@ -192,9 +209,12 @@ class ProjectScript(db.Model):
 
 class ScriptVersion(db.Model):
     """An older (archived) version of a ProjectScript file."""
+
     __tablename__ = "script_version"
     id = db.Column(db.Integer, primary_key=True)
-    script_id = db.Column(db.Integer, db.ForeignKey("project_script.id"), nullable=False)
+    script_id = db.Column(
+        db.Integer, db.ForeignKey("project_script.id"), nullable=False
+    )
     version_number = db.Column(db.Integer, nullable=False)
     original_filename = db.Column(db.String(255), nullable=False)
     stored_path = db.Column(db.String(500), nullable=False)

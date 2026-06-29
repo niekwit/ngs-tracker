@@ -25,6 +25,7 @@ from config import (
     save_workflows,
 )
 from models import (
+    CrisprLibrary,
     Project,
     ProjectScript,
     ResearchGroup,
@@ -69,6 +70,7 @@ def register(app):
         if request.method == "POST":
             action = request.form.get("action")
             libs = load_crispr_libraries()
+
             if action == "add":
                 name = request.form.get("name", "").strip()
                 addgene_id = request.form.get("addgene_id", "").strip()
@@ -79,15 +81,40 @@ def register(app):
                 elif any(l["name"] == name for l in libs):
                     flash(f'Library "{name}" already exists.', "warning")
                 else:
-                    libs.append({"name": name, "genome": genome, "addgene_id": addgene_id, "publication_url": publication_url})
+                    libs.append(
+                        {
+                            "name": name,
+                            "genome": genome,
+                            "addgene_id": addgene_id,
+                            "publication_url": publication_url,
+                        }
+                    )
                     libs.sort(key=lambda l: l["name"].lower())
                     save_crispr_libraries(libs)
+                    # Mirror to DB
+                    if not CrisprLibrary.query.filter_by(name=name).first():
+                        db.session.add(
+                            CrisprLibrary(
+                                name=name,
+                                genome=genome,
+                                addgene_id=addgene_id,
+                                publication_url=publication_url,
+                            )
+                        )
+                        db.session.commit()
                     flash(f'Library "{name}" added.', "success")
+
             elif action == "delete":
                 name = request.form.get("name", "")
                 libs = [l for l in libs if l["name"] != name]
                 save_crispr_libraries(libs)
+                # Mirror to DB
+                row = CrisprLibrary.query.filter_by(name=name).first()
+                if row:
+                    db.session.delete(row)
+                    db.session.commit()
                 flash(f'Library "{name}" removed.', "success")
+
             elif action == "update":
                 original_name = request.form.get("original_name", "").strip()
                 new_name = request.form.get("name", "").strip()
@@ -96,7 +123,9 @@ def register(app):
                 publication_url = request.form.get("publication_url", "").strip()
                 if not new_name:
                     flash("Library name is required.", "danger")
-                elif new_name != original_name and any(l["name"] == new_name for l in libs):
+                elif new_name != original_name and any(
+                    l["name"] == new_name for l in libs
+                ):
                     flash(f'Library "{new_name}" already exists.', "warning")
                 else:
                     for lib in libs:
@@ -107,7 +136,25 @@ def register(app):
                             lib["publication_url"] = publication_url
                             break
                     save_crispr_libraries(libs)
+                    # Mirror to DB
+                    row = CrisprLibrary.query.filter_by(name=original_name).first()
+                    if row:
+                        row.name = new_name
+                        row.genome = genome
+                        row.addgene_id = addgene_id
+                        row.publication_url = publication_url
+                    else:
+                        db.session.add(
+                            CrisprLibrary(
+                                name=new_name,
+                                genome=genome,
+                                addgene_id=addgene_id,
+                                publication_url=publication_url,
+                            )
+                        )
+                    db.session.commit()
                     flash(f'Library "{new_name}" updated.', "success")
+
         return redirect(url_for("workflows_manage"))
 
     @app.route("/workflows", methods=["GET", "POST"])
@@ -347,16 +394,16 @@ def register(app):
         ws = wb.active
         ws.title = "Run Template"
 
-        fill_header  = PatternFill("solid", fgColor="1F4E79")
-        fill_edit    = PatternFill("solid", fgColor="FFFACD")
+        fill_header = PatternFill("solid", fgColor="1F4E79")
+        fill_edit = PatternFill("solid", fgColor="FFFACD")
         fill_section = PatternFill("solid", fgColor="DEE2E6")
 
         font_header = Font(bold=True, color="FFFFFF", size=13)
-        font_bold   = Font(bold=True)
-        font_hint   = Font(italic=True, color="6C757D", size=10)
+        font_bold = Font(bold=True)
+        font_hint = Font(italic=True, color="6C757D", size=10)
 
         align_center = Alignment(horizontal="center", vertical="center")
-        align_wrap   = Alignment(wrap_text=True, vertical="top")
+        align_wrap = Alignment(wrap_text=True, vertical="top")
 
         ws.column_dimensions["A"].width = 28
         ws.column_dimensions["B"].width = 55
@@ -391,7 +438,9 @@ def register(app):
         )
         ws["A2"].font = font_hint
         ws["A2"].fill = PatternFill("solid", fgColor="F8F9FA")
-        ws["A2"].alignment = Alignment(wrap_text=True, horizontal="left", vertical="center")
+        ws["A2"].alignment = Alignment(
+            wrap_text=True, horizontal="left", vertical="center"
+        )
         ws.row_dimensions[2].height = 26
 
         # Row 3: Workflow — dropdown of all registered workflow names
