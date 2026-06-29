@@ -1,3 +1,4 @@
+import json
 import uuid
 from pathlib import Path
 
@@ -32,6 +33,7 @@ def register(app):
 
         saved = []
         parsed_runtime = None
+        genome_autofilled = False
         new_log_paths = []
         for file in files:
             original_name = secure_filename(file.filename)
@@ -40,6 +42,14 @@ def register(app):
 
             if file_type == "config":
                 parsed_config = _parse_snakemake_config(stored_path)
+                if parsed_config:
+                    _cfg = json.loads(parsed_config)
+                    if not run.genome and _cfg.get("genome"):
+                        run.genome = str(_cfg["genome"]).strip()
+                        genome_autofilled = True
+                    if not run.genome_release and _cfg.get("ensembl_genome_build"):
+                        run.genome_release = f"Ensembl {_cfg['ensembl_genome_build']}"
+                        genome_autofilled = True
             elif file_type == "mapping_rates":
                 parsed_config = _parse_mapping_rates(stored_path)
             elif file_type == "snakemake_log":
@@ -71,7 +81,8 @@ def register(app):
                 workflow_run_id=id, file_type="snakemake_log"
             ).all()
             total = sum(
-                s for f in all_log_files
+                s
+                for f in all_log_files
                 if (s := _parse_snakemake_log(Path(f.stored_path))) is not None
             )
             if total > 0:
@@ -83,6 +94,13 @@ def register(app):
         msg = f"{label} uploaded."
         if parsed_runtime is not None:
             msg += f" Runtime parsed: {run.runtime_display}."
+        if genome_autofilled:
+            parts = []
+            if run.genome:
+                parts.append(run.genome)
+            if run.genome_release:
+                parts.append(run.genome_release)
+            msg += f" Genome set from config: {', '.join(parts)}."
         flash(msg, "success")
         return redirect(url_for("run_detail", id=id))
 
@@ -124,7 +142,12 @@ def register(app):
         run_id = f.workflow_run_id
         f.parsed_config = None
         db.session.commit()
-        db_log("UPDATE", "AttachedFile", id, f"cleared parsed config for {f.original_filename} on run id={run_id}")
+        db_log(
+            "UPDATE",
+            "AttachedFile",
+            id,
+            f"cleared parsed config for {f.original_filename} on run id={run_id}",
+        )
         flash(f'Configuration cleared for "{f.original_filename}".', "success")
         return redirect(url_for("run_detail", id=run_id))
 
@@ -138,7 +161,12 @@ def register(app):
         f.file_type = request.form.get("file_type", f.file_type)
         f.description = request.form.get("description", "").strip()
         db.session.commit()
-        db_log("UPDATE", "AttachedFile", id, f"edited {f.original_filename} on run id={run_id}")
+        db_log(
+            "UPDATE",
+            "AttachedFile",
+            id,
+            f"edited {f.original_filename} on run id={run_id}",
+        )
         flash(f'File "{f.original_filename}" updated.', "success")
         return redirect(url_for("run_detail", id=run_id))
 
