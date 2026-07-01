@@ -30,7 +30,9 @@ After=network.target
 [Service]
 WorkingDirectory=/path/to/ngs-tracker
 ExecStart=/home/user/miniforge3/condabin/conda run -n ngs-tracker python /path/to/ngs-tracker/app.py
-Restart=on-failure
+Restart=always
+RestartPreventExitStatus=0
+RestartSec=1
 
 [Install]
 WantedBy=default.target

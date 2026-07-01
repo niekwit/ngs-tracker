@@ -589,8 +589,7 @@ def register(app):
     def restart():
         def _exit():
             time.sleep(0.3)
-            (SETTINGS_DIR / ".restart").touch()
-            os._exit(0)
+            os._exit(1)  # non-zero so systemd Restart=always triggers
 
         threading.Thread(target=_exit, daemon=True).start()
         return "", 204
