@@ -20,6 +20,8 @@ Systemd user services do not source `.bashrc`, so `conda` will not be in `PATH` 
 
 Create `~/.config/systemd/user/ngs-tracker.service`:
 
+> **Note:** The directory must be named `user` — not your username. This is the fixed path systemd expects for user services.
+
 ```ini
 [Unit]
 Description=NGS Tracker
