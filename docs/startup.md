@@ -7,8 +7,12 @@ A systemd user service starts NGS Tracker automatically at login — or at boot 
 **1. Find the full conda path**
 
 ```bash
-which conda   # e.g. /home/niek/miniforge3/condabin/conda
+conda info --base   # e.g. /home/user/miniforge3
 ```
+
+The conda executable is at `<base>/condabin/conda` (e.g. `/home/user/miniforge3/condabin/conda`).
+
+> **Note:** `which conda` often prints a shell function body instead of a path because `conda init` installs conda as a bash function — use `conda info --base` instead.
 
 Systemd user services do not source `.bashrc`, so `conda` will not be in `PATH` unless you use its absolute path.
 
@@ -23,7 +27,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/path/to/ngs-tracker
-ExecStart=/home/you/miniforge3/condabin/conda run -n ngs-tracker python app.py
+ExecStart=/home/user/miniforge3/condabin/conda run -n ngs-tracker python app.py
 Restart=on-failure
 
 [Install]
@@ -60,8 +64,12 @@ A Launch Agent plist starts NGS Tracker automatically at login.
 **1. Find the full conda path**
 
 ```bash
-which conda   # e.g. /Users/you/miniforge3/condabin/conda
+conda info --base   # e.g. /Users/user/miniforge3
 ```
+
+The conda executable is at `<base>/condabin/conda` (e.g. `/Users/user/miniforge3/condabin/conda`).
+
+> **Note:** `which conda` often prints a shell function body — use `conda info --base` instead.
 
 **2. Create the plist**
 
@@ -77,7 +85,7 @@ Create `~/Library/LaunchAgents/com.ngs-tracker.plist`:
   <string>com.ngs-tracker</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/you/miniforge3/condabin/conda</string>
+    <string>/Users/user/miniforge3/condabin/conda</string>
     <string>run</string>
     <string>-n</string>
     <string>ngs-tracker</string>
