@@ -27,7 +27,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/path/to/ngs-tracker
-ExecStart=/home/user/miniforge3/condabin/conda run -n ngs-tracker python app.py
+ExecStart=/home/user/miniforge3/condabin/conda run -n ngs-tracker python /path/to/ngs-tracker/app.py
 Restart=on-failure
 
 [Install]
@@ -90,7 +90,7 @@ Create `~/Library/LaunchAgents/com.ngs-tracker.plist`:
     <string>-n</string>
     <string>ngs-tracker</string>
     <string>python</string>
-    <string>app.py</string>
+    <string>/path/to/ngs-tracker/app.py</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/path/to/ngs-tracker</string>
@@ -142,7 +142,7 @@ Create `C:\path\to\ngs-tracker\start.bat`:
 
 ```bat
 @echo off
-"C:\Users\you\miniforge3\condabin\conda.bat" run -n ngs-tracker python app.py
+"C:\Users\user\miniforge3\condabin\conda.bat" run -n ngs-tracker python "C:\path\to\ngs-tracker\app.py"
 ```
 
 **3. Register the task**
@@ -181,7 +181,7 @@ To capture logs, redirect output in `start.bat`:
 
 ```bat
 @echo off
-"C:\Users\you\miniforge3\condabin\conda.bat" run -n ngs-tracker python app.py >> "%TEMP%\ngs-tracker.log" 2>&1
+"C:\Users\user\miniforge3\condabin\conda.bat" run -n ngs-tracker python "C:\path\to\ngs-tracker\app.py" >> "%TEMP%\ngs-tracker.log" 2>&1
 ```
 
 ---
