@@ -670,6 +670,28 @@ def register(app):
         flash("Runtime cleared.", "success")
         return redirect(url_for("run_detail", id=id))
 
+    @app.route("/projects/<int:project_id>/runs/batch-delete", methods=["POST"])
+    def project_runs_batch_delete(project_id):
+        run_ids = request.form.getlist("run_ids", type=int)
+        if not run_ids:
+            flash("No runs selected.", "warning")
+            return redirect(url_for("project_detail", id=project_id))
+
+        runs = WorkflowRun.query.filter(
+            WorkflowRun.id.in_(run_ids),
+            WorkflowRun.project_id == project_id,
+            WorkflowRun.trashed == False,
+        ).all()
+
+        for run in runs:
+            run.trashed = True
+            db_log("TRASH", "WorkflowRun", run.id, f"batch delete from project id={project_id}")
+        db.session.commit()
+
+        n = len(runs)
+        flash(f'{n} run{"s" if n != 1 else ""} moved to trash.', "success")
+        return redirect(url_for("project_detail", id=project_id))
+
     @app.route("/runs/batch", methods=["POST"])
     def runs_batch():
         run_ids = request.form.getlist("run_ids", type=int)
