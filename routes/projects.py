@@ -57,6 +57,11 @@ def register(app):
             reverse=(sort_dir == "desc"),
         )
 
+        orphan_sample_count = sum(
+            1 for s in project.samples
+            if not s.run_samples or all(rs.run.trashed for rs in s.run_samples)
+        )
+
         return render_template(
             "projects/detail.html",
             project=project,
@@ -65,6 +70,7 @@ def register(app):
             sorted_runs=runs,
             sort_col=sort_col,
             sort_dir=sort_dir,
+            orphan_sample_count=orphan_sample_count,
         )
 
     @app.route("/projects/new", methods=["GET", "POST"])

@@ -256,3 +256,22 @@ def register(app):
         db.session.commit()
         flash(f'Sample "{sample.name}" deleted.', "success")
         return redirect(url_for("project_detail", id=project_id))
+
+    @app.route("/projects/<int:id>/samples/clear-orphaned", methods=["POST"])
+    def project_samples_clear_orphaned(id):
+        from models import Project
+        project = db.get_or_404(Project, id)
+        orphans = [
+            s for s in project.samples
+            if all(rs.run.trashed for rs in s.run_samples)
+        ]
+        n = len(orphans)
+        if not n:
+            flash("No orphaned samples found.", "info")
+        else:
+            for s in orphans:
+                db_log("DELETE", "Sample", s.id, f"{s.name} (orphaned, project id={id})")
+                db.session.delete(s)
+            db.session.commit()
+            flash(f'{n} orphaned sample{"s" if n != 1 else ""} removed.', "success")
+        return redirect(url_for("project_detail", id=id))

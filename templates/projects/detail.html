@@ -201,22 +201,46 @@
 
 <!-- Samples -->
 <div class="card mt-3">
-  <div class="card-header">
-    <i class="bi bi-person-badge me-1"></i> Samples ({{ project.samples|length }})
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-person-badge me-1"></i> Samples ({{ project.samples|length }})</span>
+    {% if orphan_sample_count > 0 %}
+    <form method="POST" action="{{ url_for('project_samples_clear_orphaned', id=project.id) }}"
+          onsubmit="return confirm('Remove {{ orphan_sample_count }} sample{{ 's' if orphan_sample_count != 1 }} linked only to trashed runs?')">
+      <button class="btn btn-xs btn-outline-warning">
+        <i class="bi bi-x-circle me-1"></i>Clear {{ orphan_sample_count }} orphaned
+      </button>
+    </form>
+    {% endif %}
   </div>
   {% if project.samples %}
   <div class="card-body py-2 px-3">
     <div class="d-flex flex-wrap gap-2">
       {% for sample in project.samples %}
-      <a href="{{ url_for('sample_detail', id=sample.id) }}"
-         class="badge bg-body-secondary text-body border text-decoration-none d-flex align-items-center gap-1"
-         style="font-size:.82rem;">
-        <i class="bi bi-person-badge text-primary"></i>
-        {{ sample.name }}
-        <span class="text-muted" style="font-size:.72rem;">
-          · {{ sample.run_samples|length }} run{{ 's' if sample.run_samples|length != 1 }}
-        </span>
-      </a>
+      {% set ns = namespace(active=0) %}
+      {% for rs in sample.run_samples %}
+        {% if not rs.run.trashed %}{% set ns.active = ns.active + 1 %}{% endif %}
+      {% endfor %}
+      <div class="d-flex align-items-center badge bg-body-secondary text-body border gap-1 pe-1"
+           style="font-size:.82rem;">
+        <a href="{{ url_for('sample_detail', id=sample.id) }}"
+           class="text-decoration-none text-body d-flex align-items-center gap-1">
+          <i class="bi bi-person-badge text-primary"></i>
+          {{ sample.name }}
+          <span class="text-muted" style="font-size:.72rem;">
+            · {{ ns.active }} active run{{ 's' if ns.active != 1 }}
+          </span>
+          {% if ns.active == 0 %}
+          <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">orphaned</span>
+          {% endif %}
+        </a>
+        <form method="POST" action="{{ url_for('sample_delete', id=sample.id) }}" class="d-inline ms-1"
+              onsubmit="return confirm('Delete sample \'{{ sample.name }}\'?')">
+          <button class="btn p-0 border-0 bg-transparent text-muted lh-1"
+                  style="font-size:.85rem;" title="Delete sample">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </form>
+      </div>
       {% endfor %}
     </div>
   </div>
