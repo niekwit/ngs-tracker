@@ -137,7 +137,7 @@ def _expand_file_entries(entries: list) -> list:
             file_type = "other"
 
         if any(c in raw_path for c in ("*", "?", "[")):
-            matched = sorted(_glob.glob(str(base)))
+            matched = sorted(_glob.glob(str(base), recursive="**" in raw_path))
             if not matched:
                 _warn(f"Glob matched no files, skipping: {raw_path}")
             for m in matched:
@@ -351,7 +351,9 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
             if runtime_seconds is not None:
                 payload["runtime_seconds"] = runtime_seconds
 
-            resp = _requests.post(f"{base}/runs", headers=headers, json=payload, timeout=30)
+            resp = _requests.post(
+                f"{base}/runs", headers=headers, json=payload, timeout=30
+            )
             resp.raise_for_status()
             run_id = resp.json()["id"]
             _info(f"Run {run_id} registered (status={status}) — {base}/runs/{run_id}")
