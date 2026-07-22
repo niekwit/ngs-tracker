@@ -57,3 +57,20 @@ The demo database includes all workflow systems (Snakemake, Nextflow, CWL, Other
 ```bash
 NGS_PORT=8080 ./run.sh
 ```
+
+## Troubleshooting
+
+### `ModuleNotFoundError: No module named 'flask'` after installing
+
+Your shell's `pip` may not belong to the `ngs-tracker` conda env (e.g. a Homebrew or system Python shadows it on `PATH`). Check with `which pip` — if it doesn't point inside `.../envs/ngs-tracker/`, reinstall using the env's Python explicitly instead of the bare `pip` command:
+
+```bash
+conda run -n ngs-tracker python -m pip install -r requirements.txt
+```
+
+### macOS: browser shows "HTTP ERROR 403 — Access ... was denied" on port 5000
+
+On macOS Monterey and later, **AirPlay Receiver** (part of Control Center) listens on port 5000 by default and intercepts the request before it reaches NGS Tracker, returning a 403 instead of your app's page. Either:
+
+- Run NGS Tracker on a different port: `NGS_PORT=5050 ./run.sh`, or
+- Disable AirPlay Receiver in **System Settings → General → AirDrop & Handoff**.
