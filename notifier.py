@@ -14,16 +14,24 @@ _SLACK_UPLOAD_URL_API = "https://slack.com/api/files.getUploadURLExternal"
 _SLACK_COMPLETE_UPLOAD_API = "https://slack.com/api/files.completeUploadExternal"
 
 
-def _post(channel: str, text: str, blocks: list | None = None) -> tuple[bool, str]:
-    """POST a message to the Slack API. Returns (success, error_message)."""
+def _post_raw(
+    channel: str, text: str, blocks: list | None = None
+) -> tuple[bool, str, dict]:
+    """POST a message to the Slack API. Returns (success, error_message, response_data).
+
+    response_data (on success) includes the resolved channel ID ("channel") and
+    the message timestamp ("ts") — useful for follow-up calls (e.g. attaching a
+    file to the same channel/thread) that require a real channel ID rather than
+    the name that was passed in.
+    """
     try:
         import requests
     except ImportError:
-        return False, "'requests' is not installed."
+        return False, "'requests' is not installed.", {}
 
     token = get_slack_token()
     if not token:
-        return False, "No Slack bot token configured."
+        return False, "No Slack bot token configured.", {}
 
     payload: dict = {"channel": channel, "text": text}
     if blocks:
@@ -40,11 +48,17 @@ def _post(channel: str, text: str, blocks: list | None = None) -> tuple[bool, st
         if not data.get("ok"):
             err = data.get("error", "unknown_error")
             _log.error("Slack API error: %s", err)
-            return False, err
-        return True, ""
+            return False, err, data
+        return True, "", data
     except Exception as exc:
         _log.error("Slack request failed: %s", exc)
-        return False, str(exc)
+        return False, str(exc), {}
+
+
+def _post(channel: str, text: str, blocks: list | None = None) -> tuple[bool, str]:
+    """POST a message to the Slack API. Returns (success, error_message)."""
+    ok, err, _data = _post_raw(channel, text, blocks)
+    return ok, err
 
 
 def _snapshot_blocks(
@@ -285,9 +299,14 @@ def send_manual_run_message(channel: str, message: str) -> tuple[bool, str]:
 
 
 def upload_pdf_to_slack(
-    channel: str, filename: str, file_bytes: bytes, initial_comment: str = ""
+    channel_id: str, filename: str, file_bytes: bytes, thread_ts: str | None = None
 ) -> tuple[bool, str]:
     """Upload a PDF to Slack via the files.completeUploadExternal (v2) flow.
+
+    channel_id must be a real Slack channel ID (e.g. "C0NF841BK") — the
+    completeUploadExternal API rejects plain channel names with
+    "invalid_arguments". Use _post_raw()'s returned "channel" (and "ts", for
+    thread_ts) to resolve a name to an ID first.
 
     Requires the bot token to have the `files:write` scope. Bypasses the
     enabled flag. Returns (success, error_message).
@@ -328,10 +347,10 @@ def upload_pdf_to_slack(
 
         complete_payload: dict = {
             "files": [{"id": file_id, "title": filename}],
-            "channel_id": channel,
+            "channel_id": channel_id,
         }
-        if initial_comment:
-            complete_payload["initial_comment"] = initial_comment
+        if thread_ts:
+            complete_payload["thread_ts"] = thread_ts
 
         complete_resp = requests.post(
             _SLACK_COMPLETE_UPLOAD_API,
@@ -348,6 +367,30 @@ def upload_pdf_to_slack(
     except Exception as exc:
         _log.error("Slack file upload failed: %s", exc)
         return False, str(exc)
+
+
+def send_manual_run_message_with_report(
+    channel: str, message: str, filename: str, file_bytes: bytes
+) -> tuple[bool, str]:
+    """Post a manually composed run message, then attach the PDF report as a
+    threaded reply beneath it. Bypasses the enabled flag.
+
+    Returns (success, error_message). If the message itself fails to send,
+    the upload is not attempted. If the message sends but the upload fails,
+    returns False with an error noting the message was still sent.
+    """
+    ok, err, data = _post_raw(channel, message)
+    if not ok:
+        return False, err
+
+    channel_id = data.get("channel")
+    ts = data.get("ts")
+    upload_ok, upload_err = upload_pdf_to_slack(
+        channel_id, filename, file_bytes, thread_ts=ts
+    )
+    if not upload_ok:
+        return False, f"message sent, but PDF upload failed: {upload_err}"
+    return True, ""
 
 
 def build_script_message(script) -> str:

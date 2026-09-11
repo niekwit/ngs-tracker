@@ -820,7 +820,7 @@ def register(app):
             build_run_message,
             channel_from_group_name,
             send_manual_run_message,
-            upload_pdf_to_slack,
+            send_manual_run_message_with_report,
         )
 
         run = db.get_or_404(WorkflowRun, id)
@@ -869,8 +869,8 @@ def register(app):
                     secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}_report")
                     or f"run_{run.id}_report"
                 ) + ".pdf"
-                ok, err = upload_pdf_to_slack(
-                    override_channel, filename, pdf_buf.getvalue(), initial_comment=message
+                ok, err = send_manual_run_message_with_report(
+                    override_channel, message, filename, pdf_buf.getvalue()
                 )
             else:
                 ok, err = send_manual_run_message(override_channel, message)

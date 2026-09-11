@@ -292,7 +292,7 @@ All of this text is fully editable before sending.
 
 ### Attaching the PDF report
 
-Ticking **Attach PDF report** generates the run's [PDF report](#pdf-report) and sends it as a file attachment, with the composed message as its caption, instead of a plain text message. This requires the Slack bot token to have the `files:write` scope — see [Slack notifications](settings.md#slack-notifications).
+Ticking **Attach PDF report** posts the composed message as usual, then generates the run's [PDF report](#pdf-report) and uploads it as a threaded reply beneath that message. This requires the Slack bot token to have the `files:write` scope — see [Slack notifications](settings.md#slack-notifications). If the message sends but the PDF upload fails (e.g. missing scope), the message still goes through and the error is shown so you know the report wasn't attached.
 
 ### Channel name
 
