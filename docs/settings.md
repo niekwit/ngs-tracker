@@ -211,12 +211,17 @@ Under **OAuth & Permissions** → **Bot Token Scopes**, add:
 |---|---|
 | `chat:write` | Post messages to channels and DMs |
 | `chat:write.public` | Post to public channels without joining them |
+| `files:write` | Attach the PDF report to a manual run notification |
 
 If an `incoming-webhook` scope was added automatically, remove it — it is not needed.
 
 **3. Install the app**
 
 Click **Install to Workspace** and approve the permissions. Once installed, copy the **Bot User OAuth Token** (starts with `xoxb-`) from the **OAuth & Permissions** page.
+
+```{note}
+If you added `files:write` to an app that was already installed, click **Reinstall App** on the same page and copy the new token — existing tokens do not pick up newly added scopes until the app is reinstalled.
+```
 
 **4. Create the Slack channels**
 

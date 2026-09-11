@@ -10,6 +10,8 @@ from config import (
 _log = logging.getLogger("ngs_tracker.notifier")
 
 _SLACK_API = "https://slack.com/api/chat.postMessage"
+_SLACK_UPLOAD_URL_API = "https://slack.com/api/files.getUploadURLExternal"
+_SLACK_COMPLETE_UPLOAD_API = "https://slack.com/api/files.completeUploadExternal"
 
 
 def _post(channel: str, text: str, blocks: list | None = None) -> tuple[bool, str]:
@@ -280,6 +282,72 @@ def build_run_message(
 def send_manual_run_message(channel: str, message: str) -> tuple[bool, str]:
     """Post a manually composed run message. Bypasses the enabled flag."""
     return _post(channel, message)
+
+
+def upload_pdf_to_slack(
+    channel: str, filename: str, file_bytes: bytes, initial_comment: str = ""
+) -> tuple[bool, str]:
+    """Upload a PDF to Slack via the files.completeUploadExternal (v2) flow.
+
+    Requires the bot token to have the `files:write` scope. Bypasses the
+    enabled flag. Returns (success, error_message).
+    """
+    try:
+        import requests
+    except ImportError:
+        return False, "'requests' is not installed."
+
+    token = get_slack_token()
+    if not token:
+        return False, "No Slack bot token configured."
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        resp = requests.post(
+            _SLACK_UPLOAD_URL_API,
+            headers=headers,
+            data={"filename": filename, "length": len(file_bytes)},
+            timeout=15,
+        )
+        data = resp.json()
+        if not data.get("ok"):
+            err = data.get("error", "unknown_error")
+            _log.error("Slack getUploadURLExternal error: %s", err)
+            return False, err
+        upload_url = data["upload_url"]
+        file_id = data["file_id"]
+
+        put_resp = requests.post(
+            upload_url,
+            files={"file": (filename, file_bytes, "application/pdf")},
+            timeout=60,
+        )
+        if put_resp.status_code != 200:
+            return False, f"File upload failed with status {put_resp.status_code}"
+
+        complete_payload: dict = {
+            "files": [{"id": file_id, "title": filename}],
+            "channel_id": channel,
+        }
+        if initial_comment:
+            complete_payload["initial_comment"] = initial_comment
+
+        complete_resp = requests.post(
+            _SLACK_COMPLETE_UPLOAD_API,
+            headers=headers,
+            json=complete_payload,
+            timeout=15,
+        )
+        cdata = complete_resp.json()
+        if not cdata.get("ok"):
+            err = cdata.get("error", "unknown_error")
+            _log.error("Slack completeUploadExternal error: %s", err)
+            return False, err
+        return True, ""
+    except Exception as exc:
+        _log.error("Slack file upload failed: %s", exc)
+        return False, str(exc)
 
 
 def build_script_message(script) -> str:

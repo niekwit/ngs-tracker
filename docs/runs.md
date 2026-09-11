@@ -288,6 +288,10 @@ The compose page pre-fills a message in [Slack mrkdwn](https://api.slack.com/ref
 
 All of this text is fully editable before sending.
 
+### Attaching the PDF report
+
+Ticking **Attach PDF report** generates the run's [PDF report](#pdf-report) and sends it as a file attachment, with the composed message as its caption, instead of a plain text message. This requires the Slack bot token to have the `files:write` scope — see [Slack notifications](settings.md#slack-notifications).
+
 ### Channel name
 
 The destination channel is automatically derived from the **research group name** — spaces become hyphens and the name is lowercased:

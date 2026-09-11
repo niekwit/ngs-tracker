@@ -60,6 +60,17 @@
             </div>
           </div>
 
+          <div class="mb-4 form-check">
+            <input type="checkbox" class="form-check-input" name="attach_report" id="attachReport"
+                   value="1" {% if attach_report %}checked{% endif %}>
+            <label class="form-check-label" for="attachReport">
+              <i class="bi bi-file-earmark-pdf me-1"></i> Attach PDF report
+            </label>
+            <div class="form-text">
+              Generates and attaches the run's <a href="{{ url_for('run_report', id=run.id) }}">PDF report</a> to this message. Requires the Slack bot token to have the <code>files:write</code> scope.
+            </div>
+          </div>
+
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-success">
               <i class="bi bi-send me-1"></i> Send

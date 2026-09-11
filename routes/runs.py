@@ -820,6 +820,7 @@ def register(app):
             build_run_message,
             channel_from_group_name,
             send_manual_run_message,
+            upload_pdf_to_slack,
         )
 
         run = db.get_or_404(WorkflowRun, id)
@@ -829,9 +830,8 @@ def register(app):
 
         # Workflow URL from registry
         wf_list = load_workflows()
-        wf_url = next(
-            (w["url"] for w in wf_list if w["name"] == run.workflow_name), None
-        )
+        wf_entry = next((w for w in wf_list if w["name"] == run.workflow_name), {})
+        wf_url = wf_entry.get("url") or None
 
         # Extract samples for the default message
         samples = None
@@ -849,6 +849,7 @@ def register(app):
             override_channel = (
                 request.form.get("channel", "").strip().lstrip("#") or channel
             )
+            attach_report = bool(request.form.get("attach_report"))
             if not message:
                 flash("Message cannot be empty.", "danger")
                 return render_template(
@@ -856,14 +857,30 @@ def register(app):
                     run=run,
                     channel=override_channel,
                     message=message,
+                    attach_report=attach_report,
                 )
-            ok, err = send_manual_run_message(override_channel, message)
+            if attach_report:
+                mapping_rate_cutoff = float(
+                    wf_entry.get("mapping_rate_cutoff", 60.0)
+                )
+                pdf_buf = build_run_report_pdf(run, mapping_rate_cutoff, wf_url)
+                stamp = run.run_date.strftime("%Y%m%d")
+                filename = (
+                    secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}_report")
+                    or f"run_{run.id}_report"
+                ) + ".pdf"
+                ok, err = upload_pdf_to_slack(
+                    override_channel, filename, pdf_buf.getvalue(), initial_comment=message
+                )
+            else:
+                ok, err = send_manual_run_message(override_channel, message)
             if ok:
                 db_log(
                     "CREATE",
                     "SlackMessage",
                     run.id,
-                    f"Slack message sent to #{override_channel} for run {run.workflow_name} #{run.id}",
+                    f"Slack message sent to #{override_channel} for run {run.workflow_name} #{run.id}"
+                    + (" (with PDF report)" if attach_report else ""),
                 )
                 flash(f"Message sent to #{override_channel}.", "success")
                 return redirect(url_for("run_detail", id=id))
@@ -874,6 +891,7 @@ def register(app):
                     run=run,
                     channel=override_channel,
                     message=message,
+                    attach_report=attach_report,
                 )
 
         default_message = build_run_message(run, samples, wf_url=wf_url)
@@ -882,4 +900,5 @@ def register(app):
             run=run,
             channel=channel,
             message=default_message,
+            attach_report=False,
         )
