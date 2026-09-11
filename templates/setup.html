@@ -36,6 +36,30 @@
       </div>
     </div>
 
+    <!-- Report logo -->
+    <h5 class="fw-bold mt-4 mb-2" id="report-logo"><i class="bi bi-image me-1"></i> Report Logo</h5>
+    <p class="text-muted mb-3">
+      Image shown centered at the top of the generated run PDF reports. Leave empty to use the default NGS Tracker logo.
+    </p>
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="action" value="set_logo_path">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-9">
+              <label class="form-label fw-semibold mb-1" for="logoPath">Logo path</label>
+              <input type="text" id="logoPath" class="form-control form-control-sm font-monospace"
+                     name="logo_path" value="{{ logo_path }}"
+                     placeholder="/path/to/logo.png — leave empty for the default">
+            </div>
+            <div class="col-md-3">
+              <button type="submit" class="btn btn-sm btn-primary w-100">Save</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- User management -->
     <h4 class="mb-1 fw-bold mt-4"><i class="bi bi-people me-1"></i> Users</h4>
     <p class="text-muted mb-3">Select who is currently using the tracker. No password required.</p>

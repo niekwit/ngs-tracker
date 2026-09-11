@@ -158,10 +158,12 @@ Every project, researcher, and group detail page has an **Export** dropdown. The
 
 ## PDF report
 
-Every run detail page has a **PDF Report** button that generates a single PDF covering that run, ready to archive or share:
+Every run detail page has a **PDF Report** button that generates a single PDF covering that run, ready to archive or share. A logo is shown centered at the top of the report — configurable on the [Settings](settings.md#report-logo) page. The report includes:
 
 - Run ID and date of run
 - Tags
+- Runtime (if recorded)
+- Workflow GitHub URL
 - Backup status (per configured location)
 - Notes
 - Linked samples

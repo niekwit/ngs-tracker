@@ -189,6 +189,19 @@ def get_storage_path() -> Path:
     return SETTINGS_DIR / "uploads"
 
 
+_DEFAULT_LOGO_PATH = Path(__file__).parent / "static" / "logo.png"
+
+
+def get_logo_path() -> str:
+    return load_settings().get("logo_path") or str(_DEFAULT_LOGO_PATH)
+
+
+def set_logo_path(path: str) -> None:
+    s = load_settings()
+    s["logo_path"] = path.strip()
+    save_settings(s)
+
+
 # Known top-level subdirectories under storage_path
 _STORAGE_SUBDIRS = {"runs", "samples", "scripts", "outputs"}
 

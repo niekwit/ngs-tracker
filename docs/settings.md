@@ -13,6 +13,10 @@ All settings are persisted to `~/.ngs-tracker/settings.json` and survive re-clon
 After changing the database path, restart the server so the new path takes effect. The file storage path is re-read on every request.
 ```
 
+## Report logo
+
+The **Report Logo** field sets the image shown centered at the top of generated [PDF reports](runs.md#pdf-report). Enter a full path to an image file readable by the server; leave it empty to use the default NGS Tracker logo (`static/logo.png`).
+
 ## Users
 
 NGS Tracker has a lightweight user system — no passwords, just named profiles. The active user is recorded in every change log entry and shown in the navbar.

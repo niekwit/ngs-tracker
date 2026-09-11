@@ -362,7 +362,8 @@ def register(app):
         workflows = load_workflows()
         wf_entry = next((w for w in workflows if w["name"] == run.workflow_name), {})
         mapping_rate_cutoff = float(wf_entry.get("mapping_rate_cutoff", 60.0))
-        buf = build_run_report_pdf(run, mapping_rate_cutoff)
+        workflow_url = wf_entry.get("url") or None
+        buf = build_run_report_pdf(run, mapping_rate_cutoff, workflow_url)
         stamp = run.run_date.strftime("%Y%m%d")
         slug = secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}") or f"run_{run.id}"
         return send_file(

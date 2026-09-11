@@ -21,6 +21,7 @@ from config import (
     get_current_user,
     get_default_tags,
     get_last_snapshot_time,
+    get_logo_path,
     get_slack_enabled,
     get_slack_runs_channel,
     get_slack_snapshot_channel,
@@ -44,6 +45,7 @@ from config import (
     set_slack_runs_channel,
     set_slack_snapshot_channel,
     set_slack_token,
+    set_logo_path,
     set_rclone_remote,
     set_snapshot_backup_dir,
     set_snapshot_interval_hours,
@@ -300,6 +302,12 @@ def register(app):
                     flash("Snapshot backup disabled.", "success")
                 return redirect(url_for("setup"))
 
+            if action == "set_logo_path":
+                logo_path = request.form.get("logo_path", "").strip()
+                set_logo_path(logo_path)
+                flash("Logo path saved.", "success")
+                return redirect(url_for("setup"))
+
             if action == "run_snapshot_now":
                 from backup import run_snapshot
                 from notifier import send_snapshot_notification
@@ -434,6 +442,7 @@ def register(app):
             backup_locations=get_backup_locations(),
             api_key=get_api_key(),
             backup_reminder_days=get_backup_reminder_days(),
+            logo_path=get_logo_path(),
             snapshot_backup_dir=snap_dir,
             snapshot_interval_hours=snap_interval,
             snapshot_keep=get_snapshot_keep(),

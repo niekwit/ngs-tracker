@@ -5,13 +5,17 @@ import json
 import textwrap
 from xml.sax.saxutils import escape
 
+from pathlib import Path
+
 from pypdf import PdfWriter
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     HRFlowable,
+    Image,
     Paragraph,
     Preformatted,
     SimpleDocTemplate,
@@ -20,7 +24,10 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from config import get_backup_locations, resolve_stored_path
+from config import get_backup_locations, get_logo_path, resolve_stored_path
+
+_LOGO_MAX_WIDTH = 6 * cm
+_LOGO_MAX_HEIGHT = 2.2 * cm
 
 _styles = getSampleStyleSheet()
 _H1 = ParagraphStyle("ReportH1", parent=_styles["Title"], fontSize=18, spaceAfter=4)
@@ -55,6 +62,26 @@ def _p(text, style=_BODY):
     return Paragraph(escape(str(text)) if text else "", style)
 
 
+def _link_p(url, style=_BODY):
+    safe_url = escape(url)
+    return Paragraph(f'<link href="{safe_url}" color="blue">{safe_url}</link>', style)
+
+
+def _logo_flowable():
+    path = get_logo_path()
+    if not path or not Path(path).exists():
+        return None
+    try:
+        reader = ImageReader(path)
+        iw, ih = reader.getSize()
+        scale = min(_LOGO_MAX_WIDTH / iw, _LOGO_MAX_HEIGHT / ih, 1.0)
+        img = Image(path, width=iw * scale, height=ih * scale)
+        img.hAlign = "CENTER"
+        return img
+    except Exception:
+        return None
+
+
 def _flatten_config(d: dict, indent: int = 0) -> list[str]:
     """Flatten a (possibly nested) config dict into indented "key: value" lines."""
     lines = []
@@ -75,7 +102,7 @@ def _flatten_config(d: dict, indent: int = 0) -> list[str]:
     return lines
 
 
-def _build_cover_pdf(run, mapping_rate_cutoff: float) -> io.BytesIO:
+def _build_cover_pdf(run, mapping_rate_cutoff: float, workflow_url: str | None) -> io.BytesIO:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -88,6 +115,12 @@ def _build_cover_pdf(run, mapping_rate_cutoff: float) -> io.BytesIO:
     )
     story = []
 
+    # Logo
+    logo = _logo_flowable()
+    if logo:
+        story.append(logo)
+        story.append(Spacer(1, 10))
+
     # Header
     story.append(_p(f"{run.workflow_name} — Workflow Run Report", _H1))
     subtitle_bits = [f"Run ID: {run.id}", run.run_date.strftime("%Y-%m-%d %H:%M")]
@@ -96,21 +129,26 @@ def _build_cover_pdf(run, mapping_rate_cutoff: float) -> io.BytesIO:
     story.append(_p("  ·  ".join(subtitle_bits), _MUTED))
     story.append(HRFlowable(width="100%", color=colors.HexColor("#dee2e6"), spaceBefore=8, spaceAfter=4))
 
-    # Summary table: run ID, date, project, status, tags
+    # Summary table: run ID, date, project, status, tags, runtime, workflow URL
     tag_list = run.tag_list
+    _key_style = ParagraphStyle("k", parent=_BODY, fontName="Helvetica-Bold")
     summary_rows = [
-        ["Run ID", str(run.id)],
-        ["Date of run", run.run_date.strftime("%Y-%m-%d %H:%M")],
-        ["Project", run.project.name],
-        ["Status", run.status_label],
-        ["Tags", ", ".join(tag_list) if tag_list else "—"],
+        ["Run ID", _p(run.id)],
+        ["Date of run", _p(run.run_date.strftime("%Y-%m-%d %H:%M"))],
+        ["Project", _p(run.project.name)],
+        ["Status", _p(run.status_label)],
+        ["Tags", _p(", ".join(tag_list) if tag_list else "—")],
     ]
+    if run.runtime_display:
+        summary_rows.append(["Runtime", _p(run.runtime_display)])
+    if workflow_url:
+        summary_rows.append(["Workflow", _link_p(workflow_url)])
     if run.created_by:
-        summary_rows.append(["Created by", run.created_by])
+        summary_rows.append(["Created by", _p(run.created_by)])
     if run.description:
-        summary_rows.append(["Description", run.description])
+        summary_rows.append(["Description", _p(run.description)])
     summary_table = Table(
-        [[_p(k, ParagraphStyle("k", parent=_BODY, fontName="Helvetica-Bold")), _p(v)] for k, v in summary_rows],
+        [[_p(k, _key_style), v] for k, v in summary_rows],
         colWidths=[4 * cm, 12.7 * cm],
     )
     summary_table.setStyle(_TABLE_HEADER_STYLE)
@@ -217,9 +255,11 @@ def _build_cover_pdf(run, mapping_rate_cutoff: float) -> io.BytesIO:
     return buf
 
 
-def build_run_report_pdf(run, mapping_rate_cutoff: float) -> io.BytesIO:
+def build_run_report_pdf(
+    run, mapping_rate_cutoff: float, workflow_url: str | None = None
+) -> io.BytesIO:
     """Build a full PDF report for a workflow run: cover pages + all attached PDFs."""
-    cover_buf = _build_cover_pdf(run, mapping_rate_cutoff)
+    cover_buf = _build_cover_pdf(run, mapping_rate_cutoff, workflow_url)
 
     writer = PdfWriter()
     writer.append(cover_buf)
