@@ -156,6 +156,19 @@ Every project, researcher, and group detail page has an **Export** dropdown. The
 | **CSV**      | Import into Excel, R, or Python for further analysis      |
 | **Markdown** | Paste into a lab notebook, grant report, or email to a PI |
 
+## PDF report
+
+Every run detail page has a **PDF Report** button that generates a single PDF covering that run, ready to archive or share:
+
+- Run ID and date of run
+- Tags
+- Backup status (per configured location)
+- Notes
+- Linked samples
+- Configuration (parsed from any uploaded config file)
+- Mapping rates (if a mapping rates file has been uploaded), with the workflow's cutoff applied
+- All attached PDF files, appended in full after the summary pages, each bookmarked by filename
+
 ## Filtering by workflow
 
 A **Filter by workflow** row appears above the runs table when more than one workflow is present in the database. Click a workflow name to show only runs from that workflow; click **All** to clear the filter. The row only shows workflows that have at least one run recorded — it is not drawn from the full workflow registry.

@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
+from werkzeug.utils import secure_filename
 
 from config import (
     add_default_tag,
@@ -25,6 +26,7 @@ from helpers import (
     find_duplicate_runs,
     get_journal_name,
 )
+from report import build_run_report_pdf
 from models import (
     FILE_TYPES,
     RUN_STATUSES,
@@ -352,6 +354,22 @@ def register(app):
             has_sample_info=has_sample_info,
             slack_enabled=get_slack_enabled(),
             crispr_libraries=load_crispr_libraries(),
+        )
+
+    @app.route("/runs/<int:id>/report")
+    def run_report(id):
+        run = db.get_or_404(WorkflowRun, id)
+        workflows = load_workflows()
+        wf_entry = next((w for w in workflows if w["name"] == run.workflow_name), {})
+        mapping_rate_cutoff = float(wf_entry.get("mapping_rate_cutoff", 60.0))
+        buf = build_run_report_pdf(run, mapping_rate_cutoff)
+        stamp = run.run_date.strftime("%Y%m%d")
+        slug = secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}") or f"run_{run.id}"
+        return send_file(
+            buf,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"{slug}_report.pdf",
         )
 
     @app.route("/runs/new", methods=["GET", "POST"])
