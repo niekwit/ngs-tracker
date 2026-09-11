@@ -162,6 +162,8 @@ Every run detail page has a **PDF Report** button that generates a single PDF co
 
 - Run ID and date of run
 - Tags
+- Genome and genome release (if set)
+- CRISPR library, with its genome and publication link (if set)
 - Runtime (if recorded)
 - Workflow GitHub URL
 - Backup status (per configured location)

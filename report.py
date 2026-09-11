@@ -24,7 +24,12 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from config import get_backup_locations, get_logo_path, resolve_stored_path
+from config import (
+    get_backup_locations,
+    get_logo_path,
+    load_crispr_libraries,
+    resolve_stored_path,
+)
 
 _LOGO_MAX_WIDTH = 6 * cm
 _LOGO_MAX_HEIGHT = 2.2 * cm
@@ -65,6 +70,17 @@ def _p(text, style=_BODY):
 def _link_p(url, style=_BODY):
     safe_url = escape(url)
     return Paragraph(f'<link href="{safe_url}" color="blue">{safe_url}</link>', style)
+
+
+def _crispr_library_p(name: str, style=_BODY):
+    lib = next((l for l in load_crispr_libraries() if l.get("name") == name), None)
+    label = escape(name)
+    if lib and lib.get("genome"):
+        label += f" — {escape(lib['genome'])}"
+    if lib and lib.get("publication_url"):
+        safe_url = escape(lib["publication_url"])
+        label += f' (<link href="{safe_url}" color="blue">{safe_url}</link>)'
+    return Paragraph(label, style)
 
 
 def _logo_flowable():
@@ -129,7 +145,7 @@ def _build_cover_pdf(run, mapping_rate_cutoff: float, workflow_url: str | None) 
     story.append(_p("  ·  ".join(subtitle_bits), _MUTED))
     story.append(HRFlowable(width="100%", color=colors.HexColor("#dee2e6"), spaceBefore=8, spaceAfter=4))
 
-    # Summary table: run ID, date, project, status, tags, runtime, workflow URL
+    # Summary table: run ID, date, project, status, tags, genome, CRISPR library, runtime, workflow URL
     tag_list = run.tag_list
     _key_style = ParagraphStyle("k", parent=_BODY, fontName="Helvetica-Bold")
     summary_rows = [
@@ -139,6 +155,13 @@ def _build_cover_pdf(run, mapping_rate_cutoff: float, workflow_url: str | None) 
         ["Status", _p(run.status_label)],
         ["Tags", _p(", ".join(tag_list) if tag_list else "—")],
     ]
+    if run.genome:
+        genome_text = run.genome
+        if run.genome_release:
+            genome_text += f" · {run.genome_release}"
+        summary_rows.append(["Genome", _p(genome_text)])
+    if run.crispr_library:
+        summary_rows.append(["CRISPR library", _crispr_library_p(run.crispr_library)])
     if run.runtime_display:
         summary_rows.append(["Runtime", _p(run.runtime_display)])
     if workflow_url:
