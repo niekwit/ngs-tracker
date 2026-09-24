@@ -342,7 +342,7 @@
     <div class="cfg-row">
       <span class="cfg-key">{{ key }}:</span>
       {% if val %}
-        {% for item in val %}<code class="me-1">{{ item }}</code>{% endfor %}
+        {% for item in val %}<code class="me-1">{{ item }}</code> {% endfor %}
       {% else %}
         <span class="text-muted fst-italic">[]</span>
       {% endif %}
@@ -439,8 +439,8 @@
 <!-- MAGeCK hits -->
 {% macro hit_list(hits) %}
   {% if hits %}
-  <div class="small" style="max-height:12rem; overflow-y:auto;">
-    {% for h in hits %}<code class="me-1" title="{% if h.lfc is not none %}LFC {{ '%.2f' % h.lfc }}, {% endif %}{% if h.fdr is not none %}FDR {{ '%.3g' % h.fdr }}{% endif %}">{{ h.gene }}</code>{% endfor %}
+  <div class="small" style="max-height:12rem; overflow-y:auto; overflow-wrap:anywhere;">
+    {% for h in hits %}<code class="me-1" title="{% if h.lfc is not none %}LFC {{ '%.2f' % h.lfc }}, {% endif %}{% if h.fdr is not none %}FDR {{ '%.3g' % h.fdr }}{% endif %}">{{ h.gene }}</code> {% endfor %}
   </div>
   {% else %}
   <span class="text-muted small fst-italic">No hits</span>
@@ -463,7 +463,7 @@
       {{ o.b.comparison }}
     </td>
     <td class="text-center">{{ o.genes|length }}</td>
-    <td class="small">{% for g in o.genes %}<code class="me-1">{{ g }}</code>{% endfor %}</td>
+    <td class="small" style="overflow-wrap:anywhere;">{% for g in o.genes %}<code class="me-1">{{ g }}</code> {% endfor %}</td>
   </tr>
   {% endfor %}
 {% endmacro %}
