@@ -103,6 +103,11 @@ def parse_mageck_results(
         return None
 
 
+def _gene_key(hit_or_gene) -> str:
+    gene = hit_or_gene["gene"] if isinstance(hit_or_gene, dict) else hit_or_gene
+    return gene.casefold()
+
+
 def _comparison_dict(f: AttachedFile) -> dict:
     data = f.config_dict
     run = f.run
@@ -116,8 +121,8 @@ def _comparison_dict(f: AttachedFile) -> dict:
         "cutoff_column": data.get("cutoff_column"),
         "cutoff_value": data.get("cutoff_value"),
         "n_genes": data.get("n_genes"),
-        "enriched": data.get("enriched", []),
-        "depleted": data.get("depleted", []),
+        "enriched": sorted(data.get("enriched", []), key=_gene_key),
+        "depleted": sorted(data.get("depleted", []), key=_gene_key),
     }
 
 
@@ -158,7 +163,8 @@ def _overlap(a: dict, b: dict) -> list[dict]:
     for direction in _DIRECTIONS:
         b_genes = {h["gene"].upper() for h in b[direction]}
         genes = sorted(
-            h["gene"] for h in a[direction] if h["gene"].upper() in b_genes
+            (h["gene"] for h in a[direction] if h["gene"].upper() in b_genes),
+            key=_gene_key,
         )
         if genes:
             result.append({"direction": direction, "a": a, "b": b, "genes": genes})
