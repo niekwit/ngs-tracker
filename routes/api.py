@@ -34,6 +34,7 @@ from helpers import (
     _parse_snakemake_log,
     find_duplicate_runs,
 )
+from mageck import default_comparison_name, normalise_cutoff, parse_mageck_results
 from models import (
     FILE_TYPES,
     AttachedFile,
@@ -320,6 +321,14 @@ def register(app):
 
         description = data.get("description", "").strip()
 
+        if file_type == "mageck_results":
+            try:
+                cutoff_column, cutoff_value = normalise_cutoff(
+                    data.get("cutoff_column"), data.get("cutoff_value")
+                )
+            except ValueError as exc:
+                return jsonify({"error": str(exc)}), 400
+
         run_dir = get_storage_path() / "runs" / str(id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -333,6 +342,14 @@ def register(app):
             parsed_config = _parse_snakemake_config(stored_path)
         elif file_type == "mapping_rates":
             parsed_config = _parse_mapping_rates(stored_path)
+        elif file_type == "mageck_results":
+            parsed_config = parse_mageck_results(
+                stored_path,
+                cutoff_column,
+                cutoff_value,
+                (data.get("comparison") or "").strip()
+                or default_comparison_name(original_name),
+            )
         elif file_type == "snakemake_log":
             parsed_config = None
             secs = _parse_snakemake_log(stored_path)
@@ -365,7 +382,12 @@ def register(app):
             from notifier import send_run_notification
 
             send_run_notification(run, errors=run_errors)
-        return jsonify(_file_dict(attached)), 201
+        result = _file_dict(attached)
+        if file_type == "mageck_results" and not parsed_config:
+            result["warning"] = (
+                "Could not parse as a MAGeCK gene summary (RRA); stored without hits"
+            )
+        return jsonify(result), 201
 
     # ── Projects ──────────────────────────────────────────────────────────────
 

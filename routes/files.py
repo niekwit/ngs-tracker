@@ -13,6 +13,7 @@ from helpers import (
     _parse_snakemake_config,
     _parse_snakemake_log,
 )
+from mageck import default_comparison_name, normalise_cutoff, parse_mageck_results
 from models import FILE_TYPES, AttachedFile, SampleSheet, WorkflowRun, db
 
 
@@ -28,6 +29,14 @@ def register(app):
 
         file_type = request.form.get("file_type", "other")
         description = request.form.get("description", "").strip()
+        if file_type == "mageck_results":
+            try:
+                cutoff_column, cutoff_value = normalise_cutoff(
+                    request.form.get("cutoff_column"), request.form.get("cutoff_value")
+                )
+            except ValueError as exc:
+                flash(str(exc), "danger")
+                return redirect(url_for("run_detail", id=id))
         run_dir = get_storage_path() / "runs" / str(id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -52,6 +61,13 @@ def register(app):
                         genome_autofilled = True
             elif file_type == "mapping_rates":
                 parsed_config = _parse_mapping_rates(stored_path)
+            elif file_type == "mageck_results":
+                parsed_config = parse_mageck_results(
+                    stored_path,
+                    cutoff_column,
+                    cutoff_value,
+                    default_comparison_name(original_name),
+                )
             elif file_type == "snakemake_log":
                 parsed_config = None
                 new_log_paths.append(stored_path)

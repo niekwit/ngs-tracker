@@ -26,6 +26,7 @@ from helpers import (
     find_duplicate_runs,
     get_journal_name,
 )
+from mageck import find_overlaps, run_comparisons
 from report import build_run_report_pdf
 from models import (
     FILE_TYPES,
@@ -339,9 +340,14 @@ def register(app):
                         has_sample_info = True
                         break
 
+        mageck_comparisons = run_comparisons(run)
+        mageck_overlaps = find_overlaps(run, mageck_comparisons)
+
         return render_template(
             "runs/detail.html",
             run=run,
+            mageck_comparisons=mageck_comparisons,
+            mageck_overlaps=mageck_overlaps,
             file_types=FILE_TYPES,
             wf_urls=wf_urls,
             compare_runs=compare_runs,

@@ -49,6 +49,7 @@ VALID_FILE_TYPES = {
     "qc",
     "results",
     "mapping_rates",
+    "mageck_results",
     "snakemake_log",
     "other",
 }
@@ -140,10 +141,23 @@ def _expand_file_entries(entries: list) -> list:
             matched = sorted(_glob.glob(str(base), recursive="**" in raw_path))
             if not matched:
                 _warn(f"Glob matched no files, skipping: {raw_path}")
-            for m in matched:
-                result.append(
-                    {**entry, "path": str(Path(m).resolve()), "type": file_type}
-                )
+            names = [Path(m).name for m in matched]
+            if (
+                file_type == "mageck_results"
+                and not entry.get("comparison")
+                and len(set(names)) < len(names)
+            ):
+                # Identical file names: the comparison is only in the directory names
+                parents = [Path(m).resolve().parent for m in matched]
+                common = Path(os.path.commonpath([str(p) for p in parents]))
+                comparisons = [str(p.relative_to(common)) for p in parents]
+            else:
+                comparisons = [None] * len(matched)
+            for m, comparison in zip(matched, comparisons):
+                item = {**entry, "path": str(Path(m).resolve()), "type": file_type}
+                if comparison:
+                    item["comparison"] = comparison
+                result.append(item)
         else:
             path = base.resolve()
             if not path.exists():
@@ -363,18 +377,27 @@ def register_run(config: dict, status: str = "completed", log_file=None) -> int 
             path = Path(entry["path"])
             file_type = entry.get("type", "other")
 
+            file_payload = {
+                "file_path": str(path),
+                "file_type": file_type,
+                "description": entry.get("description", ""),
+            }
+            if file_type == "mageck_results":
+                for key in ("cutoff_column", "cutoff_value", "comparison"):
+                    if entry.get(key) is not None:
+                        file_payload[key] = entry[key]
+
             r = _requests.post(
                 f"{base}/runs/{run_id}/files",
                 headers=headers,
-                json={
-                    "file_path": str(path),
-                    "file_type": file_type,
-                    "description": entry.get("description", ""),
-                },
+                json=file_payload,
                 timeout=30,
             )
             if r.ok:
                 _info(f"  Attached {path.name} [{file_type}]")
+                warning = r.json().get("warning")
+                if warning:
+                    _warn(f"  {path.name}: {warning}")
             else:
                 _warn(f"  Could not attach {path.name}: HTTP {r.status_code}")
 

@@ -436,6 +436,109 @@
 </div>
 {% endfor %}
 
+<!-- MAGeCK hits -->
+{% macro hit_list(hits) %}
+  {% if hits %}
+  <div class="small" style="max-height:12rem; overflow-y:auto;">
+    {% for h in hits %}<code class="me-1" title="{% if h.lfc is not none %}LFC {{ '%.2f' % h.lfc }}, {% endif %}{% if h.fdr is not none %}FDR {{ '%.3g' % h.fdr }}{% endif %}">{{ h.gene }}</code>{% endfor %}
+  </div>
+  {% else %}
+  <span class="text-muted small fst-italic">No hits</span>
+  {% endif %}
+{% endmacro %}
+{% macro overlap_rows(entries, cross_run) %}
+  {% for o in entries %}
+  <tr>
+    <td>
+      <span class="badge {{ 'bg-danger' if o.direction == 'enriched' else 'bg-primary' }}">{{ o.direction }}</span>
+    </td>
+    <td>
+      {{ o.a.comparison }}
+    </td>
+    <td>
+      {% if cross_run %}
+      <a href="{{ url_for('run_detail', id=o.b.run_id) }}" class="text-decoration-none">{{ o.b.run_label }}</a>
+      <span class="text-muted small">· {{ o.b.project }}</span><br>
+      {% endif %}
+      {{ o.b.comparison }}
+    </td>
+    <td class="text-center">{{ o.genes|length }}</td>
+    <td class="small">{% for g in o.genes %}<code class="me-1">{{ g }}</code>{% endfor %}</td>
+  </tr>
+  {% endfor %}
+{% endmacro %}
+{% if mageck_comparisons %}
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-bullseye text-danger"></i>
+    <span>MAGeCK Hits</span>
+  </div>
+  <div class="card-body">
+    {% for c in mageck_comparisons %}
+    <div class="{{ 'mb-3 pb-3 border-bottom' if not loop.last }}">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <strong>{{ c.comparison }}</strong>
+        <span class="text-muted small">
+          {{ c.cutoff_column }} ≤ {{ c.cutoff_value }} · {{ c.n_genes }} genes tested
+        </span>
+        <div class="ms-auto d-flex gap-2">
+          <a href="{{ url_for('file_download', id=c.file_id) }}" class="btn btn-xs btn-outline-secondary">
+            <i class="bi bi-download me-1"></i>Download
+          </a>
+          <form method="POST" action="{{ url_for('file_clear_config', id=c.file_id) }}"
+                onsubmit="return confirm('Clear the stored hits for this file?')">
+            <button class="btn btn-xs btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Clear</button>
+          </form>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="fw-semibold small mb-1"><span class="badge bg-danger">Enriched</span> {{ c.enriched|length }}</div>
+          {{ hit_list(c.enriched) }}
+        </div>
+        <div class="col-md-6">
+          <div class="fw-semibold small mb-1"><span class="badge bg-primary">Depleted</span> {{ c.depleted|length }}</div>
+          {{ hit_list(c.depleted) }}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-intersect text-danger"></i>
+    <span>Overlapping Hits</span>
+    <span class="text-muted small ms-1">— same direction; this run and other CRISPR screens from {{ run.project.researcher.group.name }}</span>
+  </div>
+  <div class="card-body">
+    <h6 class="mb-2">Between comparisons in this run</h6>
+    {% if mageck_overlaps.within_run %}
+    <div class="table-responsive mb-3">
+      <table class="table table-sm table-bordered mb-0" style="font-size:.85rem;">
+        <thead class="table-light"><tr><th>Direction</th><th>Comparison A</th><th>Comparison B</th><th class="text-center">Genes</th><th>Overlapping genes</th></tr></thead>
+        <tbody>{{ overlap_rows(mageck_overlaps.within_run, false) }}</tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small">{{ 'No overlapping hits.' if mageck_comparisons|length > 1 else 'Only one comparison in this run.' }}</p>
+    {% endif %}
+    <h6 class="mb-2">With other runs from the same research group</h6>
+    {% if mageck_overlaps.across_runs %}
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered mb-0" style="font-size:.85rem;">
+        <thead class="table-light"><tr><th>Direction</th><th>This run</th><th>Other run</th><th class="text-center">Genes</th><th>Overlapping genes</th></tr></thead>
+        <tbody>{{ overlap_rows(mageck_overlaps.across_runs, true) }}</tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small mb-0">No overlapping hits with other CRISPR screens from this research group.</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 <!-- Attached files -->
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -462,7 +565,7 @@
           </div>
           <div class="col-md-3">
             <label class="form-label fw-semibold mb-1">Type</label>
-            <select class="form-select form-select-sm" name="file_type">
+            <select class="form-select form-select-sm" name="file_type" id="uploadFileType">
               {% for key, (label, color) in file_types.items() %}
               <option value="{{ key }}">{{ label }}</option>
               {% endfor %}
@@ -477,6 +580,24 @@
             <button type="submit" class="btn btn-success btn-sm w-100">
               <i class="bi bi-upload"></i>
             </button>
+          </div>
+        </div>
+        <div class="row g-2 mt-1 d-none" id="mageckCutoffRow">
+          <div class="col-md-3">
+            <label class="form-label fw-semibold mb-1">Hit cutoff column</label>
+            <select class="form-select form-select-sm" name="cutoff_column">
+              <option value="fdr" selected>fdr</option>
+              <option value="p-value">p-value</option>
+              <option value="score">score</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold mb-1">Hit cutoff value</label>
+            <input type="number" step="any" class="form-control form-control-sm"
+                   name="cutoff_value" value="0.25">
+          </div>
+          <div class="col-md-6 text-muted small align-self-end">
+            Genes at or below the cutoff in the MAGeCK gene summary are stored as enriched / depleted hits.
           </div>
         </div>
       </form>
@@ -706,6 +827,16 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+(function () {
+  var sel = document.getElementById('uploadFileType');
+  var row = document.getElementById('mageckCutoffRow');
+  if (!sel || !row) return;
+  function toggle() { row.classList.toggle('d-none', sel.value !== 'mageck_results'); }
+  sel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
 {% set mr_files_scripts = run.attached_files | selectattr('file_type', 'eq', 'mapping_rates') | selectattr('parsed_config') | list %}
 {% if mr_files_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>

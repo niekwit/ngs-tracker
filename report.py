@@ -24,6 +24,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from mageck import find_overlaps, run_comparisons
 from config import (
     get_backup_locations,
     get_logo_path,
@@ -96,6 +97,69 @@ def _logo_flowable():
         return img
     except Exception:
         return None
+
+
+_BOLD = ParagraphStyle("Bold", parent=_BODY, fontName="Helvetica-Bold")
+_GENES = ParagraphStyle("Genes", parent=_BODY, fontSize=8.5, leading=11, leftIndent=8)
+
+
+def _gene_list_p(genes: list[str]):
+    return Paragraph(escape(", ".join(genes)), _GENES) if genes else _p("None", _MUTED)
+
+
+def _mageck_story(run) -> list:
+    """Flowables for MAGeCK hits per comparison plus overlaps with other screens."""
+    comparisons = run_comparisons(run)
+    if not comparisons:
+        return []
+    story = [_p("MAGeCK Hits", _H2)]
+    for c in comparisons:
+        story.append(
+            _p(
+                f"{c['comparison']} — {c['cutoff_column']} <= {c['cutoff_value']}"
+                f" ({c['n_genes']} genes tested)",
+                _BOLD,
+            )
+        )
+        for direction in ("enriched", "depleted"):
+            hits = c[direction]
+            story.append(_p(f"{direction.capitalize()} ({len(hits)})", _BODY))
+            story.append(_gene_list_p([h["gene"] for h in hits]))
+        story.append(Spacer(1, 8))
+
+    overlaps = find_overlaps(run, comparisons)
+    story.append(_p("Overlapping Hits", _H2))
+    story.append(
+        _p(
+            "Genes that are hits in the same direction in more than one comparison.",
+            _MUTED,
+        )
+    )
+    for title, entries, cross_run in (
+        ("Between comparisons in this run", overlaps["within_run"], False),
+        (
+            f"With other runs from research group {run.project.researcher.group.name}",
+            overlaps["across_runs"],
+            True,
+        ),
+    ):
+        story.append(Spacer(1, 6))
+        story.append(_p(title, _BOLD))
+        if not entries:
+            story.append(_p("No overlapping hits.", _MUTED))
+        for o in entries:
+            other = o["b"]["comparison"]
+            if cross_run:
+                other = f"{o['b']['run_label']} ({o['b']['project']}) · {other}"
+            story.append(Spacer(1, 4))
+            story.append(
+                _p(
+                    f"{o['direction'].capitalize()}: {o['a']['comparison']} & {other}"
+                    f" — {len(o['genes'])} gene{'s' if len(o['genes']) != 1 else ''}"
+                )
+            )
+            story.append(_gene_list_p(o["genes"]))
+    return story
 
 
 def _flatten_config(d: dict, indent: int = 0) -> list[str]:
@@ -272,6 +336,8 @@ def _build_cover_pdf(run, mapping_rate_cutoff: float, workflow_url: str | None) 
             mr_table.setStyle(TableStyle(style_cmds))
             story.append(mr_table)
             story.append(Spacer(1, 8))
+
+    story.extend(_mageck_story(run))
 
     doc.build(story)
     buf.seek(0)

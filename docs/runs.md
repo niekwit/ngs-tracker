@@ -96,6 +96,7 @@ Multiple files can be uploaded at once. Each batch is assigned a **type** and an
 | ------------- | ------------------------------------------------------- |
 | Config        | YAML/JSON pipeline config or params file                |
 | Mapping Rates | CSV with per-sample alignment mapping rates (see below) |
+| MAGeCK Results | MAGeCK gene summary; hits are stored per comparison (see below) |
 | Sample Info   | Metadata spreadsheets                                   |
 | QC            | MultiQC HTML, FastQC reports                            |
 | Results       | Count matrices, VCF files, peak calls                   |
@@ -122,6 +123,24 @@ NGS Tracker renders a **bar chart** for each mapping rates file attached to the 
 The cutoff threshold is configured **per workflow** on the [Workflows](workflows.md) page (default: 60 %). Multiple mapping rates files can be attached to the same run — each produces its own chart.
 
 ![mapping_rates](_static/screenshots/mapping_rates.png)
+
+### MAGeCK results
+
+Attach a MAGeCK (RRA) `gene_summary.txt` with file type **MAGeCK Results** to store the hits of a CRISPR screen comparison. When uploading in the UI, choose the cutoff column (`fdr`, `p-value` or `score`) and value (default: `fdr` ≤ 0.25); genes at or below the cutoff in the `pos|` columns are stored as **enriched** hits and those in the `neg|` columns as **depleted** hits. Each file is one *comparison*, named after the file (without `.gene_summary.txt`).
+
+From a workflow config, using the client:
+
+```yaml
+files:
+  - path: results/mageck/*/*CNV-corrected/*.gene_summary.txt
+    type: mageck_results
+    cutoff_column: fdr       # score|p-value|fdr
+    cutoff_value: 0.25
+```
+
+If a glob matches several files with the same name, the differing directory names are used as comparison names. Set `comparison:` on the entry to choose the name explicitly.
+
+The run detail page and the [PDF report](#pdf-report) list the enriched and depleted genes per comparison, followed by **overlapping hits** — genes that are a hit in the same direction in more than one comparison. Overlaps are reported between comparisons within the run, and between this run and every other run with MAGeCK results from the **same research group** (gene symbols are compared case-insensitively). Trashed runs are ignored.
 
 ## Tags
 
@@ -171,6 +190,7 @@ Every run detail page has a **PDF Report** button that generates a single PDF co
 - Linked samples
 - Configuration (parsed from any uploaded config file)
 - Mapping rates (if a mapping rates file has been uploaded), with the workflow's cutoff applied
+- MAGeCK hits per comparison (enriched / depleted), and overlapping hits within the run and with other CRISPR screens from the same research group
 - All attached PDF files, appended in full after the summary pages, each bookmarked by filename
 
 ## Filtering by workflow

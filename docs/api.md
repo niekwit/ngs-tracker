@@ -278,8 +278,11 @@ The file is **copied** into NGS Tracker's storage directory. The original file i
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `file_path` | string | Yes | — | Absolute path to the file on disk |
-| `file_type` | string | No | `"other"` | One of `config`, `sample_info`, `qc`, `results`, `mapping_rates`, `snakemake_log`, `other` |
+| `file_type` | string | No | `"other"` | One of `config`, `sample_info`, `qc`, `results`, `mapping_rates`, `mageck_results`, `snakemake_log`, `other` |
 | `description` | string | No | `""` | Short label shown in the UI |
+| `cutoff_column` | string | No | `"fdr"` | `mageck_results` only: `score`, `p-value` or `fdr` — the gene summary column used to select hits |
+| `cutoff_value` | number | No | `0.25` | `mageck_results` only: genes at or below this value are stored as hits |
+| `comparison` | string | No | file name | `mageck_results` only: comparison label; defaults to the file name without `.gene_summary.txt` |
 
 **Response** — a [file object](#file-object), HTTP `201`
 
@@ -480,7 +483,7 @@ ngs_tracker:
 
   # Files to attach — paths relative to the working directory or absolute.
   # Glob wildcards (* ?) are supported and expand at registration time.
-  # type: config | sample_info | qc | results | mapping_rates | snakemake_log | other
+  # type: config | sample_info | qc | results | mapping_rates | mageck_results | snakemake_log | other
   files:
     - path: "config/config.yaml"
       type: config
@@ -494,6 +497,10 @@ ngs_tracker:
     - path: "results/mapping_rates.csv"
       type: mapping_rates
       description: "STAR alignment mapping rates"
+    - path: "results/mageck/*/*CNV-corrected/*.gene_summary.txt"
+      type: mageck_results
+      cutoff_column: fdr       # score | p-value | fdr
+      cutoff_value: 0.25
     - path: "logs/snakemake/*.log"
       type: snakemake_log
       description: "Snakemake log"
@@ -511,6 +518,7 @@ A fully commented template is included in the package at
 | `qc` | Quality-control reports (MultiQC, FastQC, etc.) |
 | `results` | Result tables, count matrices, peak files |
 | `mapping_rates` | CSV of `sample,mapping_rate` — parsed and displayed as a bar chart |
+| `mageck_results` | MAGeCK (RRA) `gene_summary.txt` — hits at or below `cutoff_column` / `cutoff_value` are stored as enriched (`pos\|`) and depleted (`neg\|`) genes; see [MAGeCK results](runs.md#mageck-results) |
 | `snakemake_log` | Snakemake main log — runtime is parsed automatically from this file |
 | `other` | Anything else |
 
