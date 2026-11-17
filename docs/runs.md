@@ -142,6 +142,8 @@ If a glob matches several files with the same name, the differing directory name
 
 The run detail page and the [PDF report](#pdf-report) list the enriched and depleted genes per comparison (alphabetically), followed by **overlapping hits** — genes that are a hit in the same direction in more than one comparison. Overlaps are reported between comparisons within the run, and between this run and every other run with MAGeCK results from the **same research group** (gene symbols are compared case-insensitively). Trashed runs are ignored.
 
+**Download XLSX** on the Overlapping Hits card exports both overlap tables as a spreadsheet — one row per overlapping gene, on separate "Within run" and "Across runs" sheets — for further filtering or sharing outside NGS Tracker.
+
 ## Tags
 
 Tags are free-text labels shared across all runs. A default list is maintained in Settings. When creating or editing a run:

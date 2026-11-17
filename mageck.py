@@ -1,6 +1,7 @@
 """MAGeCK gene summary parsing and cross-comparison hit overlaps."""
 
 import csv
+import io
 import json
 import re
 from pathlib import Path
@@ -88,7 +89,11 @@ def parse_mageck_results(
             return None
         for name in hits:
             hits[name].sort(
-                key=lambda h: (h[cutoff_column] is None, h[cutoff_column] or 0, h["gene"])
+                key=lambda h: (
+                    h[cutoff_column] is None,
+                    h[cutoff_column] or 0,
+                    h["gene"],
+                )
             )
         return json.dumps(
             {
@@ -139,7 +144,9 @@ def _group_comparisons(run: WorkflowRun) -> list[dict]:
     """Parsed MAGeCK comparisons from other runs of the same research group."""
     group_id = run.project.researcher.group_id
     files = (
-        AttachedFile.query.join(WorkflowRun, AttachedFile.workflow_run_id == WorkflowRun.id)
+        AttachedFile.query.join(
+            WorkflowRun, AttachedFile.workflow_run_id == WorkflowRun.id
+        )
         .join(Project, WorkflowRun.project_id == Project.id)
         .join(Researcher, Project.researcher_id == Researcher.id)
         .filter(
@@ -190,3 +197,80 @@ def find_overlaps(run: WorkflowRun, mine: list[dict] | None = None) -> dict:
         for b in _group_comparisons(run):
             across.extend(_overlap(a, b))
     return {"within_run": within, "across_runs": across}
+
+
+def build_overlap_xlsx(run: WorkflowRun, overlaps: dict | None = None) -> io.BytesIO:
+    """Build an XLSX workbook of overlapping MAGeCK hits for a run (one row per gene).
+
+    Sheet "Within run" covers comparisons attached to this run; sheet
+    "Across runs" covers overlaps with other CRISPR screens from the same
+    research group. Both are long-format for easy filtering/sorting in Excel.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    if overlaps is None:
+        overlaps = find_overlaps(run)
+
+    fill_header = PatternFill("solid", fgColor="1F4E79")
+    font_header = Font(bold=True, color="FFFFFF")
+
+    def write_sheet(ws, headers, rows):
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = font_header
+            cell.fill = fill_header
+        for row in rows:
+            ws.append(row)
+        ws.freeze_panes = "A2"
+        for i, header in enumerate(headers, start=1):
+            width = (
+                max(len(header), *(len(str(r[i - 1])) for r in rows))
+                if rows
+                else len(header)
+            )
+            ws.column_dimensions[get_column_letter(i)].width = min(width + 2, 60)
+
+    wb = openpyxl.Workbook()
+    ws1 = wb.active
+    ws1.title = "Within run"
+    write_sheet(
+        ws1,
+        ["Direction", "Comparison A", "Comparison B", "Gene"],
+        [
+            [o["direction"], o["a"]["comparison"], o["b"]["comparison"], gene]
+            for o in overlaps["within_run"]
+            for gene in o["genes"]
+        ],
+    )
+
+    ws2 = wb.create_sheet("Across runs")
+    write_sheet(
+        ws2,
+        [
+            "Direction",
+            "This comparison",
+            "Other run",
+            "Other project",
+            "Other comparison",
+            "Gene",
+        ],
+        [
+            [
+                o["direction"],
+                o["a"]["comparison"],
+                o["b"]["run_label"],
+                o["b"]["project"],
+                o["b"]["comparison"],
+                gene,
+            ]
+            for o in overlaps["across_runs"]
+            for gene in o["genes"]
+        ],
+    )
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf

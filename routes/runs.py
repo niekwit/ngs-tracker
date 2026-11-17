@@ -26,7 +26,7 @@ from helpers import (
     find_duplicate_runs,
     get_journal_name,
 )
-from mageck import find_overlaps, run_comparisons
+from mageck import build_overlap_xlsx, find_overlaps, run_comparisons
 from report import build_run_report_pdf
 from models import (
     FILE_TYPES,
@@ -362,6 +362,27 @@ def register(app):
             crispr_libraries=load_crispr_libraries(),
         )
 
+    @app.route("/runs/<int:id>/mageck-overlap.xlsx")
+    def run_mageck_overlap_xlsx(id):
+        run = db.get_or_404(WorkflowRun, id)
+        comparisons = run_comparisons(run)
+        if not comparisons:
+            flash("No MAGeCK results attached to this run.", "warning")
+            return redirect(url_for("run_detail", id=id))
+        overlaps = find_overlaps(run, comparisons)
+        buf = build_overlap_xlsx(run, overlaps)
+        stamp = run.run_date.strftime("%Y%m%d")
+        slug = (
+            secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}")
+            or f"run_{run.id}"
+        )
+        return send_file(
+            buf,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=f"{slug}_mageck_overlap.xlsx",
+        )
+
     @app.route("/runs/<int:id>/report")
     def run_report(id):
         run = db.get_or_404(WorkflowRun, id)
@@ -371,7 +392,10 @@ def register(app):
         workflow_url = wf_entry.get("url") or None
         buf = build_run_report_pdf(run, mapping_rate_cutoff, workflow_url)
         stamp = run.run_date.strftime("%Y%m%d")
-        slug = secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}") or f"run_{run.id}"
+        slug = (
+            secure_filename(f"{run.workflow_name}_run{run.id}_{stamp}")
+            or f"run_{run.id}"
+        )
         return send_file(
             buf,
             mimetype="application/pdf",
@@ -710,7 +734,12 @@ def register(app):
 
         for run in runs:
             run.trashed = True
-            db_log("TRASH", "WorkflowRun", run.id, f"batch delete from project id={project_id}")
+            db_log(
+                "TRASH",
+                "WorkflowRun",
+                run.id,
+                f"batch delete from project id={project_id}",
+            )
         db.session.commit()
 
         n = len(runs)
@@ -866,9 +895,7 @@ def register(app):
                     attach_report=attach_report,
                 )
             if attach_report:
-                mapping_rate_cutoff = float(
-                    wf_entry.get("mapping_rate_cutoff", 60.0)
-                )
+                mapping_rate_cutoff = float(wf_entry.get("mapping_rate_cutoff", 60.0))
                 pdf_buf = build_run_report_pdf(run, mapping_rate_cutoff, wf_url)
                 stamp = run.run_date.strftime("%Y%m%d")
                 filename = (

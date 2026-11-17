@@ -511,6 +511,9 @@
     <i class="bi bi-intersect text-danger"></i>
     <span>Overlapping Hits</span>
     <span class="text-muted small ms-1">— same direction; this run and other CRISPR screens from {{ run.project.researcher.group.name }}</span>
+    <a href="{{ url_for('run_mageck_overlap_xlsx', id=run.id) }}" class="btn btn-xs btn-outline-secondary ms-auto">
+      <i class="bi bi-file-earmark-excel me-1"></i>Download XLSX
+    </a>
   </div>
   <div class="card-body">
     <h6 class="mb-2">Between comparisons in this run</h6>
